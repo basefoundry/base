@@ -2522,6 +2522,137 @@
       ],
       "type": "object"
     },
+    "workspace-test.json": {
+      "$defs": {
+        "counts": {
+          "properties": {
+            "failed": {
+              "type": "integer"
+            },
+            "passed": {
+              "type": "integer"
+            },
+            "skipped": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "failed",
+            "passed",
+            "skipped"
+          ],
+          "type": "object"
+        },
+        "project": {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "exit_code": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "project": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "repository": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "failed",
+                "passed",
+                "skipped"
+              ]
+            },
+            "stderr": {
+              "type": "string"
+            },
+            "stdout": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "project",
+            "repository",
+            "required",
+            "status"
+          ],
+          "type": "object"
+        },
+        "workspaceManifest": {
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "schema_version": {
+              "const": 1
+            }
+          },
+          "required": [
+            "name",
+            "path",
+            "schema_version"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "fail_fast": {
+          "type": "boolean"
+        },
+        "project_count": {
+          "type": "integer"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/project"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "selected_projects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "workspace_manifest": {
+          "$ref": "#/$defs/workspaceManifest"
+        }
+      },
+      "required": [
+        "counts",
+        "fail_fast",
+        "project_count",
+        "projects",
+        "schema_version",
+        "selected_projects",
+        "workspace",
+        "workspace_manifest"
+      ],
+      "type": "object"
+    },
     "workspace-update.json": {
       "$defs": {
         "counts": {

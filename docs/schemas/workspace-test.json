@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/basefoundry/base/blob/main/docs/schemas/workspace-test.json",
+  "title": "Base workspace test report",
+  "description": "Stable schema version 1 for basectl workspace test --format json. Additional properties are allowed for additive, non-breaking fields.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workspace",
+    "workspace_manifest",
+    "fail_fast",
+    "selected_projects",
+    "project_count",
+    "projects",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "workspace": {"type": "string"},
+    "workspace_manifest": {"$ref": "#/$defs/workspaceManifest"},
+    "fail_fast": {"type": "boolean"},
+    "selected_projects": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "project_count": {"type": "integer", "minimum": 0},
+    "projects": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/project"}
+    },
+    "counts": {"$ref": "#/$defs/counts"}
+  },
+  "$defs": {
+    "workspaceManifest": {
+      "type": "object",
+      "required": ["path", "name", "schema_version"],
+      "properties": {
+        "path": {"type": "string"},
+        "name": {"type": "string"},
+        "schema_version": {"const": 1}
+      }
+    },
+    "project": {
+      "type": "object",
+      "required": ["project", "repository", "path", "required", "status"],
+      "properties": {
+        "project": {"type": ["string", "null"]},
+        "repository": {"type": "string"},
+        "path": {"type": "string"},
+        "required": {"type": "boolean"},
+        "status": {"enum": ["passed", "failed", "skipped"]},
+        "detail": {"type": "string"},
+        "exit_code": {"type": "integer"},
+        "stdout": {"type": "string"},
+        "stderr": {"type": "string"}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["passed", "failed", "skipped"],
+      "properties": {
+        "passed": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "skipped": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}
