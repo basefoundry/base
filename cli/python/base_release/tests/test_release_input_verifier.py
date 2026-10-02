@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
+from base_release import release_input_verifier
 from base_release.release_input_verifier import ReleaseInput
 from base_release.release_input_verifier import ReleaseInputError
+from base_release.release_input_verifier import resolve_release_tag_commit
 from base_release.release_input_verifier import verify_platform_evidence
 from base_release.release_input_verifier import verify_release_inputs
 
@@ -106,6 +109,119 @@ def test_missing_or_unavailable_release_tag_fails_closed(tmp_path: Path) -> None
                 ),
             ),
         )
+
+
+def test_release_tag_authentication_failures_are_diagnostic(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail_to_resolve(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert kwargs["timeout"] == 30
+        return subprocess.CompletedProcess(
+            args[0] if args else [],
+            128,
+            stderr="fatal: Authentication failed for 'https://github.com/basefoundry/base-cli.git'",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fail_to_resolve)
+
+    with pytest.raises(ReleaseInputError, match="authentication or authorization failed"):
+        resolve_release_tag_commit("https://github.com/basefoundry/base-cli.git", "v0.4.3")
+
+
+def test_checkout_inspection_timeout_is_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def time_out(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert kwargs["timeout"] == 30
+        raise subprocess.TimeoutExpired(args[0] if args else [], 30)
+
+    monkeypatch.setattr(subprocess, "run", time_out)
+
+    with pytest.raises(ReleaseInputError, match="could not inspect Base release candidate checkout"):
+        verify_release_inputs(
+            ReleaseInput("basefoundry/base", "1.9.0", "a" * 40, tmp_path),
+            (),
+        )
+
+
+def test_main_writes_verification_failures_to_stderr(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "base-release-inputs-verify",
+            "--candidate-repository",
+            "basefoundry/base",
+            "--candidate-version",
+            "1.9.0",
+            "--candidate-commit",
+            "a" * 40,
+            "--candidate-checkout",
+            ".",
+            "--component",
+            "basefoundry/base-cli",
+            "0.4.3",
+            "b" * 40,
+            ".",
+        ],
+    )
+
+    def fail_verification(*args: object, **kwargs: object) -> None:
+        raise ReleaseInputError("verification failed")
+
+    monkeypatch.setattr(release_input_verifier, "verify_release_inputs", fail_verification)
+
+    assert release_input_verifier.main() == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == "release input verification: verification failed\n"
+
+
+def test_main_verifies_multiple_evidence_documents_after_inputs_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "base-release-inputs-verify",
+            "--candidate-repository",
+            "basefoundry/base",
+            "--candidate-version",
+            "1.9.0",
+            "--candidate-commit",
+            "a" * 40,
+            "--candidate-checkout",
+            ".",
+            "--component",
+            "basefoundry/base-cli",
+            "0.4.3",
+            "b" * 40,
+            ".",
+            "--evidence",
+            "ubuntu.json",
+            "--platform",
+            "ubuntu-24.04",
+            "--evidence",
+            "macos.json",
+            "--platform",
+            "macos-14",
+        ],
+    )
+    input_calls: list[tuple[object, ...]] = []
+    evidence_calls: list[tuple[Path, str]] = []
+
+    def record_inputs(*args: object, **_kwargs: object) -> None:
+        input_calls.append(args)
+
+    def record_evidence(path: Path, platform: str, inputs: tuple[ReleaseInput, ...]) -> None:
+        del inputs
+        evidence_calls.append((path, platform))
+
+    monkeypatch.setattr(release_input_verifier, "verify_release_inputs", record_inputs)
+    monkeypatch.setattr(release_input_verifier, "verify_platform_evidence", record_evidence)
+
+    assert release_input_verifier.main() == 0
+    assert len(input_calls) == 1
+    assert evidence_calls == [(Path("ubuntu.json"), "ubuntu-24.04"), (Path("macos.json"), "macos-14")]
 
 
 def test_candidate_version_metadata_must_match_without_a_candidate_tag(tmp_path: Path) -> None:

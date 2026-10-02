@@ -350,12 +350,13 @@ jobs:
             --component basefoundry/base-bash-libs "$BASE_BASH_LIBS_VERSION" "$BASE_BASH_LIBS_REF" "$GITHUB_WORKSPACE/.dependencies/base-bash-libs"
             --component basefoundry/base-demo "$BASE_DEMO_VERSION" "$BASE_DEMO_REF" "$GITHUB_WORKSPACE/.dependencies/base-demo"
           )
-          for platform in ubuntu-24.04 macos-14; do
-            ./bin/base-release-inputs-verify \
-              "${base_args[@]}" \
-              --evidence "evidence/release-stack-$platform.json" \
-              --platform "$platform"
-          done
+          # Revalidate assemble's own checkouts after downloading evidence, but verify release inputs once.
+          ./bin/base-release-inputs-verify \
+            "${base_args[@]}" \
+            --evidence evidence/release-stack-ubuntu-24.04.json \
+            --platform ubuntu-24.04 \
+            --evidence evidence/release-stack-macos-14.json \
+            --platform macos-14
 
       - name: Assemble and validate Base-owned BOM
         run: |

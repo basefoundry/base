@@ -4,6 +4,7 @@ import argparse
 import json
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -76,6 +77,12 @@ def resolve_release_tag_commit(remote: str, tag: str) -> str:
         raise ReleaseInputError(f"could not resolve release tag {tag!r} from {remote!r}: {exc}") from exc
     if result.returncode != 0:
         detail = (result.stderr or "").strip()
+        if _is_authentication_failure(detail):
+            raise ReleaseInputError(
+                f"GitHub authentication or authorization failed while resolving release tag {tag!r} "
+                f"from {remote!r}"
+                + (f": {detail}" if detail else "")
+            )
         raise ReleaseInputError(
             f"could not resolve release tag {tag!r} from {remote!r}"
             + (f": {detail}" if detail else "")
@@ -92,6 +99,24 @@ def resolve_release_tag_commit(remote: str, tag: str) -> str:
     if direct_ref not in refs:
         raise ReleaseInputError(f"release tag {tag!r} is missing from {remote!r}")
     return refs.get(peeled_ref, refs[direct_ref])
+
+
+def _is_authentication_failure(detail: str) -> bool:
+    normalized = detail.casefold()
+    return any(
+        marker in normalized
+        for marker in (
+            "authentication failed",
+            "could not read username",
+            "repository not found",
+            "access denied",
+            "permission denied",
+            "http 401",
+            "http 403",
+            "returned error: 401",
+            "returned error: 403",
+        )
+    )
 
 
 def verify_platform_evidence(path: Path, platform: str, inputs: tuple[ReleaseInput, ...]) -> None:
@@ -132,8 +157,9 @@ def _verify_checkout(release_input: ReleaseInput, *, role: str) -> None:
             check=False,
             capture_output=True,
             text=True,
+            timeout=30,
         )
-    except OSError as exc:
+    except (OSError, subprocess.SubprocessError) as exc:
         raise ReleaseInputError(f"could not inspect {role} checkout {release_input.checkout}: {exc}") from exc
     if result.returncode != 0:
         detail = (result.stderr or "").strip()
@@ -163,8 +189,8 @@ def _parser() -> argparse.ArgumentParser:
         metavar=("REPOSITORY", "VERSION", "COMMIT", "CHECKOUT"),
         required=True,
     )
-    parser.add_argument("--evidence", type=Path)
-    parser.add_argument("--platform")
+    parser.add_argument("--evidence", action="append", type=Path)
+    parser.add_argument("--platform", action="append")
     return parser
 
 
@@ -182,12 +208,15 @@ def main() -> int:
     )
     try:
         verify_release_inputs(candidate, components, candidate_version_file=args.candidate_version_file)
-        if args.evidence is not None:
-            if not args.platform:
-                _parser().error("--platform is required with --evidence")
-            verify_platform_evidence(args.evidence, args.platform, (candidate, *components))
+        if args.evidence is not None or args.platform is not None:
+            if not args.evidence or not args.platform:
+                _parser().error("--evidence and --platform must be supplied together")
+            if len(args.evidence) != len(args.platform):
+                _parser().error("--evidence and --platform must be supplied the same number of times")
+            for evidence, platform in zip(args.evidence, args.platform):
+                verify_platform_evidence(evidence, platform, (candidate, *components))
     except ReleaseInputError as exc:
-        print(f"release input verification: {exc}")
+        print(f"release input verification: {exc}", file=sys.stderr)
         return EXIT_FAILURE
     print("release input verification passed")
     return EXIT_SUCCESS
