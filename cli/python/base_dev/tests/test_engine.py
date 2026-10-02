@@ -242,7 +242,10 @@ class DevManifestTests(unittest.TestCase):
 
         with (
             mock.patch("base_dev.ai_tools.AI_TOOLS", (tool,)),
-            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("bad-ai", False, "missing", "", finding_id="BASE-D107")),
+            mock.patch(
+                "base_dev.ai_tools.check_ai_tool",
+                return_value=engine.DevCheck("bad-ai", False, "missing", "", finding_id="BASE-D107"),
+            ),
             mock.patch("base_dev.ai_tools.run_remote_installer") as run_installer,
         ):
             status = ai_tools.setup_ai_tools(ctx, dry_run=False)
@@ -267,7 +270,10 @@ class DevManifestTests(unittest.TestCase):
 
         with (
             mock.patch.dict(os.environ, {"CI": "true"}),
-            mock.patch("base_dev.ai_tools.check_ai_tool", return_value=engine.DevCheck("tool", False, "missing", "", finding_id="BASE-D107")),
+            mock.patch(
+                "base_dev.ai_tools.check_ai_tool",
+                return_value=engine.DevCheck("tool", False, "missing", "", finding_id="BASE-D107"),
+            ),
             mock.patch("base_dev.ai_tools.run_remote_installer") as run_installer,
         ):
             status = ai_tools.setup_ai_tools(ctx, dry_run=False)
