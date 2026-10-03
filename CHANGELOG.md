@@ -24,6 +24,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
   flag to the stable command baseline, with migration guidance for consumers that
   treat the machine-readable baseline as the source of truth.
 
+- Stability compatibility: enroll every documented Stable command and preserve
+  baseline exceptions when regenerating the fixture.
+
+- Stability compatibility: add `version` to the shared inspection-v1 command
+  enum and document its completed-report and usage-error behavior.
+
 ## [1.9.0] - 2026-09-08
 
 ### Added

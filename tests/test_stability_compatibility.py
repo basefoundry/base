@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
+import tempfile
 from pathlib import Path
 
 from tests import stability_compatibility as compatibility
@@ -22,6 +25,45 @@ def test_current_fixture_matches_the_repository_contract() -> None:
     assert not compatibility.run_check(REPO_ROOT, runtime=True)
 
 
+def test_documented_stable_commands_include_new_public_rows() -> None:
+    commands = compatibility.documented_stable_commands(REPO_ROOT)
+
+    assert "basectl workspace test" not in commands
+    assert "basectl uninstall <project>|--all" in commands
+
+
+def test_write_snapshot_does_not_copy_exceptions_to_unrelated_output(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs" / "stability-baseline"
+    docs.mkdir(parents=True)
+    (tmp_path / "docs" / "command-reference.md").write_text(
+        "| `basectl check` | Check | `--format <text>` |\n", encoding="utf-8"
+    )
+    (tmp_path / "docs" / "stability-tiers.md").write_text("# Tiers\n", encoding="utf-8")
+    (docs / "current.json").write_text(
+        json.dumps({"baseline_exceptions": [{"reason": "current-only"}]}), encoding="utf-8"
+    )
+    monkeypatch.setattr(compatibility, "runtime_command_contract", lambda root, names: {})
+    monkeypatch.setattr(compatibility, "snapshot", lambda root, baseline, commands: {"commands": commands})
+
+    output = tmp_path / "historical.json"
+    compatibility._write_snapshot(tmp_path, output, "1.8.0")
+
+    assert "baseline_exceptions" not in load_fixture(output)
+
+
+def test_write_snapshot_rejects_an_empty_documented_surface(tmp_path: Path) -> None:
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "command-reference.md").write_text("# no commands\n", encoding="utf-8")
+    (tmp_path / "docs" / "stability-tiers.md").write_text("# Tiers\n", encoding="utf-8")
+
+    try:
+        compatibility._write_snapshot(tmp_path, tmp_path / "out.json", "1.8.0")
+    except RuntimeError as error:
+        assert "empty Stable command contract" in str(error)
+    else:
+        raise AssertionError("empty documented command surface must fail")
+
+
 def test_runtime_diagnostic_output_matches_the_published_contract() -> None:
     reference = load_fixture(CURRENT_FIXTURE)["json_contracts"]["diagnostic-v1"]
     observed = compatibility.runtime_contracts(REPO_ROOT)["diagnostic-v1"]
@@ -30,6 +72,33 @@ def test_runtime_diagnostic_output_matches_the_published_contract() -> None:
     compatibility.validate_runtime_shape(reference, observed, "runtime.diagnostic-v1", errors, reference)
 
     assert not errors
+
+
+def test_version_json_matches_the_published_inspection_contract() -> None:
+    environment = os.environ.copy()
+    compatibility.resolve_bash_libs_dir(REPO_ROOT, environment)
+    with tempfile.TemporaryDirectory(prefix="base-version-contract-") as cache_dir:
+        environment["BASE_CACHE_DIR"] = cache_dir
+        result = subprocess.run(
+            [str(REPO_ROOT / "bin" / "basectl"), "version", "--all", "--json"],
+            cwd=REPO_ROOT,
+            env=environment,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    assert result.returncode == 0, result.stderr
+    reference = load_fixture(CURRENT_FIXTURE)["json_contracts"]["inspection-v1"]
+    errors: list[str] = []
+    compatibility.validate_runtime_shape(
+        reference,
+        compatibility._json_shape(json.loads(result.stdout)),
+        "runtime.inspection-v1",
+        errors,
+        reference,
+    )
+    assert not errors
+    assert json.loads(result.stdout)["command"] == "version"
 
 
 def test_fixtures_retain_v1_8_provenance() -> None:

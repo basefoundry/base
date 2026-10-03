@@ -150,7 +150,6 @@ class WorkspaceCloneTests(unittest.TestCase):
         self.assertNotIn("fixture-value", debug_text)
         self.assertNotIn("URLSECRET123456", debug_text)
         self.assertIn("[REDACTED]", debug_text)
-
     def test_workspace_clone_dry_run_materializes_missing_required_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
