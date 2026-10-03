@@ -144,6 +144,8 @@ def test_ci_includes_ubuntu_source_checkout_base_test_job() -> None:
 
 def test_shellcheck_covers_runtime_bashrc() -> None:
     tests_workflow = REPO_ROOT / ".github" / "workflows" / "tests.yml"
+    source_collection = workflow_step(tests_workflow, "security", "Collect tracked shell sources").get("run", "")
+    assert "lib/bash/runtime/bashrc" in source_collection
     for step_name in ("Run ShellCheck", "Run ShellCheck warnings"):
         shellcheck_command = workflow_step(tests_workflow, "security", step_name).get("run", "")
-        assert "lib/bash/runtime/bashrc" in shellcheck_command
+        assert "base-shellcheck-files" in shellcheck_command
