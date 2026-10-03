@@ -308,6 +308,24 @@ class DiagnosticsPayloadTests(unittest.TestCase):
         self.assertEqual(virtualenv.finding_id, "BASE-D004")
         self.assertEqual(virtualenv.display_name, "Base virtualenv")
 
+    def test_main_reports_unknown_check_names_without_a_traceback(self) -> None:
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            status = diagnostics.main(
+                [
+                    "check-json",
+                    "--check",
+                    "unknown",
+                    "ok",
+                    "Unknown check.",
+                    "Register the check.",
+                ]
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn("has no registered stable finding ID", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
+
     def test_base_check_metadata_respects_bootstrap_package_name_overrides(self) -> None:
         with mock.patch.dict(
             os.environ,

@@ -83,6 +83,15 @@ base_test_protocol_project_setup_route_record() {
 }
 
 base_test_protocol_project_command_record() {
+    local mise_config_path="" uv_extras=""
+    if (( $# >= 11 )); then
+        mise_config_path="${10:-}"
+        uv_extras="${11:-}"
+    else
+        # Keep the fixture compatible with older callers that predate the
+        # optional mise_config_path field.
+        uv_extras="${10:-}"
+    fi
     printf 'record=%s\n' "$1"
     base_test_protocol_string project_name "$2"
     base_test_protocol_string project_root "$3"
@@ -92,8 +101,8 @@ base_test_protocol_project_command_record() {
     base_test_protocol_boolean manifest_command_trust_required "$7"
     base_test_protocol_string command "$8"
     base_test_protocol_nullable_string runner "${9:-}"
-    base_test_protocol_nullable_string mise_config_path "${10:-}"
-    base_test_protocol_string uv_extras "${10:-}"
+    base_test_protocol_nullable_string mise_config_path "$mise_config_path"
+    base_test_protocol_string uv_extras "$uv_extras"
     printf 'end_record=%s\n' "$1"
 }
 

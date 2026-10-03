@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -458,7 +459,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check-json":
         checks = load_diagnostic_checks(args.check, args.check_result_file)
         embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
-        payload = render_base_check_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
+        try:
+            payload = render_base_check_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
+        except UnknownBaseCheckError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return base_cli.ExitCode.FAILURE
         payload_object = json.loads(payload)
         status = payload_status(payload_object)
         if args.record_path and args.project and args.checked_at:
@@ -471,7 +476,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "doctor-json":
         checks = load_diagnostic_checks(args.finding, args.finding_result_file)
         embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
-        payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
+        try:
+            payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
+        except UnknownBaseCheckError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return base_cli.ExitCode.FAILURE
         print(payload, end="")
         status = payload_status(json.loads(payload))
         exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
@@ -481,7 +490,11 @@ def main(argv: list[str] | None = None) -> int:
         ):
             exit_code = base_cli.ExitCode.FAILURE
     elif args.command == "base-check-metadata":
-        print(render_base_check_metadata(args.name), end="")
+        try:
+            print(render_base_check_metadata(args.name), end="")
+        except UnknownBaseCheckError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return base_cli.ExitCode.FAILURE
     elif args.command == "project-venv-check-json":
         print(
             render_project_venv_check_payload(
