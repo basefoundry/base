@@ -12,6 +12,9 @@ from base_setup import ide_settings
 from base_setup.manifest import BaseManifest, IdeConfig
 from base_setup.tests.helpers import fake_context
 
+# The regression tests intentionally exercise the JSONC rewriter's private helpers.
+# pylint: disable=protected-access
+
 class IdeSettingsTests(unittest.TestCase):  # pylint: disable=too-many-public-methods
 
     def test_project_ide_mutation_plan_lists_apps_extensions_and_settings(self) -> None:
