@@ -70,6 +70,28 @@ EOF
     [[ "$output" == *"active_manifest=/tmp/work/demo/base_manifest.yaml"* ]]
 }
 
+@test "basectl trust keeps option values out of duplicate project detection" {
+    local base_home="$TEST_TMPDIR/base-home"
+
+    mkdir -p "$base_home/bin"
+    cat > "$base_home/bin/base-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf 'args=%s\n' "$*"
+EOF
+    chmod +x "$base_home/bin/base-wrapper"
+
+    run env \
+        BASE_HOME="$base_home" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/trust.sh"
+            base_trust_subcommand_main status --workspace /tmp/work --project help
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"args=--project base base_trust status --workspace /tmp/work help"* ]]
+}
+
 @test "basectl trust forwards through the Python wrapper" {
     local base_home="$TEST_TMPDIR/base-home"
 

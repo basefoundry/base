@@ -12,6 +12,7 @@ Usage:
   basectl devcontainer [project] [options]
 
 Options:
+  --project <name>     Select a project explicitly, including one named help.
   --workspace <path>  Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
   --format <format>   Output format: text or json.
   --write             Write .devcontainer/devcontainer.json. Refuses to replace an existing file.
@@ -32,9 +33,10 @@ base_devcontainer_usage_error() {
 base_devcontainer_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path
     local output_format="text" workspace_requested=0 write=0
-    local args=() setup_args=() arg
+    local args=() setup_args=() arg previous_arg=""
     local -a option_specs=(
         "debug|flag|-v"
+        "project|value|--project"
         "workspace|value|--workspace"
         "format|value|--format"
         "write|flag|--write"
@@ -44,11 +46,18 @@ base_devcontainer_subcommand_main() {
 
     for arg in "$@"; do
         case "$arg" in
-            -h|--help|help)
+            -h|--help)
                 base_devcontainer_subcommand_usage
                 return 0
                 ;;
+            help)
+                if [[ "$previous_arg" != --project ]]; then
+                    base_devcontainer_subcommand_usage
+                    return 0
+                fi
+                ;;
         esac
+        previous_arg="$arg"
     done
 
     if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
@@ -62,6 +71,13 @@ base_devcontainer_subcommand_main() {
     fi
     if ((${#positionals[@]} == 1)); then
         project="${positionals[0]}"
+    fi
+    if [[ -n "${parsed_options[project]+set}" ]]; then
+        [[ -z "$project" ]] || {
+            base_devcontainer_usage_error "The 'devcontainer' command accepts only one project selection."
+            return $?
+        }
+        project="${parsed_options[project]}"
     fi
     if [[ "${parsed_options[debug]:-}" == "1" ]]; then
         args+=(--debug)

@@ -21,6 +21,7 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repository_url import redact_repository_url
 from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_setup.process import redact_command_output
 
 
 class WorkspaceCloneOptions(Protocol):
@@ -235,17 +236,19 @@ def clone_workspace_repo(
     except ProjectRunnerError as exc:
         return WorkspaceCloneResult("failed", str(exc))
 
+    stdout = redact_command_output(result.stdout)
+    stderr = redact_command_output(result.stderr)
     ctx.log.debug(
         "Clone command for repository '%s' exited with %s; stdout=%r stderr=%r",
         repo.name,
         result.returncode,
-        result.stdout,
-        result.stderr,
+        stdout,
+        stderr,
     )
     if result.returncode != 0:
         return WorkspaceCloneResult(
             "failed",
-            detail=clone_detail(result.stdout, result.stderr),
+            detail=clone_detail(stdout, stderr),
             exit_code=result.returncode,
         )
 
@@ -257,7 +260,7 @@ def clone_workspace_repo(
 def clone_detail(stdout: str, stderr: str) -> str:
     details = [
         line.strip()
-        for stream in (stderr, stdout)
+        for stream in (redact_command_output(stderr), redact_command_output(stdout))
         for line in stream.splitlines()
         if line.strip() and not BASE_LOG_RECORD_RE.match(line.strip())
     ]

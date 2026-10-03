@@ -10,25 +10,25 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Added
 
-- Added workspace-wide test execution and onboarding/reporting commands, including
-  `basectl workspace test`, `workspace onboarding`, and `workspace agent-brief`,
-  with stable machine-readable output for automation.
+- Added `basectl workspace test` for workspace-wide test execution with stable
+  machine-readable output for automation.
 
-- Added `basectl history --report`, JSON quickstarts, first-run troubleshooting,
-  downstream release smoke-test guidance, and public contributor/support paths.
+- Added `basectl uninstall` with verification and safer completion reporting.
 
-- Added verified `basectl uninstall`, repository review-policy configuration, and
-  project test-requirements declarations with preflight support for uv-managed
-  extras.
-
-- Added read-only `basectl devcontainer` and `devenv-report` reports, optional
-  Copilot setup guidance, and agent-ready repository initialization/checks.
-
-### Changed
+- Added repository review-policy configuration and project test-requirements
+  declarations with preflight support for uv-managed extras.
 
 - Added `basectl version --all` and `--all --json` to inspect active component
   versions, provider paths, Git revisions, and dirty state even when providers
   or the Base Python environment are unavailable.
+
+### Changed
+- CLI help now accepts a trailing bare `help` token on nested commands, and
+  project-taking commands expose `--project` so a project named `help` remains
+  addressable.
+
+- Security CI now checks tracked Bash sources, managed startup files, and Zsh
+  syntax instead of leaving shell startup files outside the blocking coverage.
 
 - Added an optional repository-owned review policy for `basectl repo configure`.
   Teams can request approving reviews and code-owner review without changing
@@ -50,6 +50,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: added the `--test-requirements-sha256` trust approval
   flag to the stable command baseline, with migration guidance for consumers that
   treat the machine-readable baseline as the source of truth.
+
+- Stability compatibility now enrolls every documented Stable command, preserves
+  baseline exceptions when regenerating the fixture, and documents the completed
+  report and usage-error behavior for `version` in the shared inspection-v1 enum.
 
 ### Fixed
 
@@ -74,10 +78,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
   recovery, installer checksum verification, and first-mile platform checks so
   failures are reported as actionable domain diagnostics.
 
-The v1.10.0 release section should retain these notes when it is dated. The
-release uses the published provider pins recorded by the release BOM; staged
-native-Windows work and other unvalidated platform claims are not part of the
-released compatibility promise.
+### Notes
+
+- The coordinated release baseline covers macOS and Ubuntu/Debian. Native Windows
+  and WSL2 guidance is staged or limited rather than presented as universal
+  released compatibility; release publication uses the provider pins recorded by
+  the release BOM.
 
 ## [1.9.0] - 2026-09-08
 

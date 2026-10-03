@@ -4,6 +4,8 @@ import io
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stderr
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -446,15 +448,22 @@ repos:
             completed = subprocess.CompletedProcess(
                 [str(basectl), "repo", "configure", str(target.root), "--repo", "basefoundry/base"],
                 0,
-                stdout="configured\n",
-                stderr="",
+                stdout="configured GITHUB_TOKEN=fixture-value\n",
+                stderr="remote https://alice:URLSECRET123456@github.com/acme/private.git\n",
             )
 
             with mock.patch("base_projects.workspace_configure.subprocess.run", return_value=completed) as run:
-                status = workspace_configure.configure_workspace_repo(ctx, basectl, target, dry_run=False)
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    status = workspace_configure.configure_workspace_repo(ctx, basectl, target, dry_run=False)
 
         self.assertEqual(status, 0)
         self.assertEqual(run.call_args.kwargs["timeout"], workspace_configure.WORKSPACE_CONFIGURE_TIMEOUT_SECONDS)
+        self.assertNotIn("fixture-value", stdout.getvalue())
+        self.assertNotIn("URLSECRET123456", stderr.getvalue())
+        self.assertIn("GITHUB_TOKEN=[REDACTED]", stdout.getvalue())
+        self.assertIn("https://[REDACTED]@github.com", stderr.getvalue())
 
     def test_configure_workspace_repo_reports_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

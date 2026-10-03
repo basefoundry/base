@@ -8,9 +8,11 @@ import base_cli
 from base_cli_adapters.protocol import dumps_records
 from base_projects.project_commands import route_metadata_fields
 from base_projects.project_commands import route_metadata_record
+from base_setup.errors import ArtifactError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import BaseManifest, BuildTargetConfig
+from base_setup.mise_delegate import manifest_mise_config_path
 
 
 class ProjectLike(Protocol):
@@ -113,17 +115,21 @@ def build_targets_for_project(
         return base_cli.ExitCode.FAILURE
 
     if output_format == "command-protocol":
-        records = [
-            build_target_record(
-                project,
-                manifest,
-                target_name,
-                target_config,
-                working_dir,
-                manifest_command_trust_required=True,
-            )
-            for target_name, target_config, working_dir in targets
-        ]
+        try:
+            records = [
+                build_target_record(
+                    project,
+                    manifest,
+                    target_name,
+                    target_config,
+                    working_dir,
+                    manifest_command_trust_required=True,
+                )
+                for target_name, target_config, working_dir in targets
+            ]
+        except ArtifactError as exc:
+            ctx.log.error(str(exc))
+            return base_cli.ExitCode.FAILURE
         print(dumps_records("build-target", records))
     elif output_format == "text":
         for target_name, target_config, working_dir in targets:
@@ -179,17 +185,21 @@ def list_build_targets_for_project(
         ctx.log.error(str(exc))
         return base_cli.ExitCode.FAILURE
 
-    records = [
-        build_target_record(
-            project,
-            manifest,
-            target_name,
-            target_config,
-            working_dir,
-            manifest_command_trust_required=False,
-        )
-        for target_name, target_config, working_dir in targets
-    ]
+    try:
+        records = [
+            build_target_record(
+                project,
+                manifest,
+                target_name,
+                target_config,
+                working_dir,
+                manifest_command_trust_required=False,
+            )
+            for target_name, target_config, working_dir in targets
+        ]
+    except ArtifactError as exc:
+        ctx.log.error(str(exc))
+        return base_cli.ExitCode.FAILURE
     if output_format == "command-protocol":
         print(dumps_records("build-target", records))
     elif output_format in {"json", "yaml"}:
@@ -262,6 +272,7 @@ def build_target_record(  # pylint: disable=too-many-arguments
         "command": target_config.command,
         "description": target_config.description,
         "runner": target_config.runner,
+        "mise_config_path": manifest_mise_config_path(manifest),
     }
 
 

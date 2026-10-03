@@ -117,6 +117,27 @@ jobs:
           path: .dependencies/base-demo
           fetch-depth: 1
 
+      - name: Verify release input provenance
+        env:
+          BASE_VERSION: ${{ inputs.base_version }}
+          BASE_REF: ${{ inputs.base_ref }}
+          BASE_CLI_VERSION: ${{ inputs.base_cli_version }}
+          BASE_CLI_REF: ${{ inputs.base_cli_ref }}
+          BASE_BASH_LIBS_VERSION: ${{ inputs.base_bash_libs_version }}
+          BASE_BASH_LIBS_REF: ${{ inputs.base_bash_libs_ref }}
+          BASE_DEMO_VERSION: ${{ inputs.base_demo_version }}
+          BASE_DEMO_REF: ${{ inputs.base_demo_ref }}
+        run: |
+          set -euo pipefail
+          ./bin/base-release-inputs-verify \
+            --candidate-repository basefoundry/base \
+            --candidate-version "$BASE_VERSION" \
+            --candidate-commit "$BASE_REF" \
+            --candidate-checkout "$GITHUB_WORKSPACE" \
+            --component basefoundry/base-cli "$BASE_CLI_VERSION" "$BASE_CLI_REF" "$GITHUB_WORKSPACE/.dependencies/base-cli" \
+            --component basefoundry/base-bash-libs "$BASE_BASH_LIBS_VERSION" "$BASE_BASH_LIBS_REF" "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" \
+            --component basefoundry/base-demo "$BASE_DEMO_VERSION" "$BASE_DEMO_REF" "$GITHUB_WORKSPACE/.dependencies/base-demo"
+
       - name: Expose peer checkouts for workspace validation
         run: |
           set -euo pipefail
@@ -248,9 +269,13 @@ jobs:
     timeout-minutes: 15
     env:
       BOM_VERSION: ${{ inputs.base_version }}
+      BASE_REF: ${{ inputs.base_ref }}
       BASE_CLI_VERSION: ${{ inputs.base_cli_version }}
+      BASE_CLI_REF: ${{ inputs.base_cli_ref }}
       BASE_BASH_LIBS_VERSION: ${{ inputs.base_bash_libs_version }}
+      BASE_BASH_LIBS_REF: ${{ inputs.base_bash_libs_ref }}
       BASE_DEMO_VERSION: ${{ inputs.base_demo_version }}
+      BASE_DEMO_REF: ${{ inputs.base_demo_ref }}
 
     steps:
       - name: Validate immutable release refs
@@ -310,6 +335,28 @@ jobs:
           pattern: release-stack-evidence-*
           path: evidence
           merge-multiple: true
+
+      - name: Verify release inputs and bind platform evidence
+        env:
+          BASE_VERSION: ${{ inputs.base_version }}
+        run: |
+          set -euo pipefail
+          base_args=(
+            --candidate-repository basefoundry/base
+            --candidate-version "$BASE_VERSION"
+            --candidate-commit "$BASE_REF"
+            --candidate-checkout "$GITHUB_WORKSPACE"
+            --component basefoundry/base-cli "$BASE_CLI_VERSION" "$BASE_CLI_REF" "$GITHUB_WORKSPACE/.dependencies/base-cli"
+            --component basefoundry/base-bash-libs "$BASE_BASH_LIBS_VERSION" "$BASE_BASH_LIBS_REF" "$GITHUB_WORKSPACE/.dependencies/base-bash-libs"
+            --component basefoundry/base-demo "$BASE_DEMO_VERSION" "$BASE_DEMO_REF" "$GITHUB_WORKSPACE/.dependencies/base-demo"
+          )
+          # Revalidate assemble's own checkouts after downloading evidence, but verify release inputs once.
+          ./bin/base-release-inputs-verify \
+            "${base_args[@]}" \
+            --evidence evidence/release-stack-ubuntu-24.04.json \
+            --platform ubuntu-24.04 \
+            --evidence evidence/release-stack-macos-14.json \
+            --platform macos-14
 
       - name: Assemble and validate Base-owned BOM
         run: |

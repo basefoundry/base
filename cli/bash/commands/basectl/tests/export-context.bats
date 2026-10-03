@@ -28,11 +28,11 @@ load ./basectl_helpers.bash
                 printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
                 return 2
             }
-            base_export_context_subcommand_main demo --format zip
+            base_export_context_subcommand_main --project help --format zip
         '
 
     [ "$status" -eq 2 ]
-    [[ "$(cat "$state_file")" == "parsed_options positionals option_specs -- demo --format zip" ]]
+    [[ "$(cat "$state_file")" == "parsed_options positionals option_specs -- --project help --format zip" ]]
 }
 
 @test "basectl export-context resolves current project when omitted" {
