@@ -8,6 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- CLI help now accepts a trailing bare `help` token on nested commands, and
+  project-taking commands expose `--project` so a project named `help` remains
+  addressable.
+
 - Security CI now checks tracked Bash sources, managed startup files, and Zsh
   syntax instead of leaving shell startup files outside the blocking coverage.
 

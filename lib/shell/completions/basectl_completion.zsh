@@ -516,6 +516,7 @@ _base_basectl_completion() {
                     _arguments '2:trust command:(status allow revoke)' \
                         '3::Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
+                        '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                         '--format[Output format]:format:(text csv tsv yaml json)' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
@@ -523,6 +524,7 @@ _base_basectl_completion() {
                     _arguments '2:trust command:(status allow revoke)' \
                         '3:Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
+                        '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                         '--manifest-sha256[Expected manifest SHA-256]:sha256:' \
                         '--test-requirements-sha256[Expected test-requirements SHA-256]:sha256:' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
@@ -531,6 +533,7 @@ _base_basectl_completion() {
                     _arguments '2:trust command:(status allow revoke)' \
                         '3:Base project:->projects' \
                         '--workspace[Workspace directory to scan]:path:_files' \
+                        '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                         '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]'
                     ;;
                 *)
@@ -626,6 +629,7 @@ _base_basectl_completion() {
             ;;
         setup)
             _arguments '--ci[Run setup with CI-safe defaults]' \
+                '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                 '--format[Output format for --ci]:format:(text json)' \
                 '--profile[Install prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--dry-run[Log without making changes]' \
@@ -644,6 +648,7 @@ _base_basectl_completion() {
             ;;
         check)
             _arguments '--ci[Run checks with CI-safe defaults]' \
+                '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                 '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
                 '--format[Output format]:format:(text json)' \
                 '--manifest[Use a specific manifest]:path:_files' \
@@ -667,6 +672,7 @@ _base_basectl_completion() {
             ;;
         export-context)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                 '--format[Export format]:format:(markdown zip)' \
                 '--output[Output path]:path:_files' \
                 '--print[Print the Markdown export to stdout]' \
@@ -679,6 +685,7 @@ _base_basectl_completion() {
             ;;
         devcontainer)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                 '--format[Output format]:format:(text json)' \
                 '--write[Write .devcontainer/devcontainer.json]' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
@@ -689,6 +696,7 @@ _base_basectl_completion() {
             ;;
         devenv-report)
             _arguments '--workspace[Workspace directory to scan]:path:_files' \
+                '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                 '--format[Output format]:format:(text json)' \
                 '-v[Enable DEBUG logging]' '(-h --help)'{-h,--help}'[Show help text]' \
                 '2:Base project:->projects'
@@ -1181,6 +1189,7 @@ _base_basectl_completion() {
             ;;
         onboard)
             _arguments '--profile[Include prerequisite profiles]:profile:(dev sre ai linux-lab dev,sre dev,ai dev,linux-lab sre,ai sre,linux-lab ai,linux-lab dev,sre,ai dev,sre,linux-lab dev,ai,linux-lab sre,ai,linux-lab dev,sre,ai,linux-lab)' \
+                '--project[Select a project explicitly, including one named help]:Base project:->projects' \
                 '--dry-run[Explain planned onboarding steps without making changes]' \
                 '--yes[Accept default answers for setup and shell profile prompts]' \
                 '--allow-project-ide-mutations[Approve project-originated IDE app, extension, and user-setting mutations]' \
@@ -1199,7 +1208,8 @@ _base_basectl_completion() {
                 '(-h --help)'{-h,--help}'[Show help text]'
             ;;
         update)
-            _arguments '--dry-run[Log without pulling or running setup]' '-v[Enable DEBUG logging]' \
+            _arguments '--project[Select a project explicitly, including one named help]:Base project:->projects' \
+                '--dry-run[Log without pulling or running setup]' '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
                 '2:Base project:->projects'
             if [[ "$state" == projects ]]; then

@@ -25,6 +25,7 @@ Usage:
   basectl update [project] [options]
 
 Options:
+  --project <name>  Select a project explicitly, including one named help.
   --dry-run   Show what would happen without pulling or running setup.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
@@ -427,7 +428,11 @@ base_update_run_setup() {
     local base_home="$1"
     local project="$2"
 
-    "$base_home/bin/basectl" setup "$project"
+    if [[ "$project" == help ]]; then
+        "$base_home/bin/basectl" setup --project "$project"
+    else
+        "$base_home/bin/basectl" setup "$project"
+    fi
 }
 
 base_update_resolve_project() {
@@ -489,6 +494,19 @@ base_update_subcommand_main() {
 
     while (($#)); do
         case "$1" in
+            --project)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_update_usage_error "Option '--project' requires an argument."
+                    return $?
+                fi
+                if [[ -n "$project_arg" ]]; then
+                    base_update_usage_error "The 'update' command accepts only one project selection."
+                    return $?
+                fi
+                project_arg="$1"
+                project="$1"
+                ;;
             --dry-run)
                 dry_run=1
                 ;;

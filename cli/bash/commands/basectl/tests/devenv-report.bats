@@ -18,11 +18,11 @@ load ./basectl_helpers.bash
                 printf "%s\n" "$*" > "${BASE_TEST_ARG_PARSE_STATE:?}"
                 return 2
             }
-            base_devenv_report_subcommand_main demo --format json
+            base_devenv_report_subcommand_main --project help --format json
         '
 
     [ "$status" -eq 2 ]
-    [[ "$(cat "$state_file")" == "parsed_options positionals option_specs -- demo --format json" ]]
+    [[ "$(cat "$state_file")" == "parsed_options positionals option_specs -- --project help --format json" ]]
 }
 
 @test "basectl devenv-report delegates resolved manifest to base_setup report action" {
