@@ -35,7 +35,7 @@ package options.
 
 See [Base Stability Tiers](stability-tiers.md) for the full stable,
 experimental, and internal support contract.
-The four read-only control-plane payloads using the shared v1 envelope are
+The five read-only control-plane payloads using the shared v1 envelope are
 defined in [Inspection JSON](inspection-json.md).
 
 ## Source Control And Forge Boundary

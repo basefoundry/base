@@ -27,6 +27,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: publish the workspace test JSON schema and validate
   the command's stable envelope against it.
 
+- Stability compatibility: add `version` to the shared inspection-v1 command
+  enum and document its completed-report and usage-error behavior.
+
 ## [1.9.0] - 2026-09-08
 
 ### Added

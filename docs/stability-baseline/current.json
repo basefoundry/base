@@ -1956,38 +1956,6 @@
         }
       }
     },
-    "basectl workspace test": {
-      "flags": {
-        "--fail-fast": {
-          "takes_value": false
-        },
-        "--format": {
-          "enum": [
-            "text",
-            "json"
-          ],
-          "takes_value": true
-        },
-        "--help": {
-          "takes_value": false
-        },
-        "--manifest": {
-          "takes_value": true
-        },
-        "--projects": {
-          "takes_value": true
-        },
-        "--workspace": {
-          "takes_value": true
-        },
-        "-h": {
-          "takes_value": false
-        },
-        "-v": {
-          "takes_value": false
-        }
-      }
-    },
     "basectl workspace update": {
       "flags": {
         "--dry-run": {
@@ -2187,7 +2155,8 @@
             "repo check",
             "release check",
             "gh issue readiness",
-            "gh branch stale"
+            "gh branch stale",
+            "version"
           ],
           "type": "string"
         },

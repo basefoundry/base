@@ -1,11 +1,12 @@
 """Check Base's documented Stable contracts for incompatible changes.
 
 The checked-in ``current.json`` file is the accepted compatibility baseline.
-Command flags are read from the source-owned ``basectl --help`` output;
-Markdown command prose is not parsed as a contract. Additive commands, flags,
-fields, enum values, and finding IDs are allowed. Removing or changing an
-existing contract requires updating that fixture and adding a
-``Stability compatibility:`` migration entry to ``CHANGELOG.md``.
+Commands are selected from the maintained command reference after excluding
+commands explicitly marked Experimental in the stability tiers document.
+Flags are read from source-owned ``basectl --help`` output. Additive commands,
+flags, fields, enum values, and finding IDs are allowed. Removing or changing
+an existing contract requires updating that fixture and adding a ``Stability
+compatibility:`` migration entry to ``CHANGELOG.md``.
 
 ``v1.8.0.json`` records the release chosen as the initial provenance point.
 The checker uses only the Python standard library so it can run before Base's
@@ -36,6 +37,7 @@ _HELP_OPTION_RE = re.compile(
     r"(?:\s*,\s*(?:--[A-Za-z0-9][\w-]*|-[A-Za-z]))*)"
     r"(?:\s+(?P<value><[^>]+>|\[[^\]]+\]))?"
 )
+_EXPERIMENTAL_COMMAND_RE = re.compile(r"`(?P<command>basectl [^`]+)` is Experimental\.")
 
 # ``gh pr`` exposes several pass-through subcommands under one documented
 # row. Probe each implementation and union their source-owned options.
@@ -52,16 +54,21 @@ _COMMAND_PROBE_OVERRIDES: dict[str, tuple[tuple[str, ...], ...]] = {
 
 
 def documented_stable_commands(root: Path) -> list[str]:
-    """Return the stable public command rows from the maintained reference."""
+    """Return public command rows not explicitly marked Experimental."""
 
     commands: set[str] = set()
     reference = root / "docs" / "command-reference.md"
+    stability = root / "docs" / "stability-tiers.md"
+    experimental = {
+        match.group("command")
+        for match in _EXPERIMENTAL_COMMAND_RE.finditer(stability.read_text(encoding="utf-8"))
+    }
     for line in reference.read_text(encoding="utf-8").splitlines():
         if not line.startswith("| `basectl "):
             continue
         cells = _split_markdown_row(line)
         command = cells[0].strip("`") if cells else ""
-        if command.startswith("basectl "):
+        if command.startswith("basectl ") and command not in experimental:
             commands.add(command)
     return sorted(commands)
 
@@ -107,6 +114,7 @@ _JSON_CONTRACTS: dict[str, dict[str, Any]] = {
                     "release check",
                     "gh issue readiness",
                     "gh branch stale",
+                    "version",
                 ]
             },
             "status": {"type": "string", "enum": ["ok", "warn", "error"]},
@@ -212,14 +220,7 @@ def runtime_command_contract(root: Path, command_names: list[str]) -> dict[str, 
     if not basectl.is_file():
         raise RuntimeError(f"basectl entrypoint is missing: {basectl}")
     environment = os.environ.copy()
-    bash_libs = environment.get("BASE_BASH_LIBS_DIR", "")
-    if not bash_libs:
-        candidate = root.parent / "base-bash-libs" / "lib" / "bash"
-        if candidate.is_dir():
-            bash_libs = str(candidate)
-    if not bash_libs or not Path(bash_libs).is_dir():
-        raise RuntimeError("BASE_BASH_LIBS_DIR must point to a compatible base-bash-libs checkout")
-    environment["BASE_BASH_LIBS_DIR"] = bash_libs
+    resolve_bash_libs_dir(root, environment)
     commands: dict[str, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory(prefix="base-stability-compatibility-") as cache_dir:
         environment["BASE_CACHE_DIR"] = cache_dir
@@ -251,6 +252,21 @@ def runtime_command_contract(root: Path, command_names: list[str]) -> dict[str, 
                             existing["enum"] = sorted(set(existing.get("enum", [])) | set(contract["enum"]))
             commands[command_name] = {"flags": flags}
     return commands
+
+
+def resolve_bash_libs_dir(root: Path, environment: dict[str, str]) -> str:
+    """Resolve a usable reusable-Bash provider for subprocess probes."""
+
+    candidates = (
+        environment.get("BASE_BASH_LIBS_DIR", ""),
+        str(root / ".dependencies" / "base-bash-libs" / "lib" / "bash"),
+        str(root.parent / "base-bash-libs" / "lib" / "bash"),
+    )
+    for candidate in candidates:
+        if candidate and (Path(candidate) / "std" / "lib_std.sh").is_file():
+            environment["BASE_BASH_LIBS_DIR"] = candidate
+            return candidate
+    raise RuntimeError("BASE_BASH_LIBS_DIR must point to a compatible base-bash-libs checkout")
 
 
 def extract_findings(root: Path) -> dict[str, str]:
@@ -689,16 +705,13 @@ def _write_snapshot(root: Path, output: Path, baseline_version: str) -> None:
     existing = {}
     if output.is_file():
         existing = json.loads(output.read_text(encoding="utf-8"))
-    elif output != (root / "docs" / "stability-baseline" / "current.json").resolve():
-        current = root / "docs" / "stability-baseline" / "current.json"
-        if current.is_file():
-            existing = json.loads(current.read_text(encoding="utf-8"))
     command_names = documented_stable_commands(root)
     if not command_names:
         raise RuntimeError("refusing to write an empty Stable command contract")
     commands = runtime_command_contract(root, command_names)
     result = snapshot(root, baseline_version, commands)
-    if existing.get("baseline_exceptions"):
+    current_path = (root / "docs" / "stability-baseline" / "current.json").resolve()
+    if output == current_path and existing.get("baseline_exceptions"):
         result["baseline_exceptions"] = existing["baseline_exceptions"]
     output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
