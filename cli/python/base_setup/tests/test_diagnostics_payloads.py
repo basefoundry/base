@@ -298,7 +298,8 @@ class DiagnosticsPayloadTests(unittest.TestCase):
         homebrew = base_check_metadata("homebrew")
         linux_release = base_check_metadata("linux_release_baseline")
         virtualenv = base_check_metadata("base_virtualenv")
-        unknown = base_check_metadata("unexpected")
+        with self.assertRaises(ValueError):
+            base_check_metadata("unexpected")
 
         self.assertEqual(homebrew.finding_id, "BASE-D001")
         self.assertEqual(homebrew.display_name, "Homebrew")
@@ -306,8 +307,24 @@ class DiagnosticsPayloadTests(unittest.TestCase):
         self.assertEqual(linux_release.display_name, "Linux release baseline")
         self.assertEqual(virtualenv.finding_id, "BASE-D004")
         self.assertEqual(virtualenv.display_name, "Base virtualenv")
-        self.assertEqual(unknown.finding_id, "BASE-D000")
-        self.assertEqual(unknown.display_name, "unexpected")
+
+    def test_main_reports_unknown_check_names_without_a_traceback(self) -> None:
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            status = diagnostics.main(
+                [
+                    "check-json",
+                    "--check",
+                    "unknown",
+                    "ok",
+                    "Unknown check.",
+                    "Register the check.",
+                ]
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn("has no registered stable finding ID", stderr.getvalue())
+        self.assertNotIn("Traceback", stderr.getvalue())
 
     def test_base_check_metadata_respects_bootstrap_package_name_overrides(self) -> None:
         with mock.patch.dict(
@@ -327,10 +344,9 @@ class DiagnosticsPayloadTests(unittest.TestCase):
 
     def test_render_base_check_metadata_preserves_input_order(self) -> None:
         self.assertEqual(
-            render_base_check_metadata(("homebrew", "base_virtualenv", "unexpected")),
+            render_base_check_metadata(("homebrew", "base_virtualenv")),
             "homebrew\tBASE-D001\tHomebrew\n"
-            "base_virtualenv\tBASE-D004\tBase virtualenv\n"
-            "unexpected\tBASE-D000\tunexpected\n",
+            "base_virtualenv\tBASE-D004\tBase virtualenv\n",
         )
 
     def test_render_base_doctor_payload_uses_findings_key(self) -> None:

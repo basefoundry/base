@@ -79,6 +79,9 @@ The security job must keep these checks:
 
 - Bandit over `cli/python` and `lib/python`
 - `pip-audit` over `requirements-dev.txt`
-- ShellCheck errors over tracked shell entry points and scripts
+- ShellCheck errors over tracked Bash entry points, scripts, and `.bash`
+  helpers; managed Zsh startup and completion sources are checked with `zsh -n`.
+- BATS files are executable test programs rather than Bash sources, so they are
+  covered by their BATS suites instead of ShellCheck.
 - ShellCheck warnings as non-blocking signal
 - Checksum-pinned Gitleaks over committed history through `tests/scan-secrets.sh`

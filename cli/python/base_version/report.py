@@ -138,7 +138,8 @@ def python_component(base_home: Path, python: str, kind: str, source: str, error
 def bash_component(kind: str, source: str, error: str) -> dict:
     record = component("base-bash-libs", kind, str(Path(source).resolve()) if source else None)
     if error or not source:
-        record.update(status="unavailable", detail=error or "No Bash provider was selected.")
+        detail = "\n".join(line.removeprefix("ERROR: ") for line in error.splitlines())
+        record.update(status="unavailable", detail=detail or "No Bash provider was selected.")
         return record
     # Follow a symlinked stdlib just as base-bash-libs does when locating metadata.
     stdlib = (Path(source) / "std/lib_std.sh").resolve()

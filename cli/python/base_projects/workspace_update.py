@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_setup.process import redact_command_output
 from base_version.checkout import git_checkout_marker
 
 
@@ -684,14 +685,22 @@ def parse_workspace_git_status(output: str) -> tuple[bool, str | None, str | Non
 def format_git_pull_debug_output(stdout: str, stderr: str) -> str:
     fields: list[str] = []
     for name, output in (("stdout", stdout), ("stderr", stderr)):
-        value = " ".join(line.strip() for line in output.splitlines() if line.strip())
+        value = " ".join(
+            line.strip()
+            for line in redact_command_output(output).splitlines()
+            if line.strip()
+        )
         if value:
             fields.append(f"{name}={value}")
     return "; ".join(fields)
 
 
 def git_pull_detail(stdout: str, stderr: str) -> str:
-    details = [part.strip() for part in (stderr, stdout) if part.strip()]
+    details = [
+        part.strip()
+        for part in (redact_command_output(stderr), redact_command_output(stdout))
+        if part.strip()
+    ]
     return "\n".join(details) or "git pull failed without diagnostic output"
 
 
