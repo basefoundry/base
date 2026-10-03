@@ -55,7 +55,7 @@ full compatibility contract.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. Project-originated IDE app, extension, and user-setting mutations require separate approval. | `--project <name>`, `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--allow-project-ide-mutations`, `--recreate-venv`, `--upgrade-pip`, `--notify`, `--no-notify` |
+| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. Project-originated IDE app, extension, and user-setting mutations require separate approval. | `--project <name>`, `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--yes`, `--allow-project-ide-mutations`, `--recreate-venv`, `--upgrade-pip`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create, refresh, or remove Base-managed Bash and Zsh startup snippets, backing up existing dotfiles before changes. | `--defaults`, `--no-defaults`, `--remove`, `--dry-run` |
 | `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--project <name>`, `--dry-run` |
 | `basectl onboard [project]` | Guide first-run setup through check, setup, shell profile, doctor, project discovery, and read-only manifest trust status. Defaults to `base`. | `--project <name>`, `--profile <list>`, `--dry-run`, `--yes`, `--allow-project-ide-mutations`, `--no-profile` |
@@ -184,7 +184,7 @@ manifest trust.
 | Command | What it does | Important flags |
 |---|---|---|
 | `basectl setup --ci [project]` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--project <name>`, `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv`, `--upgrade-pip` |
-| `basectl check [project]` | Check Base readiness and, when selected by project name or `--manifest`, manifest-declared project requirements. It does not install or repair prerequisites, modify project files, or run tests. Normal runs write local logs/history; project checks also record `~/.base.d/<project>/checks/last.json`. | `--project <name>`, `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
+| `basectl check [project]` | Check Base readiness and, when selected by project name or `--manifest`, manifest-declared project requirements. It does not install or repair prerequisites, modify project files, or run tests. Normal runs write local logs/history; project checks also record `~/.base.d/<project>/checks/last.json`. | `--project <name>`, `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--verify-project-runtime`, `--remote-network` |
 | `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--project <name>`, `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network`, `--verify-project-runtime`, `--no-color` |
 | `basectl doctor explain <finding-id>` | Print local, deterministic guidance for a stable finding ID. | `--format <text\|json>` |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name[,name...]>`, `--limit <count>` |
