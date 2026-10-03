@@ -219,14 +219,7 @@ def runtime_command_contract(root: Path, command_names: list[str]) -> dict[str, 
     if not basectl.is_file():
         raise RuntimeError(f"basectl entrypoint is missing: {basectl}")
     environment = os.environ.copy()
-    bash_libs = environment.get("BASE_BASH_LIBS_DIR", "")
-    if not bash_libs:
-        candidate = root.parent / "base-bash-libs" / "lib" / "bash"
-        if candidate.is_dir():
-            bash_libs = str(candidate)
-    if not bash_libs or not Path(bash_libs).is_dir():
-        raise RuntimeError("BASE_BASH_LIBS_DIR must point to a compatible base-bash-libs checkout")
-    environment["BASE_BASH_LIBS_DIR"] = bash_libs
+    resolve_bash_libs_dir(root, environment)
     commands: dict[str, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory(prefix="base-stability-compatibility-") as cache_dir:
         environment["BASE_CACHE_DIR"] = cache_dir
@@ -258,6 +251,21 @@ def runtime_command_contract(root: Path, command_names: list[str]) -> dict[str, 
                             existing["enum"] = sorted(set(existing.get("enum", [])) | set(contract["enum"]))
             commands[command_name] = {"flags": flags}
     return commands
+
+
+def resolve_bash_libs_dir(root: Path, environment: dict[str, str]) -> str:
+    """Resolve a usable reusable-Bash provider for subprocess probes."""
+
+    candidates = (
+        environment.get("BASE_BASH_LIBS_DIR", ""),
+        str(root / ".dependencies" / "base-bash-libs" / "lib" / "bash"),
+        str(root.parent / "base-bash-libs" / "lib" / "bash"),
+    )
+    for candidate in candidates:
+        if candidate and (Path(candidate) / "std" / "lib_std.sh").is_file():
+            environment["BASE_BASH_LIBS_DIR"] = candidate
+            return candidate
+    raise RuntimeError("BASE_BASH_LIBS_DIR must point to a compatible base-bash-libs checkout")
 
 
 def extract_findings(root: Path) -> dict[str, str]:
