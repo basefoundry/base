@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_setup import ide
+from base_setup import ide_settings
 from base_setup.manifest import BaseManifest, IdeConfig
 from base_setup.tests.helpers import fake_context
 
@@ -265,6 +266,29 @@ class IdeSettingsTests(unittest.TestCase):  # pylint: disable=too-many-public-me
         self.assertEqual(settings["nested"], {"url": "https://example.test/a//b"})
         self.assertEqual(settings["editor.rulers"], [100])
         self.assertFalse(settings["editor.formatOnSave"])
+
+    def test_jsonc_rewriter_appends_after_a_trailing_string_value(self) -> None:
+        source = '{\n  "editor.fontFamily": "Menlo"\n}\n'
+
+        updated = ide_settings._jsonc_object_with_added_properties(source, {"editor.rulers": [100]})
+
+        self.assertEqual(
+            ide_settings._parse_jsonc(updated),
+            {"editor.fontFamily": "Menlo", "editor.rulers": [100]},
+        )
+
+    def test_jsonc_rewriter_separates_multiple_single_line_properties(self) -> None:
+        source = '{"editor.fontFamily": "Menlo"}'
+
+        updated = ide_settings._jsonc_object_with_added_properties(
+            source,
+            {"editor.rulers": [100], "editor.tabSize": 4},
+        )
+
+        self.assertEqual(
+            ide_settings._parse_jsonc(updated),
+            {"editor.fontFamily": "Menlo", "editor.rulers": [100], "editor.tabSize": 4},
+        )
 
 
 

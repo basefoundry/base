@@ -183,7 +183,7 @@ def _jsonc_object_with_added_properties(source: str, added: dict[str, object]) -
     if not existing_content:
         if multiline_close:
             return source[:close_line_start] + newline.join(property_lines) + newline + source[close_line_start:]
-        return source[:closing] + ", ".join(line.strip() for line in property_lines) + source[closing:]
+        return source[:closing] + ", ".join(line.strip().rstrip(",") for line in property_lines) + source[closing:]
 
     has_trailing_comma = source[last_significant] == "," if last_significant is not None else False
     comma = "" if has_trailing_comma else ","
@@ -192,11 +192,11 @@ def _jsonc_object_with_added_properties(source: str, added: dict[str, object]) -
         suffix = source[last_significant + 1 : close_line_start]
         return prefix + suffix + newline.join(property_lines) + newline + source[close_line_start:]
     return source[: last_significant + 1] + comma + " " + ", ".join(
-        line.strip() for line in property_lines
+        line.strip().rstrip(",") for line in property_lines
     ) + source[last_significant + 1 :]
 
 
-# pylint: disable=too-many-branches
+# pylint: disable=too-many-branches,too-many-statements
 def _jsonc_root_positions(source: str) -> tuple[int, int, int | None]:
     opening = next((index for index, char in enumerate(source) if not char.isspace()), None)
     if opening is None or source[opening] != "{":
@@ -215,6 +215,7 @@ def _jsonc_root_positions(source: str) -> tuple[int, int, int | None]:
                 escaped = True
             elif char == '"':
                 in_string = False
+                last_significant = index
             index += 1
             continue
         if char == '"':
@@ -253,6 +254,23 @@ def _jsonc_root_positions(source: str) -> tuple[int, int, int | None]:
     raise ValueError("unterminated JSON object")
 
 
+def _verified_jsonc_update(
+    settings_file: Path,
+    source: str,
+    current_settings: dict[str, object],
+    added: dict[str, object],
+) -> str:
+    updated_source = _jsonc_object_with_added_properties(source, added)
+    expected_settings = {**current_settings, **added}
+    try:
+        verified_settings = _parse_jsonc(updated_source)
+    except ValueError as exc:
+        raise ArtifactError(f"{settings_file}: could not safely add settings: {exc}") from exc
+    if verified_settings != expected_settings:
+        raise ArtifactError(f"{settings_file}: refusing to write an unexpected settings result.")
+    return updated_source
+
+
 def merge_ide_settings(
     ctx: base_cli.Context,
     definition: IdeDefinition,
@@ -289,10 +307,7 @@ def merge_ide_settings(
         return
 
     settings_file.parent.mkdir(parents=True, exist_ok=True)
-    if document.source:
-        updated_source = _jsonc_object_with_added_properties(document.source, added)
-    else:
-        updated_source = _jsonc_object_with_added_properties("", added)
+    updated_source = _verified_jsonc_update(settings_file, document.source, current_settings, added)
     write_text_atomic(settings_file, updated_source)
     ctx.log.info("Updated %s user settings at '%s'.", definition.label, settings_file)
 
