@@ -27,9 +27,6 @@ EOF
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
-Check and doctor accept --verify-project-runtime to authorize execution of project
-runtimes and configuration for that invocation. Inspection is static by default.
-
 Show status, check, or doctor output for repositories in the workspace.
 EOF
 }
