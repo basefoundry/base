@@ -102,6 +102,12 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         for step in job.get("steps", [])
         if isinstance(step, dict)
     )
+    verification_step = next(
+        step
+        for step in assemble["steps"]
+        if isinstance(step, dict) and step.get("name") == "Verify release inputs and bind platform evidence"
+    )
+    verification_command = verification_step["run"]
 
     assert workflow["name"] == "Ecosystem Release BOM"
     assert workflow["permissions"] == {"contents": "read"}
@@ -121,6 +127,14 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}"
     )
     assert "base-release-bom assemble" in run_commands
+    assert "base-release-inputs-verify" in run_commands
+    assert any(
+        step.get("name") == "Verify release inputs and bind platform evidence"
+        for step in assemble["steps"]
+        if isinstance(step, dict)
+    )
+    assert verification_command.count("--evidence") == 2
+    assert verification_command.count("--platform") == 2
     assert run_commands.count("base-release-bom-row") == 4
     assert "--repository basefoundry/base-cli" in run_commands
     assert "--repository basefoundry/base-bash-libs" in run_commands
