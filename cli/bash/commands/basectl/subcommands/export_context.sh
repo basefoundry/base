@@ -40,7 +40,7 @@ base_export_context_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path
     local output_format="markdown" output_path="" print_bundle=0 list_files=0 workspace_requested=0
     local resolve_args=() exporter_args=()
-    local arg
+    local arg previous_arg=""
     # shellcheck disable=SC2034 # Passed by name to cli_parse_options.
     local -a option_specs=(
         "debug|flag|-v"
@@ -56,11 +56,18 @@ base_export_context_subcommand_main() {
 
     for arg in "$@"; do
         case "$arg" in
-            -h|--help|help)
+            -h|--help)
                 base_export_context_subcommand_usage
                 return 0
                 ;;
+            help)
+                if [[ "$previous_arg" != --project ]]; then
+                    base_export_context_subcommand_usage
+                    return 0
+                fi
+                ;;
         esac
+        previous_arg="$arg"
     done
 
     if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then

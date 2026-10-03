@@ -487,7 +487,6 @@ base_update_subcommand_main() {
     local manifest_path
     local project=base
     local project_arg=""
-    local project_option=0
     local repo
     local resolved_project
     local update_branch
@@ -501,13 +500,12 @@ base_update_subcommand_main() {
                     base_update_usage_error "Option '--project' requires an argument."
                     return $?
                 fi
-                if ((project_option)) || [[ -n "$project_arg" ]]; then
+                if [[ -n "$project_arg" ]]; then
                     base_update_usage_error "The 'update' command accepts only one project selection."
                     return $?
                 fi
                 project_arg="$1"
                 project="$1"
-                project_option=1
                 ;;
             --dry-run)
                 dry_run=1

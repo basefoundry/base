@@ -355,5 +355,9 @@ base_onboard_subcommand_main() {
     fi
 
     base_onboard_print_heading "Next Steps"
-    printf "%s\n" "After reviewing and allowing any blocked manifest command contracts, run 'basectl' to enter the nearest Base project shell, or 'basectl activate $project' to start with '$project'."
+    local activate_command="basectl activate $project"
+    if [[ "$project" == help ]]; then
+        activate_command="basectl activate --project help"
+    fi
+    printf "%s\n" "After reviewing and allowing any blocked manifest command contracts, run 'basectl' to enter the nearest Base project shell, or '$activate_command' to start with '$project'."
 }

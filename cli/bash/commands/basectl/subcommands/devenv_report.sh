@@ -31,7 +31,7 @@ base_devenv_report_usage_error() {
 base_devenv_report_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path
     local output_format="text" workspace_requested=0
-    local args=() setup_args=() arg
+    local args=() setup_args=() arg previous_arg=""
     local -a option_specs=(
         "debug|flag|-v"
         "project|value|--project"
@@ -43,11 +43,18 @@ base_devenv_report_subcommand_main() {
 
     for arg in "$@"; do
         case "$arg" in
-            -h|--help|help)
+            -h|--help)
                 base_devenv_report_subcommand_usage
                 return 0
                 ;;
+            help)
+                if [[ "$previous_arg" != --project ]]; then
+                    base_devenv_report_subcommand_usage
+                    return 0
+                fi
+                ;;
         esac
+        previous_arg="$arg"
     done
 
     if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
