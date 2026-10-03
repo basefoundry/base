@@ -931,6 +931,7 @@ _base_basectl_completion() {
             ;;
         uninstall)
             _arguments '--all[Remove all Base-managed local state and workspace settings]' \
+                '--project[Explicitly select a project, including one named help]:project:->projects' \
                 '--workspace[Workspace directory used to resolve a project name]:path:_files' \
                 '--dry-run[Preview removal without changing files]' \
                 '--yes[Apply removal after reviewing the preview]' \

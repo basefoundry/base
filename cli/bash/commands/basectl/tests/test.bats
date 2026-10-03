@@ -86,7 +86,7 @@ source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
-        'pytest tests/' uv 'dev,benchmark'
+        'pytest tests/' uv "" 'dev,benchmark'
     exit 0
 fi
 printf 'unexpected test python args: %s\n' "$*" >&2
@@ -291,7 +291,7 @@ source "${BASH_ENV:?}"
 if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "test-command" && "${4:-}" == "demo" ]]; then
     base_test_protocol_project_command demo "${BASE_TEST_PROJECT_ROOT:?}" \
         "${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml" "${BASE_TEST_PROJECT_ROOT:?}/.venv" false false \
-        'mise run unit' "" "${BASE_TEST_PROJECT_ROOT:?}/config/tools file.toml"
+        'mise run unit' "" "${BASE_TEST_PROJECT_ROOT:?}/config/tools file.toml" ""
     exit 0
 fi
 printf 'unexpected test python args: %s\n' "$*" >&2

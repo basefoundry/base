@@ -810,7 +810,7 @@ _base_basectl_completion() {
             ;;
         uninstall)
             _base_basectl_completion_project_or_options \
-                "--all --workspace --dry-run --yes --verify -v -h --help" "$cur" "--workspace"
+                "--all --project --workspace --dry-run --yes --verify -v -h --help" "$cur" "--project --workspace"
             ;;
         logs)
             if ((COMP_CWORD == 2)) && [[ "$cur" != -* ]]; then

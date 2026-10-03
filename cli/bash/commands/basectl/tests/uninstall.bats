@@ -77,3 +77,40 @@ EOF
     [[ "$output" == *"python=-m base_uninstall --all --dry-run"* ]]
     [[ "$output" == *"Would remove section 'bashrc' from '$TEST_HOME/.bashrc'."* ]]
 }
+
+create_uninstall_python_stub() {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "$python_bin"
+}
+
+@test "basectl uninstall --all propagates profile preview failures" {
+    create_uninstall_python_stub
+    printf '%s\n' '# >>> base: bashrc managed >>>' > "$TEST_HOME/.bashrc"
+    local before
+    before="$(cat "$TEST_HOME/.bashrc")"
+
+    run_basectl uninstall --all
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Asymmetric markers"* ]]
+    [ "$(cat "$TEST_HOME/.bashrc")" = "$before" ]
+}
+
+@test "basectl uninstall --all --dry-run propagates profile preview failures" {
+    create_uninstall_python_stub
+    printf '%s\n' '# >>> base: bashrc managed >>>' > "$TEST_HOME/.bashrc"
+    local before
+    before="$(cat "$TEST_HOME/.bashrc")"
+
+    run_basectl uninstall --all --dry-run
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Asymmetric markers"* ]]
+    [ "$(cat "$TEST_HOME/.bashrc")" = "$before" ]
+}
