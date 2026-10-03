@@ -15,6 +15,7 @@ Usage:
   basectl doctor explain <finding-id> [--format text|json]
 
 Options:
+  --project <name>     Select a project explicitly, including one named help.
   --ci                  Run diagnostics with CI-safe defaults.
   --profile <list>      Include named prerequisite profiles. Known profiles: dev, sre, ai, linux-lab.
   --format <text|json>  Select output format. Defaults to text.
@@ -301,6 +302,7 @@ base_doctor_run_json() {
 base_doctor_subcommand_main() {
     local errors=0 output_format="text" profile_errors=0 project=""
     local remote_network=false verify_project_runtime=false
+    local project_option=false
 
     setup_clear_run_state
 
@@ -318,6 +320,19 @@ base_doctor_subcommand_main() {
                 ;;
             --ci)
                 setup_enable_ci_mode
+                ;;
+            --project)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_doctor_usage_error "Option '--project' requires an argument."
+                    return $?
+                fi
+                if [[ "$project_option" == true || -n "$project" ]]; then
+                    base_doctor_usage_error "The 'doctor' command accepts only one project selection."
+                    return $?
+                fi
+                project="$1"
+                project_option=true
                 ;;
             --profile)
                 shift

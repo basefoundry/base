@@ -15,8 +15,8 @@ class DevCheck:
     ok: bool
     message: str
     fix: str
+    finding_id: str
     status: str = ""
-    finding_id: str = "BASE-D100"
 
 
 def check_to_json(check: DevCheck) -> dict[str, str]:
