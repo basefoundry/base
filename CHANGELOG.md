@@ -8,6 +8,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- PR policy examples now use only labels that Base manages or documents; the
+  dead `breaking-change` mapping was removed and governance coverage checks for
+  future unknown label triggers.
+
 - CLI help now accepts a trailing bare `help` token on nested commands, and
   project-taking commands expose `--project` so a project named `help` remains
   addressable.
