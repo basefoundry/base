@@ -450,78 +450,100 @@ def record_context_from_args(args: argparse.Namespace, parser: argparse.Argument
     return None
 
 
+def _unknown_check_failure(exc: UnknownBaseCheckError) -> int:
+    print(f"ERROR: {exc}", file=sys.stderr)
+    return base_cli.ExitCode.FAILURE
+
+
+def _handle_check_json(args: argparse.Namespace, record_context: CheckRecordContext | None) -> int:
+    checks = load_diagnostic_checks(args.check, args.check_result_file)
+    embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
+    try:
+        payload = render_base_check_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
+    except UnknownBaseCheckError as exc:
+        return _unknown_check_failure(exc)
+    payload_object = json.loads(payload)
+    status = payload_status(payload_object)
+    if args.record_path and args.project and args.checked_at:
+        record_path = Path(args.record_path)
+        if not write_check_record(record_path, args.project, status, args.checked_at, context=record_context):
+            payload_object["record"] = check_record_warning(record_path)
+            payload = render_top_level_payload(payload_object)
+    print(payload, end="")
+    return base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
+
+
+def _handle_doctor_json(args: argparse.Namespace, _record_context: CheckRecordContext | None) -> int:
+    checks = load_diagnostic_checks(args.finding, args.finding_result_file)
+    embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
+    try:
+        payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
+    except UnknownBaseCheckError as exc:
+        return _unknown_check_failure(exc)
+    print(payload, end="")
+    status = payload_status(json.loads(payload))
+    return base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
+
+
+def _handle_record_check(args: argparse.Namespace, record_context: CheckRecordContext | None) -> int:
+    written = write_check_record(
+        Path(args.output_path), args.project, args.status, args.checked_at, context=record_context,
+    )
+    return base_cli.ExitCode.SUCCESS if written else base_cli.ExitCode.FAILURE
+
+
+def _handle_base_check_metadata(args: argparse.Namespace, _record_context: CheckRecordContext | None) -> int:
+    try:
+        payload = render_base_check_metadata(args.name)
+    except UnknownBaseCheckError as exc:
+        return _unknown_check_failure(exc)
+    print(payload, end="")
+    return base_cli.ExitCode.SUCCESS
+
+
+def _handle_project_venv_check_json(args: argparse.Namespace, _record_context: CheckRecordContext | None) -> int:
+    print(
+        render_project_venv_check_payload(
+            project=args.project,
+            status=args.status,
+            message=args.message,
+            fix=args.fix,
+            precheck_json=args.precheck_json,
+        ),
+        end="",
+    )
+    return base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
+
+
+def _handle_project_venv_doctor_json(args: argparse.Namespace, _record_context: CheckRecordContext | None) -> int:
+    print(
+        render_project_venv_doctor_payload(
+            status=args.status,
+            message=args.message,
+            fix=args.fix,
+            precheck_json=args.precheck_json,
+        ),
+        end="",
+    )
+    return base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    exit_code = base_cli.ExitCode.SUCCESS
     record_context = record_context_from_args(args, parser)
-
-    if args.command == "check-json":
-        checks = load_diagnostic_checks(args.check, args.check_result_file)
-        embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
-        try:
-            payload = render_base_check_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
-        except UnknownBaseCheckError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return base_cli.ExitCode.FAILURE
-        payload_object = json.loads(payload)
-        status = payload_status(payload_object)
-        if args.record_path and args.project and args.checked_at:
-            record_path = Path(args.record_path)
-            if not write_check_record(record_path, args.project, status, args.checked_at, context=record_context):
-                payload_object["record"] = check_record_warning(record_path)
-                payload = render_top_level_payload(payload_object)
-        print(payload, end="")
-        exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
-    elif args.command == "doctor-json":
-        checks = load_diagnostic_checks(args.finding, args.finding_result_file)
-        embedded_payloads = tuple((key, payload) for key, payload in args.embedded_payload)
-        try:
-            payload = render_base_doctor_payload(checks, project=args.project, embedded_payloads=embedded_payloads)
-        except UnknownBaseCheckError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return base_cli.ExitCode.FAILURE
-        print(payload, end="")
-        status = payload_status(json.loads(payload))
-        exit_code = base_cli.ExitCode.SUCCESS if status != "error" else base_cli.ExitCode.FAILURE
-    elif args.command == "record-check":
-        if not write_check_record(
-            Path(args.output_path), args.project, args.status, args.checked_at, context=record_context,
-        ):
-            exit_code = base_cli.ExitCode.FAILURE
-    elif args.command == "base-check-metadata":
-        try:
-            print(render_base_check_metadata(args.name), end="")
-        except UnknownBaseCheckError as exc:
-            print(f"ERROR: {exc}", file=sys.stderr)
-            return base_cli.ExitCode.FAILURE
-    elif args.command == "project-venv-check-json":
-        print(
-            render_project_venv_check_payload(
-                project=args.project,
-                status=args.status,
-                message=args.message,
-                fix=args.fix,
-                precheck_json=args.precheck_json,
-            ),
-            end="",
-        )
-        exit_code = base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
-    elif args.command == "project-venv-doctor-json":
-        print(
-            render_project_venv_doctor_payload(
-                status=args.status,
-                message=args.message,
-                fix=args.fix,
-                precheck_json=args.precheck_json,
-            ),
-            end="",
-        )
-        exit_code = base_cli.ExitCode.SUCCESS if args.status != "error" else base_cli.ExitCode.FAILURE
-    else:
+    handlers = {
+        "check-json": _handle_check_json,
+        "doctor-json": _handle_doctor_json,
+        "record-check": _handle_record_check,
+        "base-check-metadata": _handle_base_check_metadata,
+        "project-venv-check-json": _handle_project_venv_check_json,
+        "project-venv-doctor-json": _handle_project_venv_doctor_json,
+    }
+    handler = handlers.get(args.command)
+    if handler is None:
         parser.error(f"Unsupported diagnostics command '{args.command}'.")
-        exit_code = base_cli.ExitCode.USAGE_ERROR
-    return exit_code
+    return handler(args, record_context)
 
 
 if __name__ == "__main__":
