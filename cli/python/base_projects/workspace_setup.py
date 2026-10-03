@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_setup.process import redact_command_output
 
 
 WorkspaceSetupAction = Literal["setup", "skip"]
@@ -274,9 +275,9 @@ def execute_workspace_setup_target(
         return WorkspaceSetupCounts(counts.setup, counts.skipped, counts.failed + 1)
 
     if result.stdout:
-        print(result.stdout, end="")
+        print(redact_command_output(result.stdout), end="")
     if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+        print(redact_command_output(result.stderr), end="", file=sys.stderr)
     if result.returncode == 0:
         return WorkspaceSetupCounts(counts.setup + 1, counts.skipped, counts.failed)
 
