@@ -30,11 +30,6 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Security CI now checks tracked Bash sources, managed startup files, and Zsh
   syntax instead of leaving shell startup files outside the blocking coverage.
 
-- Added an optional repository-owned review policy for `basectl repo configure`.
-  Teams can request approving reviews and code-owner review without changing
-  the no-configuration behavior of existing solo repositories; stronger
-  GitHub settings are preserved after readback.
-
 - Expanded workspace update and checkout validation to reject projects that
   escape the configured root, target the wrong upstream branch, or use an
   ancestor checkout; empty clone/update plans now produce actionable summaries.
