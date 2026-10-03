@@ -1,11 +1,12 @@
 """Check Base's documented Stable contracts for incompatible changes.
 
 The checked-in ``current.json`` file is the accepted compatibility baseline.
-Command flags are read from the source-owned ``basectl --help`` output;
-Markdown command prose is not parsed as a contract. Additive commands, flags,
-fields, enum values, and finding IDs are allowed. Removing or changing an
-existing contract requires updating that fixture and adding a
-``Stability compatibility:`` migration entry to ``CHANGELOG.md``.
+Commands are selected from the maintained command reference after excluding
+commands explicitly marked Experimental in the stability tiers document.
+Flags are read from source-owned ``basectl --help`` output. Additive commands,
+flags, fields, enum values, and finding IDs are allowed. Removing or changing
+an existing contract requires updating that fixture and adding a ``Stability
+compatibility:`` migration entry to ``CHANGELOG.md``.
 
 ``v1.8.0.json`` records the release chosen as the initial provenance point.
 The checker uses only the Python standard library so it can run before Base's
@@ -36,6 +37,7 @@ _HELP_OPTION_RE = re.compile(
     r"(?:\s*,\s*(?:--[A-Za-z0-9][\w-]*|-[A-Za-z]))*)"
     r"(?:\s+(?P<value><[^>]+>|\[[^\]]+\]))?"
 )
+_EXPERIMENTAL_COMMAND_RE = re.compile(r"`(?P<command>basectl [^`]+)` is Experimental\.")
 
 # ``gh pr`` exposes several pass-through subcommands under one documented
 # row. Probe each implementation and union their source-owned options.
@@ -52,16 +54,21 @@ _COMMAND_PROBE_OVERRIDES: dict[str, tuple[tuple[str, ...], ...]] = {
 
 
 def documented_stable_commands(root: Path) -> list[str]:
-    """Return the stable public command rows from the maintained reference."""
+    """Return public command rows not explicitly marked Experimental."""
 
     commands: set[str] = set()
     reference = root / "docs" / "command-reference.md"
+    stability = root / "docs" / "stability-tiers.md"
+    experimental = {
+        match.group("command")
+        for match in _EXPERIMENTAL_COMMAND_RE.finditer(stability.read_text(encoding="utf-8"))
+    }
     for line in reference.read_text(encoding="utf-8").splitlines():
         if not line.startswith("| `basectl "):
             continue
         cells = _split_markdown_row(line)
         command = cells[0].strip("`") if cells else ""
-        if command.startswith("basectl "):
+        if command.startswith("basectl ") and command not in experimental:
             commands.add(command)
     return sorted(commands)
 
@@ -689,16 +696,13 @@ def _write_snapshot(root: Path, output: Path, baseline_version: str) -> None:
     existing = {}
     if output.is_file():
         existing = json.loads(output.read_text(encoding="utf-8"))
-    elif output != (root / "docs" / "stability-baseline" / "current.json").resolve():
-        current = root / "docs" / "stability-baseline" / "current.json"
-        if current.is_file():
-            existing = json.loads(current.read_text(encoding="utf-8"))
     command_names = documented_stable_commands(root)
     if not command_names:
         raise RuntimeError("refusing to write an empty Stable command contract")
     commands = runtime_command_contract(root, command_names)
     result = snapshot(root, baseline_version, commands)
-    if existing.get("baseline_exceptions"):
+    current_path = (root / "docs" / "stability-baseline" / "current.json").resolve()
+    if output == current_path and existing.get("baseline_exceptions"):
         result["baseline_exceptions"] = existing["baseline_exceptions"]
     output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 

@@ -25,13 +25,33 @@ def test_current_fixture_matches_the_repository_contract() -> None:
 def test_documented_stable_commands_include_new_public_rows() -> None:
     commands = compatibility.documented_stable_commands(REPO_ROOT)
 
-    assert "basectl workspace test" in commands
+    assert "basectl workspace test" not in commands
     assert "basectl uninstall <project>|--all" in commands
+
+
+def test_write_snapshot_does_not_copy_exceptions_to_unrelated_output(tmp_path: Path, monkeypatch) -> None:
+    docs = tmp_path / "docs" / "stability-baseline"
+    docs.mkdir(parents=True)
+    (tmp_path / "docs" / "command-reference.md").write_text(
+        "| `basectl check` | Check | `--format <text>` |\n", encoding="utf-8"
+    )
+    (tmp_path / "docs" / "stability-tiers.md").write_text("# Tiers\n", encoding="utf-8")
+    (docs / "current.json").write_text(
+        json.dumps({"baseline_exceptions": [{"reason": "current-only"}]}), encoding="utf-8"
+    )
+    monkeypatch.setattr(compatibility, "runtime_command_contract", lambda root, names: {})
+    monkeypatch.setattr(compatibility, "snapshot", lambda root, baseline, commands: {"commands": commands})
+
+    output = tmp_path / "historical.json"
+    compatibility._write_snapshot(tmp_path, output, "1.8.0")
+
+    assert "baseline_exceptions" not in load_fixture(output)
 
 
 def test_write_snapshot_rejects_an_empty_documented_surface(tmp_path: Path) -> None:
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "command-reference.md").write_text("# no commands\n", encoding="utf-8")
+    (tmp_path / "docs" / "stability-tiers.md").write_text("# Tiers\n", encoding="utf-8")
 
     try:
         compatibility._write_snapshot(tmp_path, tmp_path / "out.json", "1.8.0")
