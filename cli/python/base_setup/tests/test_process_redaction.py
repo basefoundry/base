@@ -12,6 +12,11 @@ from base_setup.tests.helpers import fake_context
 
 
 class ProcessCommandRedactionTests(unittest.TestCase):
+    def test_decode_subprocess_output_handles_bytes_strings_and_none(self) -> None:
+        self.assertEqual(process.decode_subprocess_output(b"result: \xff\n"), "result: \ufffd\n")
+        self.assertEqual(process.decode_subprocess_output("already decoded\n"), "already decoded\n")
+        self.assertEqual(process.decode_subprocess_output(None), "")
+
     def test_run_capture_passes_timeout_to_subprocess(self) -> None:
         completed = subprocess.CompletedProcess(["tool", "--version"], 0, stdout="ok\n", stderr="")
 

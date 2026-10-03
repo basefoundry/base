@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_report_common import repository_name_width
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
 from base_version.checkout import git_checkout_marker
 
@@ -370,7 +371,7 @@ def execute_workspace_update_target(
             ["git", "pull", "--ff-only"],
             check=False,
             capture_output=True,
-            text=True,
+            text=False,
             cwd=target.root,
             env=workspace_update_git_environment(),
             timeout=WORKSPACE_UPDATE_TIMEOUT_SECONDS,
@@ -386,7 +387,9 @@ def execute_workspace_update_target(
             detail=f"could not run git pull: {exc}",
         )
 
-    debug_output = format_git_pull_debug_output(result.stdout, result.stderr)
+    stdout = redact_command_output(decode_subprocess_output(result.stdout))
+    stderr = redact_command_output(decode_subprocess_output(result.stderr))
+    debug_output = format_git_pull_debug_output(stdout, stderr)
     ctx.log.debug(
         "Git pull for repository '%s' exited with %s%s",
         target.name,
@@ -396,11 +399,11 @@ def execute_workspace_update_target(
     if result.returncode != 0:
         return WorkspaceUpdateResult(
             "failed",
-            detail=git_pull_detail(result.stdout, result.stderr),
+            detail=git_pull_detail(stdout, stderr),
             exit_code=result.returncode,
         )
 
-    if git_pull_was_unchanged(result.stdout, result.stderr):
+    if git_pull_was_unchanged(stdout, stderr):
         return WorkspaceUpdateResult("unchanged")
     return WorkspaceUpdateResult("updated")
 
@@ -652,14 +655,20 @@ def workspace_update_preflight_result(
 
 
 def run_workspace_git_probe(root: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    result = subprocess.run(
         ["git", *arguments],
         check=False,
         capture_output=True,
-        text=True,
+        text=False,
         cwd=root,
         env=workspace_update_git_environment(),
         timeout=WORKSPACE_UPDATE_PREFLIGHT_TIMEOUT_SECONDS,
+    )
+    return subprocess.CompletedProcess(
+        result.args,
+        result.returncode,
+        decode_subprocess_output(result.stdout),
+        decode_subprocess_output(result.stderr),
     )
 
 

@@ -17,6 +17,7 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_scanner import workspace_manifest_entries
+from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
 
 GIT_CONFIG_TIMEOUT_SECONDS = 10
@@ -248,7 +249,7 @@ def configure_workspace_repo(
             command,
             check=False,
             capture_output=True,
-            text=True,
+            text=False,
             timeout=WORKSPACE_CONFIGURE_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired as exc:
@@ -263,10 +264,12 @@ def configure_workspace_repo(
         ctx.log.error("Could not run basectl repo configure for repository '%s': %s", target.name, exc)
         return base_cli.ExitCode.FAILURE
 
-    if result.stdout:
-        print(redact_command_output(result.stdout), end="")
-    if result.stderr:
-        print(redact_command_output(result.stderr), end="", file=sys.stderr)
+    stdout = redact_command_output(decode_subprocess_output(result.stdout))
+    stderr = redact_command_output(decode_subprocess_output(result.stderr))
+    if stdout:
+        print(stdout, end="")
+    if stderr:
+        print(stderr, end="", file=sys.stderr)
     if result.returncode == 0:
         return base_cli.ExitCode.SUCCESS
 
@@ -299,7 +302,7 @@ def github_origin_repo_spec(root: Path) -> str | None:
             ["git", "-C", str(root), "config", "--get", "remote.origin.url"],
             check=False,
             capture_output=True,
-            text=True,
+            text=False,
             timeout=GIT_CONFIG_TIMEOUT_SECONDS,
         )
     except (OSError, subprocess.TimeoutExpired):
@@ -308,7 +311,7 @@ def github_origin_repo_spec(root: Path) -> str | None:
     if result.returncode != 0:
         origin_url = git_config_origin_url(root)
         return github_repo_spec(origin_url) if origin_url else None
-    return github_repo_spec(result.stdout.strip())
+    return github_repo_spec(decode_subprocess_output(result.stdout).strip())
 
 
 def git_config_origin_url(root: Path) -> str | None:
