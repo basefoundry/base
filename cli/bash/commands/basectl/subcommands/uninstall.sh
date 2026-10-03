@@ -137,5 +137,5 @@ base_uninstall_subcommand_main() {
         ((status == 0)) || return "$status"
         ((finalize_status == 0)) || return "$finalize_status"
     fi
-    return 0
+    return "$status"
 }

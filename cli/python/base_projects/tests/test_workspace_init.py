@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from base_projects import engine, workspace_init as workspace_init_module
+from base_projects.command_helpers import ProjectCommandResult
 from base_projects.workspace_manifest import WorkspaceManifestError
 
 
@@ -92,6 +93,34 @@ def invoke_engine(
 
 
 class WorkspaceInitTests(unittest.TestCase):
+    def test_workspace_init_config_repo_clone_redacts_child_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            ctx = SimpleNamespace(application_home=root / "base")
+            result = ProjectCommandResult(
+                returncode=0,
+                stdout="GITHUB_TOKEN=fixture-value\n",
+                stderr="remote https://alice:URLSECRET123456@github.com/acme/private.git\n",
+            )
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch(
+                "base_projects.workspace_init.run_project_command",
+                return_value=result,
+            ):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    workspace_init_module.clone_workspace_config_repo(
+                        ctx,
+                        "acme/private",
+                        root / "workspace-source",
+                        dry_run=False,
+                    )
+
+        self.assertNotIn("fixture-value", stdout.getvalue())
+        self.assertNotIn("URLSECRET123456", stderr.getvalue())
+        self.assertIn("GITHUB_TOKEN=[REDACTED]", stdout.getvalue())
+        self.assertIn("https://[REDACTED]@github.com", stderr.getvalue())
+
     def test_workspace_init_command_is_extracted_from_engine(self) -> None:
         workspace_init = importlib.import_module("base_projects.workspace_init")
 

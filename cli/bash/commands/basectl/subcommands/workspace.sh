@@ -4,6 +4,7 @@ _base_workspace_subcommand_sourced=1
 readonly _base_workspace_subcommand_sourced
 
 base_workspace_report_usage() {
+    local workspace_report_command="${1:-status}"
     cat <<'EOF'
 Usage:
   basectl workspace <status|check|doctor> [options]
@@ -14,6 +15,15 @@ Options:
                       Overrides workspace.manifest from ~/.base.d/config.yaml.
   --format <text|csv|tsv|yaml|json>
                       Output format for the workspace command. Defaults to text.
+EOF
+    if [[ "$workspace_report_command" != "status" ]]; then
+        cat <<'EOF'
+  --verify-project-runtime
+                      Authorize execution of reviewed project runtimes and tool
+                      configuration for this invocation.
+EOF
+    fi
+    cat <<'EOF'
   -v                  Enable DEBUG logging for this subcommand.
   -h, --help          Show this help text.
 
@@ -206,7 +216,7 @@ EOF
 base_workspace_subcommand_usage() {
     case "${1:-}" in
         status|check|doctor)
-            base_workspace_report_usage
+            base_workspace_report_usage "${1:-status}"
             ;;
         onboarding)
             base_workspace_onboarding_usage

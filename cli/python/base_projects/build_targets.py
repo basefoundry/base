@@ -12,7 +12,7 @@ from base_setup.errors import ArtifactError
 from base_setup.manifest import read_manifest
 from base_setup.manifest_loader import ManifestError
 from base_setup.manifest_model import BaseManifest, BuildTargetConfig
-from base_setup.mise_delegate import resolve_mise_path
+from base_setup.mise_delegate import manifest_mise_config_path
 
 
 class ProjectLike(Protocol):
@@ -272,7 +272,7 @@ def build_target_record(  # pylint: disable=too-many-arguments
         "command": target_config.command,
         "description": target_config.description,
         "runner": target_config.runner,
-        "mise_config_path": str(resolve_mise_path(manifest)) if manifest.mise is not None else None,
+        "mise_config_path": manifest_mise_config_path(manifest),
     }
 
 

@@ -8,6 +8,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- Security CI now checks tracked Bash sources, managed startup files, and Zsh
+  syntax instead of leaving shell startup files outside the blocking coverage.
+
 - Added `basectl version --all` and `--all --json` to inspect active component
   versions, provider paths, Git revisions, and dirty state even when providers
   or the Base Python environment are unavailable.

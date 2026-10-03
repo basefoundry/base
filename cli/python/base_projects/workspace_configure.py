@@ -17,6 +17,7 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_scanner import workspace_manifest_entries
+from base_setup.process import redact_command_output
 
 GIT_CONFIG_TIMEOUT_SECONDS = 10
 WORKSPACE_CONFIGURE_TIMEOUT_SECONDS = 120
@@ -263,9 +264,9 @@ def configure_workspace_repo(
         return base_cli.ExitCode.FAILURE
 
     if result.stdout:
-        print(result.stdout, end="")
+        print(redact_command_output(result.stdout), end="")
     if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+        print(redact_command_output(result.stderr), end="", file=sys.stderr)
     if result.returncode == 0:
         return base_cli.ExitCode.SUCCESS
 
