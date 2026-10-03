@@ -228,6 +228,7 @@ def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> Non
         "Canonical positioning documentation": "tests/test_contract_hardening.py",
         "Adopter golden path": "tests/test_adopter_golden_path_docs.py",
         "Workspace agent-brief JSON schema": "tests/contracts/test_workspace_agent_brief_schema.py",
+        "Workspace test JSON schema": "tests/contracts/test_workspace_test_schema.py",
         "Workspace update JSON schema": "tests/contracts/test_workspace_update_schema.py",
     }
     for contract, enforcement in expected_entries.items():
@@ -256,6 +257,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "Canonical positioning documentation",
         "Adopter golden path",
         "Workspace agent-brief JSON schema",
+        "Workspace test JSON schema",
         "Workspace update JSON schema",
         "Native Windows support boundary",
     }
