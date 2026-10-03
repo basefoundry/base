@@ -152,33 +152,45 @@ load ./basectl_helpers.bash
     local args=()
     local direct_output
     local path
+    local path_output
     local -a paths=()
 
-    mapfile -t paths < <(python3 - "$BASE_REPO_ROOT/docs/command-reference.md" <<'PY'
+    if ! path_output="$(python3 - "$BASE_REPO_ROOT/docs/command-reference.md" <<'PY'
 import sys
 from pathlib import Path
 
+seen = set()
 for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
     if not line.startswith("| `basectl "):
         continue
     protected = line.replace(r"\|", "\x00")
     cells = [cell.replace("\x00", "|").strip() for cell in protected.strip().strip("|").split("|")]
     command = cells[0].strip("`")
-    if command == "basectl gh pr create/status/checks/ready/merge":
-        for leaf in ("gh pr create", "gh pr status", "gh pr checks", "gh pr ready", "gh pr merge"):
-            print(leaf)
-        continue
     tokens = command.split()[1:]
-    path = []
-    for token in tokens:
-        if token.startswith(("<", "[")):
-            break
-        if token.startswith("--"):
-            continue
-        path.append(token)
-    print(" ".join(path))
+    slash_index = next((index for index, token in enumerate(tokens) if "/" in token), None)
+    if slash_index is not None:
+        prefix = tokens[:slash_index]
+        paths = [" ".join(prefix + [leaf]) for leaf in tokens[slash_index].split("/")]
+    else:
+        paths = []
+        path = []
+        for token in tokens:
+            if token.startswith(("<", "[")):
+                break
+            if token.startswith("--"):
+                continue
+            path.append(token)
+        paths.append(" ".join(path))
+    for path in paths:
+        if path and path not in seen:
+            print(path)
+            seen.add(path)
 PY
-    )
+    )"; then
+        echo "failed to derive public help paths from docs/command-reference.md" >&2
+        return 1
+    fi
+    mapfile -t paths <<<"$path_output"
 
     for path in "${paths[@]}"; do
         read -r -a args <<<"$path"
