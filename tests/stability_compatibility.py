@@ -114,6 +114,7 @@ _JSON_CONTRACTS: dict[str, dict[str, Any]] = {
                     "release check",
                     "gh issue readiness",
                     "gh branch stale",
+                    "version",
                 ]
             },
             "status": {"type": "string", "enum": ["ok", "warn", "error"]},
