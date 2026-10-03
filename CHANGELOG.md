@@ -24,6 +24,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: enroll every documented Stable command and preserve
   baseline exceptions when regenerating the fixture.
 
+- Stability compatibility: publish the workspace test JSON schema and validate
+  the command's stable envelope against it.
+
 - Stability compatibility: add `version` to the shared inspection-v1 command
   enum and document its completed-report and usage-error behavior.
 
