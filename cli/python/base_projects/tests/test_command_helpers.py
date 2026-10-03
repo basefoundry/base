@@ -80,6 +80,25 @@ class ProjectCommandHelperTests(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         self.assertEqual(result.returncode, 0)
 
+    def test_run_project_command_redacts_captured_output(self) -> None:
+        completed = subprocess.CompletedProcess(
+            ["basectl", "repo", "clone"],
+            1,
+            stdout="GITHUB_TOKEN=fixture-value\n",
+            stderr="remote https://alice:URLSECRET123456@github.com/acme/private.git\n",
+        )
+
+        with mock.patch("base_projects.command_helpers.process.run_capture", return_value=completed):
+            result = run_project_command(
+                ["basectl", "repo", "clone"],
+                error_context="basectl repo clone for repository 'private'",
+            )
+
+        self.assertNotIn("fixture-value", result.stdout)
+        self.assertNotIn("URLSECRET123456", result.stderr)
+        self.assertIn("GITHUB_TOKEN=[REDACTED]", result.stdout)
+        self.assertIn("https://[REDACTED]@github.com", result.stderr)
+
     def test_run_project_command_uses_shared_capture_helper(self) -> None:
         completed = subprocess.CompletedProcess(
             ["basectl", "repo", "clone"],

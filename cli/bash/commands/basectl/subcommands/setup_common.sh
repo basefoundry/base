@@ -583,7 +583,8 @@ setup_base_check_metadata_fallback_finding_id() {
             printf '%s\n' "BASE-D016"
             ;;
         *)
-            printf '%s\n' "BASE-D000"
+            printf 'ERROR: Base check %s has no registered stable finding ID.\n' "$1" >&2
+            return 1
             ;;
     esac
 }
@@ -648,7 +649,7 @@ setup_base_check_metadata_fallback() {
     local display_name finding_id name
 
     for name in "$@"; do
-        finding_id="$(setup_base_check_metadata_fallback_finding_id "$name")"
+        finding_id="$(setup_base_check_metadata_fallback_finding_id "$name")" || return 1
         display_name="$(setup_base_check_metadata_fallback_display_name "$name")"
         printf '%s\t%s\t%s\n' "$name" "$finding_id" "$display_name"
     done

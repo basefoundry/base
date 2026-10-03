@@ -102,6 +102,12 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         for step in job.get("steps", [])
         if isinstance(step, dict)
     )
+    verification_step = next(
+        step
+        for step in assemble["steps"]
+        if isinstance(step, dict) and step.get("name") == "Verify release inputs and bind platform evidence"
+    )
+    verification_command = verification_step["run"]
 
     assert workflow["name"] == "Ecosystem Release BOM"
     assert workflow["permissions"] == {"contents": "read"}
@@ -121,6 +127,14 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}"
     )
     assert "base-release-bom assemble" in run_commands
+    assert "base-release-inputs-verify" in run_commands
+    assert any(
+        step.get("name") == "Verify release inputs and bind platform evidence"
+        for step in assemble["steps"]
+        if isinstance(step, dict)
+    )
+    assert verification_command.count("--evidence") == 2
+    assert verification_command.count("--platform") == 2
     assert run_commands.count("base-release-bom-row") == 4
     assert "--repository basefoundry/base-cli" in run_commands
     assert "--repository basefoundry/base-bash-libs" in run_commands
@@ -219,6 +233,38 @@ def test_tests_workflow_pins_all_base_bash_libs_checkouts_to_ga_revision() -> No
 
     assert refs
     assert refs == [BASE_BASH_LIBS_GA_COMMIT] * len(refs)
+
+
+def test_security_workflow_covers_bash_and_zsh_sources() -> None:
+    workflow = load_workflow(TESTS_WORKFLOW)
+    job = workflow["jobs"]["security"]
+    steps = job["steps"]
+    install_dependencies = workflow_step_by_name(job, "Install dependencies")["run"]
+    collect_sources = workflow_step_by_name(job, "Collect tracked shell sources")["run"]
+    shellcheck = workflow_step_by_name(job, "Run ShellCheck")["run"]
+    zsh_check = workflow_step_by_name(job, "Check Zsh syntax")["run"]
+    warning_check = workflow_step_by_name(job, "Run ShellCheck warnings")["run"]
+
+    for source_glob in (
+        "'*.sh'",
+        "'*.bash'",
+        "'base_init.sh'",
+        "'install.sh'",
+        "'lib/bash/runtime/bashrc'",
+        "'lib/shell/bash_profile'",
+        "'lib/shell/bashrc'",
+        "'bin/*'",
+    ):
+        assert source_glob in collect_sources
+    for source_glob in ("'*.zsh'", "'lib/shell/zprofile'", "'lib/shell/zshrc'"):
+        assert source_glob in collect_sources
+    assert "BATS files are test programs" in shellcheck
+    assert 'zsh -n "${zsh_files[@]}"' in zsh_check
+    assert 'base-shellcheck-files' in shellcheck
+    assert 'base-shellcheck-files' in warning_check
+    assert "zsh" in install_dependencies
+    step_names = [step.get("name", "") for step in steps]
+    assert step_names.index("Install dependencies") < step_names.index("Check Zsh syntax")
 
 
 def test_reusable_base_check_workflow_contract() -> None:

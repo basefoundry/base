@@ -436,7 +436,7 @@ jobs:
           python -m pip install --no-deps .dependencies/base-cli
           python -m pip install -r requirements-dev.txt
           sudo apt-get update
-          sudo apt-get install -y shellcheck
+          sudo apt-get install -y shellcheck zsh
 
       - name: Install pinned Gitleaks
         env:
@@ -471,23 +471,58 @@ jobs:
           python -m pip_audit --cache-dir "$RUNNER_TEMP/pip-audit" \
             -r "$RUNNER_TEMP/base-audit-requirements.txt"
 
-      - name: Run ShellCheck
+      - name: Collect tracked shell sources
         run: |
-          git ls-files -z \
+          bash_files_file="$RUNNER_TEMP/base-shellcheck-files"
+          zsh_files_file="$RUNNER_TEMP/base-zsh-files"
+          if ! git ls-files -z \
             '*.sh' \
+            '*.bash' \
             'base_init.sh' \
             'install.sh' \
             'lib/bash/runtime/bashrc' \
+            'lib/shell/bash_profile' \
+            'lib/shell/bashrc' \
             'bin/*' \
-            | xargs -0 shellcheck --severity=error
+            >"$bash_files_file"; then
+            echo "Unable to enumerate tracked Bash sources." >&2
+            exit 1
+          fi
+          if ! git ls-files -z '*.zsh' 'lib/shell/zprofile' 'lib/shell/zshrc' >"$zsh_files_file"; then
+            echo "Unable to enumerate tracked Zsh sources." >&2
+            exit 1
+          fi
+          [[ -s "$bash_files_file" ]] || {
+            echo "No tracked Bash sources were found." >&2
+            exit 1
+          }
+          [[ -s "$zsh_files_file" ]] || {
+            echo "No tracked Zsh sources were found." >&2
+            exit 1
+          }
+
+      - name: Run ShellCheck
+        run: |
+          # .sh/.bash files are Bash sources, including the managed Bash
+          # startup files. BATS files are test programs, not ShellCheck input.
+          mapfile -d '' bash_files < "$RUNNER_TEMP/base-shellcheck-files"
+          if ((${#bash_files[@]})); then
+            shellcheck --shell=bash --severity=error "${bash_files[@]}"
+          fi
+
+      - name: Check Zsh syntax
+        run: |
+          # Zsh-only sources use syntax ShellCheck intentionally cannot parse.
+          # The tracked glob keeps new .zsh sources covered automatically.
+          mapfile -d '' zsh_files < "$RUNNER_TEMP/base-zsh-files"
+          if ((${#zsh_files[@]})); then
+            zsh -n "${zsh_files[@]}"
+          fi
 
       - name: Run ShellCheck warnings
         continue-on-error: true
         run: |
-          git ls-files -z \
-            '*.sh' \
-            'base_init.sh' \
-            'install.sh' \
-            'lib/bash/runtime/bashrc' \
-            'bin/*' \
-            | xargs -0 shellcheck --severity=warning --format=tty
+          mapfile -d '' bash_files < "$RUNNER_TEMP/base-shellcheck-files"
+          if ((${#bash_files[@]})); then
+            shellcheck --shell=bash --severity=warning --format=tty "${bash_files[@]}"
+          fi

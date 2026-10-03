@@ -16,6 +16,7 @@ Usage:
   basectl export-context [project] [options]
 
 Options:
+  --project <name>          Select a project explicitly, including one named help.
   --workspace <path>       Workspace directory to scan for a named project.
   --format <markdown|zip>  Export format. Defaults to markdown.
   --output <path>          Write the export bundle to this path.
@@ -39,10 +40,11 @@ base_export_context_subcommand_main() {
     local project="" wrapper resolve_output resolved_name project_root manifest_path
     local output_format="markdown" output_path="" print_bundle=0 list_files=0 workspace_requested=0
     local resolve_args=() exporter_args=()
-    local arg
+    local arg previous_arg=""
     # shellcheck disable=SC2034 # Passed by name to cli_parse_options.
     local -a option_specs=(
         "debug|flag|-v"
+        "project|value|--project"
         "workspace|value|--workspace"
         "format|value|--format"
         "output|value|--output"
@@ -54,11 +56,18 @@ base_export_context_subcommand_main() {
 
     for arg in "$@"; do
         case "$arg" in
-            -h|--help|help)
+            -h|--help)
                 base_export_context_subcommand_usage
                 return 0
                 ;;
+            help)
+                if [[ "$previous_arg" != --project ]]; then
+                    base_export_context_subcommand_usage
+                    return 0
+                fi
+                ;;
         esac
+        previous_arg="$arg"
     done
 
     if ! base_arg_parse parsed_options positionals option_specs -- "$@"; then
@@ -72,6 +81,13 @@ base_export_context_subcommand_main() {
     fi
     if ((${#positionals[@]} == 1)); then
         project="${positionals[0]}"
+    fi
+    if [[ -n "${parsed_options[project]+set}" ]]; then
+        [[ -z "$project" ]] || {
+            base_export_context_usage_error "The 'export-context' command accepts only one project selection."
+            return $?
+        }
+        project="${parsed_options[project]}"
     fi
     if [[ "${parsed_options[debug]:-}" == "1" ]]; then
         exporter_args+=(--debug)

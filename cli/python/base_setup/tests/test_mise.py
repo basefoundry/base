@@ -84,6 +84,21 @@ class MiseTests(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertIs(getattr(delegates, name), getattr(mise_delegate, name))
 
+    def test_mise_environment_overrides_competing_configs(self) -> None:
+        mise_path = Path("/workspace/demo/config/tools.toml")
+
+        with mock.patch.dict(
+            os.environ,
+            {
+                "MISE_CONFIG_FILE": "inherited.toml",
+                "MISE_OVERRIDE_CONFIG_FILENAMES": "inherited.toml",
+            },
+        ):
+            environment = delegates.mise_environment(mise_path)
+
+        self.assertEqual(environment["MISE_CONFIG_FILE"], str(mise_path))
+        self.assertEqual(environment["MISE_OVERRIDE_CONFIG_FILENAMES"], str(mise_path))
+
     def test_mise_dry_run_invokes_mise_install_in_project_root(self) -> None:
         ctx = fake_context()
         with tempfile.TemporaryDirectory() as tmpdir:

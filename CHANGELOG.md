@@ -8,6 +8,13 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- CLI help now accepts a trailing bare `help` token on nested commands, and
+  project-taking commands expose `--project` so a project named `help` remains
+  addressable.
+
+- Security CI now checks tracked Bash sources, managed startup files, and Zsh
+  syntax instead of leaving shell startup files outside the blocking coverage.
+
 - Added `basectl version --all` and `--all --json` to inspect active component
   versions, provider paths, Git revisions, and dirty state even when providers
   or the Base Python environment are unavailable.
@@ -20,6 +27,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: added the `--test-requirements-sha256` trust approval
   flag to the stable command baseline, with migration guidance for consumers that
   treat the machine-readable baseline as the source of truth.
+
+- Stability compatibility: enroll every documented Stable command and preserve
+  baseline exceptions when regenerating the fixture.
+
+- Stability compatibility: add `version` to the shared inspection-v1 command
+  enum and document its completed-report and usage-error behavior.
 
 ## [1.9.0] - 2026-09-08
 
