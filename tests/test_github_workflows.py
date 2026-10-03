@@ -224,18 +224,33 @@ def test_tests_workflow_pins_all_base_bash_libs_checkouts_to_ga_revision() -> No
 def test_security_workflow_covers_bash_and_zsh_sources() -> None:
     workflow = load_workflow(TESTS_WORKFLOW)
     job = workflow["jobs"]["security"]
+    steps = job["steps"]
+    install_dependencies = workflow_step_by_name(job, "Install dependencies")["run"]
+    collect_sources = workflow_step_by_name(job, "Collect tracked shell sources")["run"]
     shellcheck = workflow_step_by_name(job, "Run ShellCheck")["run"]
     zsh_check = workflow_step_by_name(job, "Check Zsh syntax")["run"]
     warning_check = workflow_step_by_name(job, "Run ShellCheck warnings")["run"]
 
-    for source_glob in ("'*.sh'", "'*.bash'", "'lib/shell/bash_profile'", "'lib/shell/bashrc'"):
-        assert source_glob in shellcheck
-        assert source_glob in warning_check
+    for source_glob in (
+        "'*.sh'",
+        "'*.bash'",
+        "'base_init.sh'",
+        "'install.sh'",
+        "'lib/bash/runtime/bashrc'",
+        "'lib/shell/bash_profile'",
+        "'lib/shell/bashrc'",
+        "'bin/*'",
+    ):
+        assert source_glob in collect_sources
+    for source_glob in ("'*.zsh'", "'lib/shell/zprofile'", "'lib/shell/zshrc'"):
+        assert source_glob in collect_sources
     assert "BATS files are test programs" in shellcheck
-    assert "'*.zsh'" in zsh_check
-    assert "'lib/shell/zprofile'" in zsh_check
-    assert "'lib/shell/zshrc'" in zsh_check
     assert 'zsh -n "${zsh_files[@]}"' in zsh_check
+    assert 'base-shellcheck-files' in shellcheck
+    assert 'base-shellcheck-files' in warning_check
+    assert "zsh" in install_dependencies
+    step_names = [step.get("name", "") for step in steps]
+    assert step_names.index("Install dependencies") < step_names.index("Check Zsh syntax")
 
 
 def test_reusable_base_check_workflow_contract() -> None:
