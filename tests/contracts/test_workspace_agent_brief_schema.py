@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import jsonschema
+
+from tests.contracts.workspace_contract_helpers import run_workspace_command
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -43,23 +42,8 @@ def test_workspace_agent_brief_command_matches_published_schema(tmp_path: Path) 
         encoding="utf-8",
     )
 
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "BASE_HOME": str(base_home),
-            "BASE_PROJECT": "",
-            "BASE_PROJECT_MANIFEST": "",
-            "HOME": str(home),
-            "PYTHONPATH": os.pathsep.join(
-                [str(REPO_ROOT / "lib/python"), str(REPO_ROOT / "cli/python"), environment.get("PYTHONPATH", "")]
-            ),
-        }
-    )
-    result = subprocess.run(
+    result = run_workspace_command(
         [
-            sys.executable,
-            "-m",
-            "base_projects",
             "agent-brief",
             "--workspace",
             str(workspace),
@@ -68,10 +52,8 @@ def test_workspace_agent_brief_command_matches_published_schema(tmp_path: Path) 
             "--format",
             "json",
         ],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=environment,
+        base_home,
+        home,
     )
 
     assert result.returncode == 0, result.stderr

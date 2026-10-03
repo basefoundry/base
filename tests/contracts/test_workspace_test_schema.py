@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
 import jsonschema
+
+from tests.contracts.workspace_contract_helpers import run_workspace_command
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -56,27 +55,12 @@ def test_workspace_test_command_matches_published_schema(tmp_path: Path) -> None
     )
     manifest_path.write_text(
         "schema_version: 1\nworkspace:\n  name: test-suite\nrepos:\n"
-        "  - name: pass\n  - name: fail\n  - name: skipped\n",
+        "  - name: pass\n  - name: fail\n  - name: skipped\n  - name: missing\n",
         encoding="utf-8",
     )
 
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "BASE_HOME": str(base_home),
-            "BASE_PROJECT": "",
-            "BASE_PROJECT_MANIFEST": "",
-            "HOME": str(home),
-            "PYTHONPATH": os.pathsep.join(
-                [str(REPO_ROOT / "lib/python"), str(REPO_ROOT / "cli/python"), environment.get("PYTHONPATH", "")]
-            ),
-        }
-    )
-    result = subprocess.run(
+    result = run_workspace_command(
         [
-            sys.executable,
-            "-m",
-            "base_projects",
             "test",
             "--workspace",
             str(workspace),
@@ -85,10 +69,8 @@ def test_workspace_test_command_matches_published_schema(tmp_path: Path) -> None
             "--format",
             "json",
         ],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=environment,
+        base_home,
+        home,
     )
 
     assert result.returncode == 1
@@ -97,6 +79,8 @@ def test_workspace_test_command_matches_published_schema(tmp_path: Path) -> None
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     jsonschema.Draft202012Validator.check_schema(schema)
     jsonschema.validate(payload, schema)
-    assert payload["counts"] == {"passed": 1, "failed": 1, "skipped": 1}
+    assert payload["counts"] == {"passed": 1, "failed": 2, "skipped": 1}
     assert payload["projects"][1]["exit_code"] == 3
-    assert "failed" not in payload["projects"][1]["stderr"] or payload["projects"][1]["stderr"] == "failed\n"
+    assert payload["projects"][1]["stderr"] == "failed\n"
+    assert payload["projects"][3]["project"] is None
+    assert payload["projects"][3]["status"] == "failed"
