@@ -18,6 +18,7 @@ class ProfileCheckOutputTests(unittest.TestCase):
             message="Optional developer tool is not installed.",
             fix="Install the optional developer tool.",
             status="warn",
+            finding_id="BASE-D107",
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -44,12 +45,14 @@ class ProfileCheckOutputTests(unittest.TestCase):
             message="Optional developer tool is not installed.",
             fix="Install the optional developer tool.",
             status="warn",
+            finding_id="BASE-D107",
         )
         error_check = DevCheck(
             name="required-tool",
             ok=False,
             message="Required developer tool is not installed.",
             fix="Install the required developer tool.",
+            finding_id="BASE-D107",
         )
 
         warning_ctx = mock.Mock()

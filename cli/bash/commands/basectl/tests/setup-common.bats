@@ -103,12 +103,18 @@ run_setup_common_script() {
 }
 
 @test "setup_common delegates base check metadata to Python" {
-    run_setup_common_script 'setup_base_check_metadata homebrew base_virtualenv unexpected'
+    run_setup_common_script 'setup_base_check_metadata homebrew base_virtualenv'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *$'homebrew\tBASE-D001\tHomebrew'* ]]
     [[ "$output" == *$'base_virtualenv\tBASE-D004\tBase virtualenv'* ]]
-    [[ "$output" == *$'unexpected\tBASE-D000\tunexpected'* ]]
+}
+
+@test "setup_common rejects an unregistered base check" {
+    run_setup_common_script 'setup_base_check_metadata unexpected'
+
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"no registered stable finding ID"* ]]
 }
 
 @test "setup_common exposes centralized platform policy helpers" {

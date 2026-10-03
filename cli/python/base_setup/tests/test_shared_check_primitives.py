@@ -11,7 +11,7 @@ from base_setup import checks as setup_checks
 
 
 def test_check_adapters_share_status_and_serialization_primitives() -> None:
-    dev_check = DevCheck(name="dev", ok=True, message="ready", fix="")
+    dev_check = DevCheck(name="dev", ok=True, message="ready", fix="", finding_id="BASE-D100")
     setup_check = setup_checks.ArtifactCheck(
         name="setup",
         ok=True,
@@ -32,11 +32,11 @@ def test_check_adapters_share_status_and_serialization_primitives() -> None:
     }
     assert setup_checks.check_to_json(setup_check)["details"] == {"source": "test"}
 
-    warning_dev = DevCheck(name="dev", ok=False, message="warning", fix="", status="warn")
+    warning_dev = DevCheck(name="dev", ok=False, message="warning", fix="", status="warn", finding_id="BASE-D100")
     error_setup = setup_checks.ArtifactCheck(
         name="setup", ok=False, message="error", fix="", finding_id="BASE-P041"
     )
-    error_dev = DevCheck(name="dev", ok=False, message="error", fix="")
+    error_dev = DevCheck(name="dev", ok=False, message="error", fix="", finding_id="BASE-D100")
     assert dev_checks.checks_status((warning_dev,)) == "warn"
     assert dev_checks.checks_status((warning_dev, error_dev)) == "error"
     assert setup_checks.checks_status((setup_check, error_setup)) == "error"

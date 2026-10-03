@@ -331,3 +331,9 @@ def resolve_mise_path(manifest: BaseManifest) -> Path:
     if not mise_path.is_file():
         raise ArtifactError(f"{manifest.path}: mise config '{manifest.mise}' does not exist.")
     return mise_path
+
+
+def manifest_mise_config_path(manifest: BaseManifest) -> str | None:
+    """Return the resolved optional mise path used by command protocols."""
+
+    return str(resolve_mise_path(manifest)) if manifest.mise is not None else None
