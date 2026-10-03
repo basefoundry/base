@@ -8,7 +8,9 @@ that are useful in CI, release gates, agent handoffs, and dashboards. Use
 - `basectl release check`
 - `basectl gh issue readiness`
 - `basectl gh branch stale`
-- `basectl version --all --json`
+
+Use `basectl version --all --json` for the component inspection envelope. The
+`version` command selects JSON with `--json`, not `--format json`.
 
 Text remains the default. JSON mode writes exactly one JSON document to stdout
 and never mixes ANSI formatting or human prose into that stream. Upstream tools

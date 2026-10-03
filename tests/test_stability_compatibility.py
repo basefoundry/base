@@ -76,10 +76,7 @@ def test_runtime_diagnostic_output_matches_the_published_contract() -> None:
 
 def test_version_json_matches_the_published_inspection_contract() -> None:
     environment = os.environ.copy()
-    environment.setdefault(
-        "BASE_BASH_LIBS_DIR",
-        str(REPO_ROOT.parent.parent / "base-bash-libs" / "lib" / "bash"),
-    )
+    compatibility.resolve_bash_libs_dir(REPO_ROOT, environment)
     with tempfile.TemporaryDirectory(prefix="base-version-contract-") as cache_dir:
         environment["BASE_CACHE_DIR"] = cache_dir
         result = subprocess.run(
