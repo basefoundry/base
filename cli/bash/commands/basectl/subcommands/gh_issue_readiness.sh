@@ -57,21 +57,64 @@ base_gh_lines_to_csv() {
     fi
 }
 
-base_gh_jq_string_literal() {
-    local value="$1"
+base_gh_issue_readiness_project_api_prefix() {
+    local project_owner="$1" owner_type
 
-    value="${value//\\/\\\\}"
-    value="${value//\"/\\\"}"
-    printf '"%s"\n' "$value"
+    owner_type="$(base_cli_gh_run api "users/$project_owner" --jq .type)" || return $?
+    case "$owner_type" in
+        Organization)
+            printf 'orgs/%s\n' "$project_owner"
+            ;;
+        User)
+            printf 'users/%s\n' "$project_owner"
+            ;;
+        *)
+            base_gh_error "Unsupported GitHub Project owner type '$owner_type'."
+            return 1
+            ;;
+    esac
 }
 
 base_gh_issue_readiness_project_row() {
     local issue="$1" repo="$2" project_owner="$3" project_number="$4"
-    local repo_literal query
+    local api_prefix fields_json field_ids_csv items_json
 
-    repo_literal="$(base_gh_jq_string_literal "$repo")"
-    query=".items[] | select((.content.number == $issue) and (.content.repository == $repo_literal)) | [.status // \"\", .priority // \"\", .size // \"\", .area // \"\", .initiative // \"\"] | join(\"\u001f\")"
-    base_cli_gh_run project item-list "$project_number" --owner "$project_owner" --format json --limit 1000 --jq "$query"
+    api_prefix="$(base_gh_issue_readiness_project_api_prefix "$project_owner")" || return $?
+    fields_json="$(base_cli_gh_run api --method GET \
+        "$api_prefix/projectsV2/$project_number/fields" -f per_page=100)" || return $?
+    field_ids_csv="$(jq -r '
+        [ .[]
+          | select(.name == "Status" or .name == "Priority" or .name == "Size" or .name == "Area" or .name == "Initiative")
+          | .id
+        ] | join(",")
+    ' <<<"$fields_json")" || return $?
+    [[ -n "$field_ids_csv" ]] || {
+        base_gh_error "GitHub Project is missing one or more required readiness fields."
+        return 1
+    }
+
+    items_json="$(base_cli_gh_run api --method GET --paginate --slurp \
+        "$api_prefix/projectsV2/$project_number/items" \
+        -f per_page=100 -f fields="$field_ids_csv")" || return $?
+    jq -r --argjson issue "$issue" --arg repo "$repo" '
+        def field_value($name):
+            [ (.fields // [])[]
+              | select(.name == $name)
+              | (.value.name.raw // .value.raw // .value // "")
+            ][0]
+            | if type == "string" then . else "" end;
+
+        [ .[][]
+          | select((.content.number == $issue) and (.content.repository.full_name == $repo))
+        ][0]
+        | if . == null then
+            empty
+          else
+            [field_value("Status"), field_value("Priority"), field_value("Size"),
+             field_value("Area"), field_value("Initiative")]
+            | join("\u001f")
+          end
+    ' <<<"$items_json"
 }
 
 base_gh_issue_readiness_format_error() {
@@ -301,7 +344,7 @@ base_gh_issue_readiness_collect_project_findings() {
             "$_BASE_GH_ISSUE_READINESS_PROJECT_OWNER" "$_BASE_GH_ISSUE_READINESS_PROJECT_NUMBER")"
         status=$?
         ((status == 0)) || {
-            base_gh_issue_readiness_upstream_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" project_item_list "$status"
+            base_gh_issue_readiness_upstream_error "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" project_item_lookup "$status"
             return $?
         }
         if [[ -z "$_BASE_GH_ISSUE_READINESS_PROJECT_ROW" ]]; then
