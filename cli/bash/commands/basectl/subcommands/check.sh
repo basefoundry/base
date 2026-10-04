@@ -26,6 +26,7 @@ Arguments:
                         check; --manifest can select the project instead.
 
 Options:
+  --project <name>     Select a project explicitly, including one named help.
   --ci                  Use noninteractive CI-safe checks. Does not select JSON
                         output or run project tests.
   --profile <list>      Also check the named prerequisite profiles.
@@ -94,6 +95,7 @@ base_check_usage_error() {
 base_check_subcommand_main() {
     local output_format="text"
     local project=""
+    local project_option=false
     local remote_network=false verify_project_runtime=false
 
     setup_clear_run_state
@@ -106,6 +108,19 @@ base_check_subcommand_main() {
                 ;;
             --ci)
                 setup_enable_ci_mode
+                ;;
+            --project)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_check_usage_error "Option '--project' requires an argument."
+                    return $?
+                fi
+                if [[ "$project_option" == true || -n "$project" ]]; then
+                    base_check_usage_error "The 'check' command accepts only one project selection."
+                    return $?
+                fi
+                project="$1"
+                project_option=true
                 ;;
             --format)
                 shift

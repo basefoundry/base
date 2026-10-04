@@ -15,8 +15,9 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
-from base_projects.subprocess_output import decode_subprocess_output
 from base_projects.workspace_process import run_workspace_subprocess
+from base_setup.process import decode_subprocess_output
+from base_setup.process import redact_command_output
 
 
 WorkspaceSetupAction = Literal["setup", "skip"]
@@ -272,8 +273,8 @@ def execute_workspace_setup_target(
         ctx.log.error("Could not run basectl setup for repository '%s': %s", target.name, exc)
         return WorkspaceSetupCounts(counts.setup, counts.skipped, counts.failed + 1)
 
-    stdout = decode_subprocess_output(result.stdout)
-    stderr = decode_subprocess_output(result.stderr)
+    stdout = redact_command_output(decode_subprocess_output(result.stdout))
+    stderr = redact_command_output(decode_subprocess_output(result.stderr))
     if stdout:
         print(stdout, end="")
     if stderr:

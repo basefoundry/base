@@ -266,6 +266,8 @@ base_project_command_resolve_context() {
     BASE_PROJECT_COMMAND_RESOLVED_ACTION="${BASE_COMMAND_PROTOCOL_FIELDS[$command_field]}"
     # shellcheck disable=SC2034 # The runner is consumed by test.sh and demo.sh.
     BASE_PROJECT_COMMAND_RUNNER="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    # shellcheck disable=SC2034 # The declared mise config is consumed by project command callers.
+    BASE_PROJECT_COMMAND_MISE_CONFIG="${BASE_COMMAND_PROTOCOL_FIELDS[mise_config_path]}"
     # shellcheck disable=SC2034 # uv extras are consumed by test.sh.
     BASE_PROJECT_COMMAND_UV_EXTRAS="${BASE_COMMAND_PROTOCOL_FIELDS[uv_extras]:-}"
 
@@ -355,6 +357,18 @@ base_command_with_runner() {
             return 2
             ;;
     esac
+}
+
+base_command_with_mise_config() {
+    local mise_config_path="$1" command="$2"
+
+    if [[ -z "$mise_config_path" ]]; then
+        printf '%s\n' "$command"
+        return 0
+    fi
+
+    printf 'MISE_CONFIG_FILE=%q MISE_OVERRIDE_CONFIG_FILENAMES=%q %s\n' \
+        "$mise_config_path" "$mise_config_path" "$command"
 }
 
 base_uv_extra_flags() {

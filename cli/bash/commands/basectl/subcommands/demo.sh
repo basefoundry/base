@@ -37,7 +37,7 @@ base_demo_subcommand_main() {
     local project="" demo_script command_runner
     local quoted_demo_script command_to_run display_command dry_run
     local extra_args=()
-    local resolved_name project_root manifest_path route_venv_dir uses_uv_manager trust_required
+    local resolved_name project_root manifest_path route_venv_dir uses_uv_manager trust_required mise_config_path
 
     base_project_command_parse_args \
         demo base_demo_subcommand_usage base_demo_usage_error \
@@ -57,11 +57,14 @@ base_demo_subcommand_main() {
     trust_required="$BASE_PROJECT_COMMAND_TRUST_REQUIRED"
     demo_script="$BASE_PROJECT_COMMAND_RESOLVED_ACTION"
     command_runner="$BASE_PROJECT_COMMAND_RUNNER"
+    mise_config_path="$BASE_PROJECT_COMMAND_MISE_CONFIG"
 
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
     command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
+    display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would run demo for project %q in %q: %s\n' \
@@ -74,7 +77,7 @@ base_demo_subcommand_main() {
         "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null
 
     base_std_log_info "Running demo for project '$resolved_name': $display_command"
-    if [[ -z "$command_runner" ]]; then
+    if [[ -z "$command_runner" && -z "$mise_config_path" ]]; then
         (cd "$project_root" && "$demo_script" "${extra_args[@]}")
         return $?
     fi

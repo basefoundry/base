@@ -3,8 +3,12 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
+from base_projects.command_helpers import ProjectCommandResult
 from base_projects.tests.workspace_cli_helpers import invoke_engine
+from base_projects.workspace_manifest import WorkspaceManifestRepo
+from base_projects.workspace_clone_command import clone_workspace_repo
 from base_projects.workspace_clone_command import clone_detail
 
 
@@ -109,6 +113,43 @@ class WorkspaceCloneTests(unittest.TestCase):
             ),
         )
 
+    def test_clone_detail_redacts_child_output(self) -> None:
+        detail = clone_detail(
+            "GITHUB_TOKEN=" + "fixture-value\n",
+            "cloning https://alice:URLSECRET123456@github.com/acme/private.git\n",
+        )
+
+        self.assertEqual(
+            detail,
+            "cloning https://[REDACTED]@github.com/acme/private.git\nGITHUB_TOKEN=" + "[REDACTED]",
+        )
+
+    def test_clone_workspace_repo_redacts_debug_output(self) -> None:
+        ctx = mock.Mock()
+        repo = WorkspaceManifestRepo(name="private", url="https://github.com/acme/private.git")
+        result = ProjectCommandResult(
+            returncode=1,
+            stdout="GITHUB_TOKEN=fixture-value\n",
+            stderr="remote https://alice:URLSECRET123456@github.com/acme/private.git\n",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch(
+                "base_projects.workspace_clone_command.run_project_command",
+                return_value=result,
+            ):
+                clone_workspace_repo(
+                    ctx,
+                    Path(tmpdir) / "basectl",
+                    repo,
+                    Path(tmpdir) / "private",
+                    dry_run=False,
+                )
+
+        debug_text = repr(ctx.log.debug.call_args.args)
+        self.assertNotIn("fixture-value", debug_text)
+        self.assertNotIn("URLSECRET123456", debug_text)
+        self.assertIn("[REDACTED]", debug_text)
     def test_workspace_clone_dry_run_materializes_missing_required_repositories(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

@@ -40,6 +40,12 @@ jobs:
           $ErrorActionPreference = "Stop"
           python -m pytest -q tests/test_windows_support_docs.py
 
+      - name: Run workspace process lifecycle tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          python -m pytest -q cli/python/base_projects/tests/test_workspace_process.py
+
       - name: Verify native Windows prerequisites
         shell: pwsh
         run: |

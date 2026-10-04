@@ -79,12 +79,15 @@ base_build_run_target_record() {
     local working_dir="${BASE_COMMAND_PROTOCOL_FIELDS[working_dir]}"
     local build_command="${BASE_COMMAND_PROTOCOL_FIELDS[command]}"
     local command_runner="${BASE_COMMAND_PROTOCOL_FIELDS[runner]}"
+    local mise_config_path="${BASE_COMMAND_PROTOCOL_FIELDS[mise_config_path]}"
     local command_to_run display_command
 
     base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
 
     command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "" "${extra_args[@]}")" || return $?
+    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "" "${extra_args[@]}")" || return $?
+    display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
     if [[ "$dry_run" == "1" ]]; then
         printf '[DRY-RUN] Would build target %q for project %q in %q: %s\n' \
