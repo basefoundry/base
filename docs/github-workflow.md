@@ -583,8 +583,6 @@ github:
           - Demo Impact
         security:
           - Security Notes
-        breaking-change:
-          - Migration Notes
       paths:
         docs/**:
           - Docs Impact
