@@ -539,6 +539,9 @@ basectl_args_request_help() {
             continue
         fi
         case "$argument" in
+            --)
+                return 1
+                ;;
             --manifest|--format|--repos|--profile|--environment|--config|--log-file|--project|--workspace|--path|--target|--version|--command|--status|--older-than|--keep-last|--since|--until|--last|--lines)
                 expect_value=1
                 ;;
