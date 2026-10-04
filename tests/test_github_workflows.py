@@ -321,6 +321,19 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
     assert job["env"]["BASE_DEMO_FULL_VALIDATION"] == "1"
     assert job["env"]["BASE_CLI_SOURCE_DIR"].endswith(".dependencies/base-cli/lib/python")
 
+    trust_step_index = next(
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict) and step.get("name") == "Trust the selected base-demo mise configuration"
+    )
+    setup_step_index = next(
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict) and "basectl setup --ci base-demo" in step.get("run", "")
+    )
+    assert trust_step_index < setup_step_index
+    assert 'mise trust "$mise_config"' in steps[trust_step_index]["run"]
+
     checkout_repositories = [
         step.get("with", {}).get("repository")
         for step in steps
@@ -356,6 +369,22 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
     assert "owner=\"Base bug\"" in run_commands
     assert "BASE_DEMO_ROOT/base_manifest.yaml" in run_commands
     assert "--non-interactive" in run_commands
+
+    bom_workflow = load_workflow(ECOSYSTEM_RELEASE_BOM_WORKFLOW)
+    bom_compatibility = bom_workflow["jobs"]["compatibility"]
+    bom_steps = bom_compatibility["steps"]
+    bom_trust_step_index = next(
+        index
+        for index, step in enumerate(bom_steps)
+        if isinstance(step, dict) and step.get("name") == "Trust the selected base-demo mise configuration"
+    )
+    bom_setup_step_index = next(
+        index
+        for index, step in enumerate(bom_steps)
+        if isinstance(step, dict) and "basectl setup --ci base-demo" in step.get("run", "")
+    )
+    assert bom_trust_step_index < bom_setup_step_index
+    assert 'mise trust "$mise_config"' in bom_steps[bom_trust_step_index]["run"]
 
 
 def test_copilot_repository_instructions_stay_anchored_to_base_guidance() -> None:

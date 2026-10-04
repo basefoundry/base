@@ -55,6 +55,13 @@ and user-settings plan, and applying that plan requires
 `--allow-project-ide-mutations`. `--yes` never supplies this approval. This
 keeps command execution trust and machine-wide IDE mutation consent separate.
 
+`mise` configuration trust remains owned by mise. A disposable CI checkout that
+declares `.mise.toml` must explicitly trust that reviewed file before running
+`basectl setup`; use a path-scoped command such as `mise trust
+/workspace/base-demo/.mise.toml`. This does not trust the user's whole home
+directory, and it does not grant Base manifest-command approval. CI should keep
+this provider trust step separate from `basectl trust allow <project>`.
+
 ## Runtime verification consent
 
 Project `check` and `doctor`, workspace `check` and `doctor`, and workspace
