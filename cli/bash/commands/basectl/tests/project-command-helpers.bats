@@ -356,6 +356,7 @@ manifest=$project_root/base_manifest.yaml" ]
         "$working_dir" \
         'printf "pwd=%s\n" "$PWD"; printf "sentinel=%s\n" "$0"; printf "args=<%s><%s>\n" "$1" "$2"' \
         basectl-test \
+        "" \
         "one word" \
         two
 
@@ -363,6 +364,26 @@ manifest=$project_root/base_manifest.yaml" ]
     [[ "$output" == *"pwd=$working_dir"* ]]
     [[ "$output" == *"sentinel=basectl-test"* ]]
     [[ "$output" == *"args=<one word><two>"* ]]
+}
+
+@test "project command helper binds mise config around compound shell commands" {
+    source_project_command_helpers
+
+    local working_dir="$TEST_TMPDIR/project"
+    local mise_config="$working_dir/.mise.toml"
+    mkdir -p "$working_dir"
+    touch "$mise_config"
+
+    run base_project_run_shell_command \
+        "$working_dir" \
+        'if [[ "$MISE_CONFIG_FILE" == "$1" ]]; then printf "config=%s\n" "$MISE_CONFIG_FILE"; else exit 1; fi; true && printf "override=%s\n" "$MISE_OVERRIDE_CONFIG_FILENAMES"' \
+        basectl-test \
+        "$mise_config" \
+        "$mise_config"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"config=$mise_config"* ]]
+    [[ "$output" == *"override=$mise_config"* ]]
 }
 
 @test "project command helper wraps uv runner commands" {

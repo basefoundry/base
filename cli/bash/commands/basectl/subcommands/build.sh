@@ -85,7 +85,6 @@ base_build_run_target_record() {
     base_project_set_history_context "$resolved_name" "$project_root" "$manifest_path"
 
     command_to_run="$(base_command_with_runner "$command_runner" "$build_command" "" "${extra_args[@]}")" || return $?
-    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$build_command" "" "${extra_args[@]}")" || return $?
     display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
@@ -104,7 +103,7 @@ base_build_run_target_record() {
 
     base_std_log_info "Building target '$target_name' for project '$resolved_name': $display_command"
     base_validate_command_runner "$command_runner"
-    base_project_run_shell_command "$working_dir" "$command_to_run" basectl-build "${extra_args[@]}"
+    base_project_run_shell_command "$working_dir" "$command_to_run" basectl-build "$mise_config_path" "${extra_args[@]}"
 }
 
 base_build_list_targets() {
