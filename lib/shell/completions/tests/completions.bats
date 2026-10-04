@@ -5,6 +5,9 @@ bats_require_minimum_version 1.5.0
 
 setup() {
     setup_test_tmpdir
+    export HOME="$TEST_TMPDIR/home"
+    export BASE_CACHE_DIR="$TEST_TMPDIR/base-cache"
+    mkdir -p "$HOME" "$BASE_CACHE_DIR"
 }
 
 basectl_help_commands() {
@@ -234,14 +237,36 @@ for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
         continue
     tokens = command.split()[1:]
     path = []
-    for token in tokens:
-        if token.startswith(("<", "[")):
-            break
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
         if token == "--ci":
+            index += 1
             continue
+        if token.startswith("[") or token.startswith("<"):
+            break
         path.append(token)
+        if token.startswith("--") and index + 1 < len(tokens) and tokens[index + 1].startswith("<"):
+            value_name = tokens[index + 1][1:-1].lower()
+            if "version" in value_name:
+                path.append("1.8.0")
+            elif "number" in value_name or value_name.endswith("-id") or value_name == "id":
+                path.append("1")
+            else:
+                path.append("example")
+            index += 1
+        index += 1
     print(" ".join(path))
 PY
+}
+
+@test "documented public leaves provide values for required selector options" {
+    run documented_public_leaves
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'release check --version 1.8.0\n'* ]]
+    [[ "$output" == *$'release plan --version 1.8.0\n'* ]]
+    [[ "$output" != *$'release check --version\n'* ]]
 }
 
 @test "documented public leaves drive completion option parity" {
