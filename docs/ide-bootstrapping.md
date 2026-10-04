@@ -130,8 +130,12 @@ To accept the Base value, remove the key from the IDE `settings.json` and rerun:
 basectl setup <project>
 ```
 
-Settings writes are atomic: Base writes a temporary JSON file in the same
-directory and then replaces `settings.json`.
+Settings files may use JSONC line/block comments and trailing commas. Base parses
+those files structurally, preserves comments and existing user values, and only
+adds absent top-level keys. Malformed JSONC is reported as an actionable setup
+or diagnostic error; Base does not overwrite it. Settings writes remain atomic:
+Base writes the updated text to a temporary file in the same directory and then
+replaces `settings.json`.
 
 ## Validation
 
