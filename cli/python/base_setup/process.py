@@ -279,6 +279,16 @@ def redact_command_argv(command: list[str]) -> list[str]:
     return redacted
 
 
+def decode_subprocess_output(output: bytes | str | None) -> str:
+    """Decode child output without allowing invalid UTF-8 to abort orchestration."""
+
+    if output is None:
+        return ""
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+    return output
+
+
 def redact_command_output(text: str) -> str:
     text = URL_CREDENTIALS_RE.sub(r"\1[REDACTED]@", text)
     return SECRET_VALUE_RE.sub(lambda match: f"{match.group('name')}=[REDACTED]", text)

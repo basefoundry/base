@@ -41,7 +41,53 @@ repos:
     )
 
 
+def write_binary_output_basectl(base_home: Path) -> Path:
+    basectl = base_home / "bin" / "basectl"
+    basectl.parent.mkdir(parents=True, exist_ok=True)
+    basectl.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "sys.stdout.buffer.write(b'result: \\xff\\n')\n"
+        "sys.stderr.buffer.write(b'warning: \\xfe\\n')\n",
+        encoding="utf-8",
+    )
+    basectl.chmod(0o755)
+    return basectl
+
+
 class WorkspaceSetupTests(unittest.TestCase):
+    def test_workspace_setup_replaces_invalid_utf8_from_child_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest_path = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            write_manifest(workspace / "project", "project")
+            write_binary_output_basectl(base_home)
+            manifest_path.write_text(
+                """schema_version: 1
+workspace:
+  name: demo-suite
+repos:
+  - name: project
+""",
+                encoding="utf-8",
+            )
+
+            status, stdout, stderr = invoke_engine(
+                ["setup", "--workspace", str(workspace), "--manifest", str(manifest_path), "--yes"],
+                base_home,
+                home,
+            )
+
+        self.assertEqual(status, 0)
+        self.assertIn("result: \ufffd\n", stdout)
+        self.assertIn("warning: \ufffd\n", stderr)
+
     def test_workspace_setup_skips_base_manifest_parsing(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
