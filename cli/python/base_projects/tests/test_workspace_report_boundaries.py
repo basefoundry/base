@@ -5,10 +5,9 @@ import json
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator
-
 from base_projects.tests.test_workspace_checks import write_default_manifest, write_shell_manifest
 from base_projects.tests.workspace_cli_helpers import invoke_engine
+from tests.contracts.workspace_contract_helpers import validate_workspace_payload
 
 
 REPORTS = ("status", "check", "doctor", "onboarding", "agent-brief")
@@ -133,7 +132,7 @@ def test_outside_alias_is_invalid_without_inspection_or_unsafe_guidance(
             assert "outside workspace root" in " ".join(item["next_actions"])
             assert all(signal["status"] == "unavailable" for signal in item["signals"].values())
             schema = Path(__file__).resolve().parents[4] / "docs/schemas/workspace-agent-brief.json"
-            Draft202012Validator(json.loads(schema.read_text(encoding="utf-8"))).validate(payload)
+            validate_workspace_payload(payload, schema)
     elif report == "status":
         assert any(line.startswith("api ") and "invalid" in line.split() for line in stdout.splitlines())
     else:
