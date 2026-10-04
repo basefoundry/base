@@ -465,6 +465,33 @@ repos:
         self.assertIn("GITHUB_TOKEN=[REDACTED]", stdout.getvalue())
         self.assertIn("https://[REDACTED]@github.com", stderr.getvalue())
 
+    def test_configure_workspace_repo_replaces_invalid_utf8_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            ctx = mock.Mock()
+            basectl = root / "base" / "bin" / "basectl"
+            target = workspace_configure.WorkspaceConfigureTarget(
+                name="base",
+                root=root / "base",
+                repo_spec="basefoundry/base",
+            )
+            completed = subprocess.CompletedProcess(
+                [str(basectl), "repo", "configure"],
+                0,
+                stdout=b"configured: \xff\n",
+                stderr=b"warning: \xfe\n",
+            )
+
+            with mock.patch("base_projects.workspace_configure.subprocess.run", return_value=completed):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    status = workspace_configure.configure_workspace_repo(ctx, basectl, target, dry_run=False)
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stdout.getvalue(), "configured: \ufffd\n")
+        self.assertEqual(stderr.getvalue(), "warning: \ufffd\n")
+
     def test_configure_workspace_repo_reports_timeout(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

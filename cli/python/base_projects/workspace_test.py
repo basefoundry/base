@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
 
 
@@ -325,7 +326,7 @@ def execute_workspace_test_target(
             command,
             check=False,
             capture_output=True,
-            text=True,
+            text=False,
             cwd=target.root,
             env=env,
             timeout=WORKSPACE_TEST_TIMEOUT_SECONDS,
@@ -338,8 +339,8 @@ def execute_workspace_test_target(
     except OSError as exc:
         return WorkspaceTestResult("failed", f"could not run test command: {exc}")
 
-    stdout = redact_command_output(result.stdout or "")
-    stderr = redact_command_output(result.stderr or "")
+    stdout = redact_command_output(decode_subprocess_output(result.stdout))
+    stderr = redact_command_output(decode_subprocess_output(result.stderr))
     if result.returncode == 0:
         return WorkspaceTestResult("passed", stdout=stdout, stderr=stderr)
     return WorkspaceTestResult(

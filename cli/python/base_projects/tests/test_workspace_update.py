@@ -391,6 +391,15 @@ class WorkspaceUpdateTests(unittest.TestCase):  # pylint: disable=too-many-publi
                 ),
                 "Git pull for repository 'demo' exited with 1; stderr=fatal: Not possible to fast-forward, aborting.",
             ),
+            (
+                subprocess.CompletedProcess(
+                    ["git", "pull", "--ff-only"],
+                    0,
+                    stdout=b"Updated: \xff\n",
+                    stderr=b"warning: \xfe\n",
+                ),
+                "Git pull for repository 'demo' exited with 0; stdout=Updated: \ufffd; stderr=warning: \ufffd",
+            ),
         )
 
         for result, expected in cases:
@@ -406,6 +415,21 @@ class WorkspaceUpdateTests(unittest.TestCase):  # pylint: disable=too-many-publi
 
                 message, *arguments = ctx.log.debug.call_args.args
                 self.assertEqual(message % tuple(arguments), expected)
+
+    def test_workspace_git_probe_decodes_invalid_utf8_output(self) -> None:
+        completed = subprocess.CompletedProcess(
+            ["git", "status"],
+            0,
+            stdout=b"status: \xff\n",
+            stderr=b"warning: \xfe\n",
+        )
+
+        with mock.patch("base_projects.workspace_update.subprocess.run", return_value=completed) as run:
+            result = workspace_update.run_workspace_git_probe(Path("/workspace"), "status")
+
+        self.assertEqual(result.stdout, "status: \ufffd\n")
+        self.assertEqual(result.stderr, "warning: \ufffd\n")
+        self.assertFalse(run.call_args.kwargs["text"])
 
     def test_workspace_update_rejects_repository_target_outside_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
