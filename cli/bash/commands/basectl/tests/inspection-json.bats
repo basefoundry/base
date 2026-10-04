@@ -41,13 +41,23 @@ if [[ "$1" == "issue" && "$2" == "view" ]]; then
         exit 0
     fi
 fi
-if [[ "$1" == "project" && "$2" == "item-list" ]]; then
-    if [[ "${BASE_GH_TEST_PROJECT_MISSING:-0}" == "1" ]]; then
-        printf 'Ready\037P2\037\037CLI\037\n'
-    else
-        printf 'Ready\037P2\037M\037CLI\037Contract Hardening\n'
+if [[ "$1" == "api" ]]; then
+    if [[ "$*" == *"users/basefoundry"* ]]; then
+        printf 'Organization\n'
+        exit 0
     fi
-    exit 0
+    if [[ "$*" == *projectsV2/*/fields* ]]; then
+        printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"priority-id","name":"Priority"},{"id":"size-id","name":"Size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
+        exit 0
+    fi
+    if [[ "$*" == *projectsV2/*/items* ]]; then
+        if [[ "${BASE_GH_TEST_PROJECT_MISSING:-0}" == "1" ]]; then
+            printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":null},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":null}]}]]'
+        else
+            printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Contract Hardening"}}}]}]]'
+        fi
+        exit 0
+    fi
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
 exit 99
