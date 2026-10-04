@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import jsonschema
-
 from tests.contracts.workspace_contract_helpers import run_workspace_command
+from tests.contracts.workspace_contract_helpers import validate_workspace_payload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -59,9 +58,7 @@ def test_workspace_agent_brief_command_matches_published_schema(tmp_path: Path) 
     assert result.returncode == 0, result.stderr
     assert result.stderr == ""
     payload = json.loads(result.stdout)
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-    jsonschema.Draft202012Validator.check_schema(schema)
-    jsonschema.validate(payload, schema)
+    validate_workspace_payload(payload, SCHEMA_PATH)
     assert payload["schema_version"] == 1
     assert payload["next_actions"]
     assert payload["repositories"][0]["default_branch"] == "main"

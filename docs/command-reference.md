@@ -55,11 +55,11 @@ full compatibility contract.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. Project-originated IDE app, extension, and user-setting mutations require separate approval. | `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--allow-project-ide-mutations`, `--recreate-venv`, `--upgrade-pip`, `--notify`, `--no-notify` |
+| `basectl setup [project]` | Install or reconcile Base and optional project artifacts. Project-originated IDE app, extension, and user-setting mutations require separate approval. | `--project <name>`, `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--yes`, `--allow-project-ide-mutations`, `--recreate-venv`, `--upgrade-pip`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create, refresh, or remove Base-managed Bash and Zsh startup snippets, backing up existing dotfiles before changes. | `--defaults`, `--no-defaults`, `--remove`, `--dry-run` |
-| `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--dry-run` |
-| `basectl onboard [project]` | Guide first-run setup through check, setup, shell profile, doctor, project discovery, and read-only manifest trust status. Defaults to `base`. | `--profile <list>`, `--dry-run`, `--yes`, `--allow-project-ide-mutations`, `--no-profile` |
-| `basectl version` | Show the installed Base version. | none |
+| `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--project <name>`, `--dry-run` |
+| `basectl onboard [project]` | Guide first-run setup through check, setup, shell profile, doctor, project discovery, and read-only manifest trust status. Defaults to `base`. | `--project <name>`, `--profile <list>`, `--dry-run`, `--yes`, `--allow-project-ide-mutations`, `--no-profile` |
+| `basectl version` | Show the installed Base version. | `--all`, `--json` |
 
 ### Setup Profiles And Behavior
 
@@ -137,18 +137,18 @@ is requested on macOS, Base warns if `osascript` is not available.
 | Command | What it does | Important flags |
 |---|---|---|
 | `basectl projects list` | Discover Base-managed projects under the workspace root. | `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl activate <project>` | Start an interactive Base Bash runtime shell for a project. | `--workspace <path>`, `--no-cd` |
+| `basectl activate <project>` | Start an interactive Base Bash runtime shell for a project. | `--project <name>`, `--workspace <path>`, `--no-cd` |
 | `basectl test [project]` | Run the project's declared test command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl run [project] <command>` | Run a named manifest command from the project root. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl run [project] --list` | List runnable commands declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl build [project] [target...]` | Run declared build targets, or `build.default` when no target is provided. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl build [project] --list` | List build targets declared by a project manifest. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl demo [project]` | Run a project-owned demo script. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
-| `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--workspace <path>`, `--format <text\|json>`, `--write` |
-| `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--workspace <path>`, `--format <text\|json>` |
-| `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
-| `basectl trust revoke <project>` | Remove local manifest command approval. | `--workspace <path>` |
+| `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--project <name>`, `--workspace <path>`, `--format <text\|json>`, `--write` |
+| `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
+| `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--project <name>`, `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
+| `basectl trust revoke <project>` | Remove local manifest command approval. | `--project <name>`, `--workspace <path>` |
 
 Manifest-declared `test`, `run`, `build`, `demo`, and activation surfaces are
 project-owned code executed from the project root. Review manifests from
@@ -183,9 +183,9 @@ manifest trust.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl setup --ci [project]` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv`, `--upgrade-pip` |
-| `basectl check [project]` | Check Base readiness and, when selected by project name or `--manifest`, manifest-declared project requirements. It does not install or repair prerequisites, modify project files, or run tests. Normal runs write local logs/history; project checks also record `~/.base.d/<project>/checks/last.json`. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network` |
-| `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network`, `--no-color` |
+| `basectl setup --ci [project]` | Run setup with CI-safe defaults. Does not run tests or create runners/VMs. | `--project <name>`, `--format <text\|json>`, `--manifest <path>`, `--profile <list>`, `--recreate-venv`, `--upgrade-pip` |
+| `basectl check [project]` | Check Base readiness and, when selected by project name or `--manifest`, manifest-declared project requirements. It does not install or repair prerequisites, modify project files, or run tests. Normal runs write local logs/history; project checks also record `~/.base.d/<project>/checks/last.json`. | `--project <name>`, `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--verify-project-runtime`, `--remote-network` |
+| `basectl doctor [project]` | Explain Base and optional project findings with stable finding IDs and fixes. | `--project <name>`, `--ci`, `--profile <list>`, `--format <text\|json>`, `--manifest <path>`, `--remote-network`, `--verify-project-runtime`, `--no-color` |
 | `basectl doctor explain <finding-id>` | Print local, deterministic guidance for a stable finding ID. | `--format <text\|json>` |
 | `basectl logs` | List recent Base CLI runtime logs. | `--command <name[,name...]>`, `--limit <count>` |
 | `basectl logs last-failed` | Print the latest failed command metadata plus a bounded redacted log tail. | `--command <name[,name...]>`, `--lines <count>`, `--format <text\|csv\|tsv\|yaml\|json>` |
@@ -195,7 +195,7 @@ manifest trust.
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name[,name...]>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name[,name...]>`, `--lines <count>` |
 | `basectl clean` | Preview cleanup of completed Base run bundles and component caches; use `--yes` to delete matches. Active runs are retained and reported. | `--older-than <age>`, `--keep-last <count>`, `--dry-run`, `--yes` |
-| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and persistent runtime caches. Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
+| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and persistent runtime caches. Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--project <name>`, `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
 | `basectl config path` | Print the local Base config path. | none |
 | `basectl config show` | Show local Base config as redacted JSON. | none |
 | `basectl config doctor` | Diagnose local Base config. | none |
@@ -205,8 +205,8 @@ manifest trust.
 | Command | What it does | Important flags |
 |---|---|---|
 | `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl workspace check` | Render check-oriented readiness state across workspace projects. Text output summarizes check names and messages; JSON keeps the diagnostic envelope. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl workspace doctor` | Render actionable workspace diagnostics with stable finding IDs and fix guidance. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl workspace check` | Render check-oriented readiness state across workspace projects. Text output summarizes check names and messages; JSON keeps the diagnostic envelope. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>`, `--verify-project-runtime` |
+| `basectl workspace doctor` | Render actionable workspace diagnostics with stable finding IDs and fix guidance. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>`, `--verify-project-runtime` |
 | `basectl workspace onboarding` | Summarize expected-repository first-day state and a prioritized executable next-actions sequence without cloning or setup. Requires a configured or explicit workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl workspace agent-brief` | Report local baseline, agent-guidance, AI-context, environment, validation evidence, and derived next actions for expected and extra Base-managed repositories without mutation or network calls. Requires a configured or explicit workspace manifest. JSON schema: [`docs/schemas/workspace-agent-brief.json`](schemas/workspace-agent-brief.json). | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Missing-repository materialization is GitHub-only today because this path delegates to `repo clone`. Uses `workspace.manifest` from user config unless `--manifest` is supplied. Text output uses a stable repository/action/result table with aggregate counts. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
@@ -230,7 +230,7 @@ daily project loop commands from the local checkout.
 | `basectl repo check [path]` | Verify the local repository baseline. Stable inspection JSON uses the shared v1 envelope. | `--agent-guidance`, `--agent-ready`, `--release`, `--format <text\|json>` |
 | `basectl repo configure [path]` | Apply Base-managed GitHub repository settings, labels, default branch protection, non-default branch naming enforcement, the trusted issue/category branch policy workflow, and repo Project metadata. After a default-branch dispatch produces a recent trusted success, its GitHub-Actions-bound PR-head status becomes required. Reads `.github/base-project.yml` to seed options and fill missing issue defaults when present; an optional `.github/base-review-policy.yml` declares minimum approving reviews and code-owner review, while existing stronger GitHub settings are preserved. `--release` also seeds the generic release contract and process docs, while `--replace-project` repairs a nonstandard Project layout. | `--repo <owner/name>`, `--project <title>`, `--project-owner <login>`, `--project-schema <schema>`, `--copy-project-fields-from <title>`, `--initiative-option <name>`, `--release`, `--replace-project`, `--no-project`, `--no-protect-default-branch`, `--dry-run` |
 | `basectl repo agent-guidance [path]` | Seed optional repo-local agent guidance files, optionally through a draft PR. Real PR runs derive the issue category; offline `--pr --dry-run` also requires `--category <name>`. | `--repo <owner/name>`, `--repo-name <name>`, `--default-branch <name>`, `--validation-command <cmd>`, `--issue <number>`, `--category <name>`, `--pr`, `--dry-run` |
-| `basectl repo installer-template [path]` | Write the maintained project installer starter script to a path, defaulting to `./install.sh`, optionally through a draft PR. Real PR runs derive the issue category; offline `--pr --dry-run` also requires `--category <name>`. | `--print`, `--repo <owner/name>`, `--issue <number>`, `--category <name>`, `--pr`, `--dry-run` |
+| `basectl repo installer-template [path]` | Write the maintained project installer starter script to a path, defaulting to `./install.sh`, optionally through a draft PR. Real PR runs derive the issue category; offline `--pr --dry-run` also requires `--category <name>`. | `--print`, `--stdout` (alias of `--print`), `--repo <owner/name>`, `--issue <number>`, `--category <name>`, `--pr`, `--dry-run` |
 | `basectl gh issue list` | List GitHub issues through `gh`. | passes through `gh` options |
 | `basectl gh issue create` | Create an issue with Base category conventions, assign it, and add repo Project metadata when the repo is known. Defaults to `--category enhancement` and Project `Size=S` when omitted. Use `--assignee <login>` to assign explicitly or `--no-assignee` to bypass a repository default. Project updates are limited to Projects linked to the issue repository unless `--allow-cross-repo` is explicitly supplied. | `--category <bug\|enhancement\|documentation\|ci\|security>`, `--title <title>`, `--body <body>`, `--repo <owner/name>`, `--assignee <login>`, `--no-assignee`, `--project <title>`, `--project-owner <login>`, `--size <T\|S\|M\|L>`, `--no-project`, `--allow-cross-repo` |
 | `basectl gh issue readiness <number>` | Check whether an issue has the required body sections and, when Project coordinates are supplied, Base Project fields before assignment. Omitting Project coordinates reports a partial result. Stable inspection JSON uses the shared v1 envelope. | `--repo <owner/name>`, `--project-owner <login>`, `--project-number <number>`, `--format <text\|json>` |
@@ -254,7 +254,7 @@ daily project loop commands from the local checkout.
 | `basectl release notes --version <version>` | Extract release notes for the requested version. | `--manifest <path>` |
 | `basectl release publish --version <version>` | Create the annotated Git tag and GitHub Release only after the configured repository, origin fetch/push URLs, live remote default branch, and local full `HEAD` SHA match; recheck before tagging and verify the local, pushed, and GitHub tag SHAs. Manifests with `release.bom.required: true` also require `--bom <path>`. | `--manifest <path>`, `--bom <path>`, `--dry-run`, `--yes` |
 | `basectl docs` | Open the Base documentation home page on GitHub. | `--show-url` |
-| `basectl export-context [project]` | Export a project's `.ai-context/` directory as Markdown or Zip. | `--workspace <path>`, `--format <markdown\|zip>`, `--output <path>`, `--print`, `--list-files` |
+| `basectl export-context [project]` | Export a project's `.ai-context/` directory as Markdown or Zip. | `--project <name>`, `--workspace <path>`, `--format <markdown\|zip>`, `--output <path>`, `--print`, `--list-files` |
 | `basectl prompt list` | List repo-owned Markdown prompts that Base can render for AI-assisted workflows. | none |
 | `basectl prompt product-self-review` | Print the periodic Base product self-review prompt with current Base metadata. | `--output <path>` |
 

@@ -217,6 +217,47 @@ assert_zsh_completion_options_match_help() {
     [ "$status" -eq 0 ]
 }
 
+documented_public_leaves() {
+    python3 - "$BASE_REPO_ROOT/docs/command-reference.md" <<'PY'
+import sys
+from pathlib import Path
+
+for line in Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if not line.startswith("| `basectl "):
+        continue
+    protected = line.replace(r"\|", "\x00")
+    cells = [cell.replace("\x00", "|").strip() for cell in protected.strip().strip("|").split("|")]
+    command = cells[0].strip("`")
+    if command == "basectl gh pr create/status/checks/ready/merge":
+        for leaf in ("create", "status", "checks", "ready", "merge"):
+            print(f"gh pr {leaf}")
+        continue
+    tokens = command.split()[1:]
+    path = []
+    for token in tokens:
+        if token.startswith(("<", "[")):
+            break
+        if token == "--ci":
+            continue
+        path.append(token)
+    print(" ".join(path))
+PY
+}
+
+@test "documented public leaves drive completion option parity" {
+    local path
+    # GitHub pass-through leaves have no Base-owned option contract. Workspace
+    # check/doctor are covered after #2427 publishes their consent flag in help.
+    local skip_list="gh issue list|gh issue create|gh auth status|gh auth refresh|gh pr create|gh pr status|gh pr checks|gh pr ready|gh pr merge|gh project issue set-fields|workspace check|workspace doctor"
+
+    while read -r path; do
+        [[ -n "$path" ]] || continue
+        [[ "|$skip_list|" == *"|$path|"* ]] && continue
+        local label="${path// /-}"
+        assert_bash_completion_options_match_help "$label" $path
+    done < <(documented_public_leaves | sort -u)
+}
+
 run_zsh_positional_completion() {
     run env BASE_HOME="$BASE_REPO_ROOT" zsh -fc '
         compdef() { :; }

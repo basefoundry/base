@@ -20,7 +20,7 @@
       "type": "string"
     },
     "workspace_manifest": {
-      "$ref": "#/$defs/workspaceManifest"
+      "$ref": "workspace-manifest.json"
     },
     "repository_count": {
       "type": "integer",
@@ -40,21 +40,6 @@
     }
   },
   "$defs": {
-    "workspaceManifest": {
-      "type": "object",
-      "required": ["path", "name", "schema_version"],
-      "properties": {
-        "path": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "schema_version": {
-          "const": 1
-        }
-      }
-    },
     "fileSignal": {
       "type": "object",
       "required": ["status", "missing_files", "not_executable_files"],

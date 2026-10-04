@@ -22,7 +22,7 @@
       "type": "string"
     },
     "workspace_manifest": {
-      "$ref": "#/$defs/workspaceManifest"
+      "$ref": "workspace-manifest.json"
     },
     "dry_run": {
       "type": "boolean"
@@ -48,21 +48,6 @@
     }
   },
   "$defs": {
-    "workspaceManifest": {
-      "type": "object",
-      "required": ["path", "name", "schema_version"],
-      "properties": {
-        "path": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "schema_version": {
-          "const": 1
-        }
-      }
-    },
     "repository": {
       "type": "object",
       "required": ["repository", "path", "required", "action", "status", "fatal"],

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/basefoundry/base/blob/main/docs/schemas/workspace-manifest.json",
+  "title": "Base workspace manifest envelope",
+  "description": "Shared schema for the stable workspace report manifest envelope.",
+  "type": "object",
+  "required": ["path", "name", "schema_version"],
+  "properties": {
+    "path": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    }
+  }
+}

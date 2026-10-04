@@ -236,17 +236,19 @@ def clone_workspace_repo(
     except ProjectRunnerError as exc:
         return WorkspaceCloneResult("failed", str(exc))
 
+    stdout = redact_command_output(result.stdout)
+    stderr = redact_command_output(result.stderr)
     ctx.log.debug(
         "Clone command for repository '%s' exited with %s; stdout=%r stderr=%r",
         repo.name,
         result.returncode,
-        result.stdout,
-        result.stderr,
+        stdout,
+        stderr,
     )
     if result.returncode != 0:
         return WorkspaceCloneResult(
             "failed",
-            detail=clone_detail(result.stdout, result.stderr),
+            detail=clone_detail(stdout, stderr),
             exit_code=result.returncode,
         )
 

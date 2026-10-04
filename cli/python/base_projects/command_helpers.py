@@ -80,13 +80,13 @@ def run_project_command(
         ) from exc
     return ProjectCommandResult(
         returncode=result.returncode,
-        stdout=result.stdout,
-        stderr=result.stderr or "",
+        stdout=process.redact_command_output(result.stdout or ""),
+        stderr=process.redact_command_output(result.stderr or ""),
     )
 
 
 def write_project_command_output(result: ProjectCommandResult) -> None:
     if result.stdout:
-        print(result.stdout, end="")
+        print(process.redact_command_output(result.stdout), end="")
     if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
+        print(process.redact_command_output(result.stderr), end="", file=sys.stderr)

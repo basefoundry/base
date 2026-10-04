@@ -8,27 +8,84 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+- PR policy examples now use only labels that Base manages or documents; the
+  dead `breaking-change` mapping was removed and governance coverage checks for
+  future unknown label triggers.
+
+### Added
+
+- Added `basectl workspace test` for workspace-wide test execution with stable
+  machine-readable output for automation.
+
+- Added `basectl uninstall` with verification and safer completion reporting.
+
+- Added repository review-policy configuration and project test-requirements
+  declarations with preflight support for uv-managed extras.
+
 - Added `basectl version --all` and `--all --json` to inspect active component
   versions, provider paths, Git revisions, and dirty state even when providers
   or the Base Python environment are unavailable.
 
-- Added an optional repository-owned review policy for `basectl repo configure`.
-  Teams can request approving reviews and code-owner review without changing
-  the no-configuration behavior of existing solo repositories; stronger
-  GitHub settings are preserved after readback.
+### Changed
+- CLI help now accepts a trailing bare `help` token on nested commands, and
+  project-taking commands expose `--project` so a project named `help` remains
+  addressable.
+
+- Security CI now checks tracked Bash sources, managed startup files, and Zsh
+  syntax instead of leaving shell startup files outside the blocking coverage.
+
+- Expanded workspace update and checkout validation to reject projects that
+  escape the configured root, target the wrong upstream branch, or use an
+  ancestor checkout; empty clone/update plans now produce actionable summaries.
+
+- Standardized command option parsing, diagnostics, status rendering, project
+  selection, and JSON envelopes across the expanded setup, workspace, history,
+  repository, and GitHub command surfaces.
+
+- Clarified the supported platform boundary: the coordinated release baseline
+  covers macOS and Ubuntu/Debian, while native Windows and WSL2 guidance is
+  explicitly staged or limited rather than presented as universal support.
 
 - Stability compatibility: added the `--test-requirements-sha256` trust approval
   flag to the stable command baseline, with migration guidance for consumers that
   treat the machine-readable baseline as the source of truth.
 
-- Stability compatibility: enroll every documented Stable command and preserve
-  baseline exceptions when regenerating the fixture.
+- Stability compatibility now enrolls every documented Stable command, preserves
+  baseline exceptions when regenerating the fixture, and documents the completed
+  report and usage-error behavior for `version` in the shared inspection-v1 enum.
 
 - Stability compatibility: publish the workspace test JSON schema and validate
   the command's stable envelope against it.
 
-- Stability compatibility: add `version` to the shared inspection-v1 command
-  enum and document its completed-report and usage-error behavior.
+### Fixed
+
+- Corrected uninstall-all ordering so the Base runtime is removed only after all
+  selected project uninstall operations complete.
+
+- Preserved workspace context and report integrity across failed test/demo
+  resolution, malformed optional state, duplicate managed repositories, logical
+  aliases, and latest-check records; failed record writes are now visible without
+  changing project-health semantics.
+
+- Hardened trust and diagnostics boundaries by requiring verified test-requirement
+  extras, binding approvals to requirement digests, containing generated exports,
+  and redacting credentials and secret parameters from subprocess/workspace
+  reports.
+
+- Strengthened release BOM validation for schema, identity, participant evidence,
+  platform consistency, canonical artifacts, digest sidecars, and staged assets
+  before publication; release-tag failures now have safe local recovery guidance.
+
+- Improved malformed configuration and encoding errors, GitHub Project transport
+  recovery, installer checksum verification, and first-mile platform checks so
+  failures are reported as actionable domain diagnostics.
+
+### Notes
+
+- The coordinated release baseline covers macOS and Ubuntu/Debian. Native Windows
+  and WSL2 guidance is staged or limited rather than presented as universal
+  released compatibility; release publication uses the provider pins recorded by
+  the release BOM.
 
 ## [1.9.0] - 2026-09-08
 
