@@ -339,20 +339,16 @@ def execute_workspace_test_target(
     except OSError as exc:
         return WorkspaceTestResult("failed", f"could not run test command: {exc}")
 
-    stdout = decode_subprocess_output(result.stdout)
-    stderr = decode_subprocess_output(result.stderr)
+    stdout = redact_command_output(decode_subprocess_output(result.stdout))
+    stderr = redact_command_output(decode_subprocess_output(result.stderr))
     if result.returncode == 0:
-        return WorkspaceTestResult(
-            "passed",
-            stdout=redact_command_output(stdout),
-            stderr=redact_command_output(stderr),
-        )
+        return WorkspaceTestResult("passed", stdout=stdout, stderr=stderr)
     return WorkspaceTestResult(
         "failed",
         f"test command exited with status {result.returncode}",
         exit_code=result.returncode,
-        stdout=redact_command_output(stdout),
-        stderr=redact_command_output(stderr),
+        stdout=stdout,
+        stderr=stderr,
     )
 
 
