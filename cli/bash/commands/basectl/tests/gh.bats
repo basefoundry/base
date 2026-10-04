@@ -682,6 +682,17 @@ run_gh_subcommand() {
     [[ "$output" == *"Fix hint: set missing Project fields before assigning implementation work."* ]]
 }
 
+@test "basectl gh issue readiness distinguishes a missing Project item" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_PROJECT_MODE=none \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Project item, Status, Priority, Size, Area, Initiative"* ]]
+}
+
 @test "basectl gh issue readiness reports Project API failures" {
     write_issue_readiness_gh_mock
     write_complete_issue_readiness_body
