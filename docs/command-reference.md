@@ -410,9 +410,10 @@ Base responsible for participation semantics, readiness diagnostics, explicit
 execution trust, lifecycle guidance, onboarding, and handoff evidence. Project
 environments and command execution remain owned by their declared substrates.
 
-Manifest-declared commands are trusted project code. Base executes
-`test.command`, `build.targets.*.command`, `commands.*`, `demo.script`, and
-`activate.source` entries from the project root. Review manifests from
+Manifest-declared execution entries are trusted project code. Base executes
+the command strings in `test.command`, `build.targets.*.command`, and
+`commands.*`, the executable path in `demo.script`, and the source path in
+`activate.source` from the project root. Review manifests from
 unfamiliar repositories before running `basectl test`, `basectl build`,
 `basectl run`, `basectl demo`, or manifest-backed `basectl activate`; use
 `--dry-run` and `--list` first for command surfaces that support read-only
