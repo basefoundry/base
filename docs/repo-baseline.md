@@ -462,6 +462,12 @@ approval counts, CODEOWNERS, teams, or repository secrets. Pass
 `--no-protect-default-branch` when a repository intentionally skips this
 Base-managed ruleset.
 
+When an existing Base ruleset already declares one or more
+`allowed_merge_methods`, `repo configure` preserves that exact non-empty list;
+it does not union the list with the Base template or silently narrow it. When
+the existing ruleset has no merge-method setting, the Base default is
+`["squash"]`.
+
 Branch naming enforcement is tool-independent. When supported by the
 repository's current GitHub plan and ownership context, `repo configure`
 creates or updates the active `Base branch naming` ruleset for all non-default
