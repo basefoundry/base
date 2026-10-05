@@ -462,6 +462,14 @@ approval counts, CODEOWNERS, teams, or repository secrets. Pass
 `--no-protect-default-branch` when a repository intentionally skips this
 Base-managed ruleset.
 
+If a repository owner adds an additional required status check, such as
+`Core product validation`, first ensure that the Base revision being used has
+ruleset reconciliation that preserves existing required checks. Older
+revisions can rebuild the named ruleset from the Base template and remove a
+manually added check when `repo configure` is rerun. Treat preservation as a
+prerequisite before relying on repeated configuration; the additional check
+remains an explicit repository-owner decision.
+
 Branch naming enforcement is tool-independent. When supported by the
 repository's current GitHub plan and ownership context, `repo configure`
 creates or updates the active `Base branch naming` ruleset for all non-default
