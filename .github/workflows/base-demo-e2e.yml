@@ -110,6 +110,18 @@ jobs:
             printf '  enabled: false\n'
           } >> "$HOME/.base.d/config.yaml"
 
+      - name: Trust the selected base-demo mise configuration
+        env:
+          BASE_DEMO_ROOT: ${{ github.workspace }}/../base-demo
+        run: |
+          set -euo pipefail
+          mise_config="$BASE_DEMO_ROOT/.mise.toml"
+          if [[ -f "$mise_config" ]]; then
+            mise trust "$mise_config"
+          else
+            printf 'No mise configuration declared by base-demo; continuing without provider trust.\n'
+          fi
+
       - name: Run Base demo end-to-end loop
         env:
           BASE_DEMO_ROOT: ${{ github.workspace }}/../base-demo
