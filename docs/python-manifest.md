@@ -252,8 +252,12 @@ does not parse them into a restricted argument array; shell syntax in
 project-owned behavior. `demo.script` is different: it must be a relative,
 project-owned executable file path, not a shell command string. Base validates
 that the file exists, is executable, and stays inside the project root before
-running it. See the [Project Demo Workflow](project-demo-workflow.md) for the
-complete `demo.script` contract and passthrough argument behavior.
+running it. Paths may contain spaces when quoted in the YAML value, such as
+`script: "./demo/demo walkthrough.sh"`. Put compound shell logic inside that
+script rather than in `demo.script`; arguments after `--`, such as
+`basectl demo base-demo -- --non-interactive`, are passed to the script
+unchanged. See the [Project Demo Workflow](project-demo-workflow.md) for the
+complete `demo.script` contract.
 
 Review manifests from unfamiliar repositories before running project-owned
 commands or demo scripts, and use `--dry-run` or listing commands first when

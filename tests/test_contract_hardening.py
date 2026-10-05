@@ -260,6 +260,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "Workspace test JSON schema",
         "Workspace update JSON schema",
         "Native Windows support boundary",
+        "Project demo script contract",
     }
     for row in rows:
         assert row["Source of truth"], row
