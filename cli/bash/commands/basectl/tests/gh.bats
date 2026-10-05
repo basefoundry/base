@@ -186,18 +186,33 @@ if [[ "$1" == "issue" && "$2" == "view" ]]; then
         exit 0
     fi
 fi
-if [[ "$1" == "project" && "$2" == "item-list" ]]; then
-    case "${BASE_GH_TEST_PROJECT_MODE:-complete}" in
-        complete)
-            printf 'Ready\037P2\037M\037CLI\037Agentic Coding Platform\n'
-            ;;
-        missing)
-            printf 'Ready\037P2\037\037CLI\037\n'
-            ;;
-        none)
-            ;;
-    esac
-    exit 0
+if [[ "$1" == "api" ]]; then
+    if [[ "${BASE_GH_TEST_FAIL_PROJECT:-0}" == "1" && "$*" == *"projectsV2"* ]]; then
+        printf 'Project API unavailable\n' >&2
+        exit 1
+    fi
+    if [[ "$*" == *"users/basefoundry"* ]]; then
+        printf 'Organization\n'
+        exit 0
+    fi
+    if [[ "$*" == *"projectsV2/10/fields"* ]]; then
+        printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"priority-id","name":"Priority"},{"id":"size-id","name":"Size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
+        exit 0
+    fi
+    if [[ "$*" == *"projectsV2/10/items"* ]]; then
+        case "${BASE_GH_TEST_PROJECT_MODE:-complete}" in
+            complete)
+                printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                ;;
+            missing)
+                printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":null},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":null}]}]]'
+                ;;
+            none)
+                printf '%s\n' '[[]]'
+                ;;
+        esac
+        exit 0
+    fi
 fi
 printf 'unexpected gh args: %s\n' "$*" >&2
 exit 99
@@ -605,6 +620,17 @@ run_gh_subcommand() {
     [[ "$output" == *"Assignees: codeforester"* ]]
 }
 
+@test "basectl gh issue readiness paginates Project items through the REST API" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 0 ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == *"api --method GET --paginate --slurp orgs/basefoundry/projectsV2/10/items"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" != *"project item-list"* ]]
+}
+
 @test "basectl gh issue readiness reports partial when Project validation is omitted" {
     write_issue_readiness_gh_mock
     write_complete_issue_readiness_body
@@ -654,6 +680,29 @@ run_gh_subcommand() {
     [[ "$output" == *"Issue #123 readiness: not ready"* ]]
     [[ "$output" == *"Project fields: missing Size, Initiative"* ]]
     [[ "$output" == *"Fix hint: set missing Project fields before assigning implementation work."* ]]
+}
+
+@test "basectl gh issue readiness distinguishes a missing Project item" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_PROJECT_MODE=none \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Project item, Status, Priority, Size, Area, Initiative"* ]]
+}
+
+@test "basectl gh issue readiness reports Project API failures" {
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_FAIL_PROJECT=1 \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project API unavailable"* ]]
+    [[ "$output" == *"GitHub command failed: gh api --method GET orgs/basefoundry/projectsV2/10/fields -f per_page=100"* ]]
 }
 
 @test "basectl gh issue readiness reports GitHub API failures" {
