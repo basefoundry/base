@@ -220,6 +220,8 @@ EOF
     assert_json "$output" \
         '.data.body.missing_sections == [] and .data.project.fields.size == "M"'
     assert_json "$output" \
+        '.data.project.status == "ok" and .data.project.requested == true'
+    assert_json "$output" \
         '(.data | keys) == ["assignees","body","issue_number","labels","project","readiness","repository"] and
          (.data.body | keys) == ["missing_sections","status"] and
          (.data.project | keys) == ["fields","missing_fields","number","owner","requested","status"] and

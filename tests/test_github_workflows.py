@@ -122,6 +122,9 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "base_demo_version",
         "base_demo_ref",
     }
+    assert inputs["base_version"]["default"] == "1.10.0"
+    assert inputs["base_demo_version"]["default"] == "0.2.0"
+    assert inputs["base_demo_ref"]["default"] == "c5709ed8dfa623539e9c326554712490e14f1774"
     assert assemble["needs"] == "compatibility"
     assert workflow["concurrency"]["group"] == (
         "${{ github.workflow }}-${{ inputs.base_version }}-${{ inputs.base_ref }}"

@@ -181,6 +181,144 @@ base_repo_review_policy_summary() {
     fi
 }
 
+base_repo_merge_default_branch_ruleset_payload() {
+    local current="$1"
+    local desired="$2"
+
+    jq -c --argjson desired "$desired" '
+        . as $current |
+        def first_rule($rules; $type):
+            ($rules | map(select(.type == $type)) | .[0] // null);
+        def bool_or($left; $right):
+            (($left == true) or ($right == true));
+
+        (.rules // []) as $current_rules |
+        ($desired.rules // []) as $desired_rules |
+        (first_rule($current_rules; "pull_request")) as $current_pull_request |
+        (first_rule($desired_rules; "pull_request")) as $desired_pull_request |
+        (first_rule($current_rules; "required_status_checks")) as $current_status_checks |
+        (first_rule($desired_rules; "required_status_checks")) as $desired_status_checks |
+        (
+            {}
+            | .pull_request = (
+                (($current_pull_request.parameters // {}) * ($desired_pull_request.parameters // {}))
+                | .required_approving_review_count = (
+                    [
+                        ($current_pull_request.parameters.required_approving_review_count // 0),
+                        ($desired_pull_request.parameters.required_approving_review_count // 0)
+                    ] | max
+                )
+                | .require_code_owner_review = bool_or(
+                    ($current_pull_request.parameters.require_code_owner_review // false);
+                    ($desired_pull_request.parameters.require_code_owner_review // false)
+                )
+                | .dismiss_stale_reviews_on_push = bool_or(
+                    ($current_pull_request.parameters.dismiss_stale_reviews_on_push // false);
+                    ($desired_pull_request.parameters.dismiss_stale_reviews_on_push // false)
+                )
+                | .require_last_push_approval = bool_or(
+                    ($current_pull_request.parameters.require_last_push_approval // false);
+                    ($desired_pull_request.parameters.require_last_push_approval // false)
+                )
+                | .required_review_thread_resolution = bool_or(
+                    ($current_pull_request.parameters.required_review_thread_resolution // false);
+                    ($desired_pull_request.parameters.required_review_thread_resolution // false)
+                )
+                | .allowed_merge_methods = (
+                    if (($current_pull_request.parameters.allowed_merge_methods // []) | length) > 0
+                    then $current_pull_request.parameters.allowed_merge_methods
+                    else ($desired_pull_request.parameters.allowed_merge_methods // [])
+                    end
+                )
+            )
+            | .required_status_checks = (
+                (($current_status_checks.parameters // {}) * ($desired_status_checks.parameters // {}))
+                | .strict_required_status_checks_policy = bool_or(
+                    ($current_status_checks.parameters.strict_required_status_checks_policy // false);
+                    ($desired_status_checks.parameters.strict_required_status_checks_policy // false)
+                )
+                | .do_not_enforce_on_create = bool_or(
+                    ($current_status_checks.parameters.do_not_enforce_on_create // false);
+                    ($desired_status_checks.parameters.do_not_enforce_on_create // false)
+                )
+                | .required_status_checks = (
+                    [
+                        ($current_status_checks.parameters.required_status_checks // []),
+                        ($desired_status_checks.parameters.required_status_checks // [])
+                    ] | add | unique_by([.context, (.integration_id // null)])
+                )
+            )
+        ) as $merged_parameters |
+        ($desired_rules | map(
+            . as $desired_rule |
+            (first_rule($current_rules; $desired_rule.type)) as $current_rule |
+            if $desired_rule.type == "pull_request" or $desired_rule.type == "required_status_checks"
+            then $desired_rule * {parameters: $merged_parameters[$desired_rule.type]}
+            elif $current_rule != null then $current_rule
+            else $desired_rule
+            end
+        )) as $merged_base_rules |
+        ($current_rules | map(
+            . as $current_rule |
+            select(($desired_rules | map(.type) | index($current_rule.type)) == null)
+        )) as $additional_rules |
+        (($current.conditions // {}) * ($desired.conditions // {})) as $merged_conditions_base |
+        ($merged_conditions_base
+            | .ref_name = ((.ref_name // {}) * ($desired.conditions.ref_name // {}))
+            | .ref_name.include = (
+            [
+                (($current.conditions.ref_name.include // [])),
+                (($desired.conditions.ref_name.include // []))
+            ] | add | unique
+            )
+            | .ref_name.exclude = (($current.conditions.ref_name.exclude // []) | unique)
+        ) as $merged_conditions |
+        ($desired * {
+            conditions: $merged_conditions,
+            rules: ($merged_base_rules + $additional_rules)
+        })
+    ' <<< "$current"
+}
+
+base_repo_validate_default_branch_ruleset() {
+    local actual="$1"
+    local expected="$2"
+
+    jq -e --argjson expected "$expected" '
+        . as $actual |
+        def rule($type): (.rules // [] | map(select(.type == $type)) | .[0]);
+        def has_status($status):
+            any(($actual.rules // [] | map(select(.type == "required_status_checks")) | .[0].parameters.required_status_checks // [])[];
+                .context == $status.context and
+                ((.integration_id // null) == ($status.integration_id // null)));
+        ($expected.rules | map(select(.type == "pull_request")) | .[0].parameters) as $expected_pull_request |
+        ($expected.rules | map(select(.type == "required_status_checks")) | .[0].parameters) as $expected_status_checks |
+        (rule("pull_request").parameters) as $actual_pull_request |
+        (rule("required_status_checks").parameters // {}) as $actual_status_checks |
+
+        (type == "object") and ((.rules // null) | type == "array") and
+        (rule("pull_request") != null) and
+        (($actual_pull_request.required_approving_review_count // 0) >=
+            ($expected_pull_request.required_approving_review_count // 0)) and
+        (($actual_pull_request.require_code_owner_review // false) or
+            (($expected_pull_request.require_code_owner_review // false) | not)) and
+        (all(["dismiss_stale_reviews_on_push", "require_last_push_approval", "required_review_thread_resolution"][];
+            (($expected_pull_request[.] // false) | not) or ($actual_pull_request[.] // false))) and
+        (all(($expected_pull_request.allowed_merge_methods // [])[];
+            . as $method | any(($actual_pull_request.allowed_merge_methods // [])[]; . == $method))) and
+        (($actual_status_checks.strict_required_status_checks_policy // false) or
+            (($expected_status_checks.strict_required_status_checks_policy // false) | not)) and
+        (($actual_status_checks.do_not_enforce_on_create // false) or
+            (($expected_status_checks.do_not_enforce_on_create // false) | not)) and
+        (all(($expected.rules // [])[]; . as $expected_rule |
+            (any($actual.rules[]?; .type == $expected_rule.type) and
+                if $expected_rule.type == "required_status_checks"
+                then all(($expected_rule.parameters.required_status_checks // [])[]; has_status(.))
+                else true
+                end)))
+    ' <<< "$actual" >/dev/null
+}
+
 base_repo_default_branch_ruleset_payload() {
     local require_issue_branch_policy="${1:-0}"
     local required_approving_reviews="${2:-0}"
@@ -228,20 +366,61 @@ base_repo_configure_default_branch_protection() {
     local current_approvals=0
     local current_code_owner="false"
     local current_policy=""
+    local current_ruleset=""
     local payload
+    local readback_output=""
     local ruleset_lookup_output=""
     local ruleset_id=""
     local ruleset_write_output=""
+    local effective_payload=""
+    local current_ruleset_status="unavailable (GitHub CLI is not available during dry-run)"
+    local current_review_summary="unavailable"
 
     if [[ "$dry_run" == "1" ]]; then
         payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy" "$requested_approvals" "$requested_code_owner")"
+        effective_payload="$payload"
+        if command -v gh >/dev/null 2>&1; then
+            ruleset_lookup_output="$(gh api "repos/$repo/rulesets" \
+                --jq 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""' 2>&1)" || {
+                current_ruleset_status="unavailable (GitHub read failed)"
+            }
+            if [[ -n "$ruleset_lookup_output" && "$ruleset_lookup_output" =~ ^[0-9]+$ ]]; then
+                current_ruleset_status="found (ruleset id $ruleset_lookup_output)"
+                current_ruleset="$(gh api "repos/$repo/rulesets/$ruleset_lookup_output" 2>&1)" || {
+                    current_ruleset_status="unavailable (current ruleset read failed)"
+                    current_ruleset=""
+                }
+                if [[ -n "$current_ruleset" ]]; then
+                    if jq -e 'type == "object" and (.rules | type == "array")' <<< "$current_ruleset" >/dev/null 2>&1; then
+                        current_policy="$(jq -r '[.rules[]? | select(.type == "pull_request") | .parameters | [(.required_approving_review_count // 0), (.require_code_owner_review // false)] | @tsv] | first // ""' <<< "$current_ruleset")" || current_policy=""
+                        if [[ -n "$current_policy" ]]; then
+                            IFS=$'\t' read -r current_approvals current_code_owner <<< "$current_policy"
+                            current_review_summary="$current_approvals approving review(s), code-owner review $([[ "$current_code_owner" == "true" ]] && printf required || printf not-required)"
+                        else
+                            current_review_summary="0 approving review(s), code-owner review not-required"
+                        fi
+                        effective_payload="$(base_repo_merge_default_branch_ruleset_payload "$current_ruleset" "$payload")" || {
+                            current_ruleset_status="unavailable (current ruleset could not be reconciled)"
+                            effective_payload="$payload"
+                        }
+                    else
+                        current_ruleset_status="malformed (no effective merge calculated)"
+                    fi
+                fi
+            elif [[ -z "$ruleset_lookup_output" ]]; then
+                current_ruleset_status="not found"
+                current_review_summary="no existing review policy"
+            fi
+        fi
         printf "[DRY-RUN] Would create or update GitHub ruleset 'Base default branch protection' on '%s' targeting '~DEFAULT_BRANCH'.\n" "$repo"
-        printf "[DRY-RUN] Review policy: current stronger settings are preserved at apply time; proposed %s.\n" "$(base_repo_review_policy_summary "$policy_configured")"
+        printf "[DRY-RUN] Current GitHub ruleset: %s.\n" "$current_ruleset_status"
+        printf "[DRY-RUN] Current GitHub review policy: %s.\n" "$current_review_summary"
+        printf "[DRY-RUN] Effective proposed review policy: %s.\n" "$(base_repo_review_policy_summary "$policy_configured")"
         printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --jq %s\n" \
             "$repo" \
             "$(base_repo_pretty_quote 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""')"
         printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --method POST --input -\n" "$repo"
-        printf "[DRY-RUN] Payload: %s\n" "$payload"
+        printf "[DRY-RUN] Effective payload: %s\n" "$effective_payload"
         return 0
     fi
 
@@ -259,13 +438,17 @@ base_repo_configure_default_branch_protection() {
     }
     ruleset_id="$ruleset_lookup_output"
 
-    if [[ "$policy_configured" == "1" && -n "$ruleset_id" ]]; then
-        current_policy="$(gh api "repos/$repo/rulesets/$ruleset_id" \
-            --jq '[.rules[]? | select(.type == "pull_request") | .parameters | [.required_approving_review_count // 0, (.require_code_owner_review // false)] | @tsv] | first // ""' 2>&1)" || {
-            [[ -z "$current_policy" ]] || base_std_log_error "$current_policy"
-            base_std_log_error "Unable to read the current review policy for '$repo'."
+    if [[ -n "$ruleset_id" ]]; then
+        current_ruleset="$(gh api "repos/$repo/rulesets/$ruleset_id" 2>&1)" || {
+            [[ -z "$current_ruleset" ]] || base_std_log_error "$current_ruleset"
+            base_std_log_error "Unable to read the current Base default branch protection ruleset for '$repo'."
             return 1
         }
+        jq -e 'type == "object" and (.rules | type == "array") and ([.rules[] | select(.type == "pull_request" or .type == "required_status_checks" or .type == "deletion" or .type == "non_fast_forward")] | group_by(.type) | all(length <= 1))' <<< "$current_ruleset" >/dev/null 2>&1 || {
+            base_std_log_error "GitHub returned a malformed Base default branch protection ruleset for '$repo'."
+            return 1
+        }
+        current_policy="$(jq -r '[.rules[]? | select(.type == "pull_request") | .parameters | [(.required_approving_review_count // 0), (.require_code_owner_review // false)] | @tsv] | first // ""' <<< "$current_ruleset")" || return 1
         IFS=$'\t' read -r current_approvals current_code_owner <<< "$current_policy"
         [[ "$current_approvals" =~ ^[0-6]$ && ( "$current_code_owner" == "true" || "$current_code_owner" == "false" ) ]] || {
             base_std_log_error "GitHub returned an invalid review policy for '$repo'."
@@ -284,6 +467,12 @@ base_repo_configure_default_branch_protection() {
     fi
 
     payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy" "$requested_approvals" "$requested_code_owner")"
+    if [[ -n "$current_ruleset" ]]; then
+        payload="$(base_repo_merge_default_branch_ruleset_payload "$current_ruleset" "$payload")" || {
+            base_std_log_error "Unable to reconcile the existing Base default branch protection ruleset for '$repo'."
+            return 1
+        }
+    fi
 
     if [[ -n "$ruleset_id" ]]; then
         ruleset_write_output="$(printf '%s\n' "$payload" | gh api "repos/$repo/rulesets/$ruleset_id" --method PUT --input - 2>&1)" || {
@@ -309,6 +498,23 @@ base_repo_configure_default_branch_protection() {
             return 1
         }
         printf "  Branch protection: created 'Base default branch protection'.\n"
+    fi
+
+    if [[ -n "$ruleset_write_output" ]]; then
+        if [[ -z "$ruleset_id" ]]; then
+            ruleset_id="$(jq -r '.id // empty' <<< "$ruleset_write_output" 2>/dev/null || true)"
+        fi
+        if [[ -n "$ruleset_id" ]]; then
+            readback_output="$(gh api "repos/$repo/rulesets/$ruleset_id" 2>&1)" || {
+                [[ -z "$readback_output" ]] || base_std_log_error "$readback_output"
+                base_std_log_error "Unable to read back Base default branch protection for '$repo'."
+                return 1
+            }
+            base_repo_validate_default_branch_ruleset "$readback_output" "$payload" || {
+                base_std_log_error "GitHub readback did not preserve the effective Base default branch protection for '$repo'."
+                return 1
+            }
+        fi
     fi
 }
 

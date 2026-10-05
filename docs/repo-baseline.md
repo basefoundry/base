@@ -475,6 +475,12 @@ repository owner may explicitly add the exact `Core product validation` check
 to the default-branch ruleset. `basectl repo configure` preserves that
 additional required check and does not change the human-approval count.
 
+When an existing Base ruleset already declares one or more
+`allowed_merge_methods`, `repo configure` preserves that exact non-empty list;
+it does not union the list with the Base template or silently narrow it. When
+the existing ruleset has no merge-method setting, the Base default is
+`["squash"]`.
+
 Branch naming enforcement is tool-independent. When supported by the
 repository's current GitHub plan and ownership context, `repo configure`
 creates or updates the active `Base branch naming` ruleset for all non-default

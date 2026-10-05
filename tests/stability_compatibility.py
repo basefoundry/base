@@ -456,6 +456,19 @@ def compare_snapshots(reference: dict[str, Any], actual: dict[str, Any]) -> list
     return errors
 
 
+def compare_documented_command_enrollment(
+    command_names: list[str], reference: dict[str, Any]
+) -> list[str]:
+    """Require every documented Stable command to have a baseline entry."""
+
+    reference_commands = reference.get("commands", {})
+    return [
+        f"commands: missing documented Stable command {command!r} from compatibility fixture"
+        for command in command_names
+        if command not in reference_commands
+    ]
+
+
 def compare_provenance(
     provenance: dict[str, Any], current: dict[str, Any]
 ) -> list[str]:
@@ -682,6 +695,7 @@ def run_check(root: Path, base_ref: str | None = None, runtime: bool = False) ->
         errors.append("compatibility fixture must use format_version 1")
     if reference.get("baseline_version") != "1.8.0":
         errors.append("compatibility fixture must retain v1.8.0 as its provenance baseline")
+    errors.extend(compare_documented_command_enrollment(command_names, reference))
     errors.extend(compare_snapshots(reference, actual))
     errors.extend(compare_provenance(provenance, reference))
     if runtime:
