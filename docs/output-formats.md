@@ -32,8 +32,10 @@ basectl workspace status | tee status.tsv # headerless TSV rows
 basectl workspace status --format json   # one stable JSON document
 ```
 
-The JSON document emitted by `basectl workspace status --format json` includes
-a top-level aggregate `status` alongside `workspace`, `project_count`, and
+The JSON document emitted by `basectl workspace status --format json` uses
+schema version `1`, published at
+[`schemas/workspace-status.json`](schemas/workspace-status.json). It includes a
+top-level aggregate `status` alongside `workspace`, `project_count`, and
 `projects`. The aggregate uses `error` over `warn` over `ok` precedence; each
 project record retains its existing `status` field.
 

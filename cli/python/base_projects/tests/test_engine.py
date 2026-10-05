@@ -595,6 +595,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertTrue(stdout.startswith("{\n"))
+        self.assertEqual(payload["schema_version"], 1)
         self.assertIn('  "workspace": ', stdout)
         self.assertEqual(payload["status"], "warn")
         self.assertEqual(payload["workspace"], str(workspace.resolve()))
@@ -710,6 +711,7 @@ class ProjectDiscoveryTests(unittest.TestCase):
         projects_by_name = {project["name"]: project for project in payload["projects"]}
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
+        self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["status"], "error")
         self.assertEqual(projects_by_name["healthy"]["status"], "ok")
         self.assertEqual(projects_by_name["attention"]["status"], "warn")

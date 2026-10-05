@@ -26,6 +26,7 @@ def workspace_status_to_json(
     workspace_manifest: WorkspaceManifest | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
+        "schema_version": 1,
         "workspace": str(workspace_root),
         "status": most_severe_status(*(status.status for status in statuses)),
         "project_count": workspace_project_count(statuses, workspace_manifest),

@@ -230,6 +230,7 @@ def test_contract_registry_maps_initial_review_contracts_to_enforcement() -> Non
         "Workspace agent-brief JSON schema": "tests/contracts/test_workspace_agent_brief_schema.py",
         "Workspace test JSON schema": "tests/contracts/test_workspace_test_schema.py",
         "Workspace update JSON schema": "tests/contracts/test_workspace_update_schema.py",
+        "Workspace status JSON schema": "tests/contracts/test_workspace_status_schema.py",
     }
     for contract, enforcement in expected_entries.items():
         assert contract in text
@@ -259,6 +260,7 @@ def test_contract_registry_rows_have_complete_enforcement_metadata() -> None:
         "Workspace agent-brief JSON schema",
         "Workspace test JSON schema",
         "Workspace update JSON schema",
+        "Workspace status JSON schema",
         "Native Windows support boundary",
         "Project demo script contract",
     }
@@ -281,6 +283,7 @@ def test_contract_runner_composes_existing_policy_checks() -> None:
         "cli/python/base_projects/tests/test_workspace_pull.py",
         "tests/contracts/test_workspace_agent_brief_schema.py",
         "tests/contracts/test_workspace_update_schema.py",
+        "tests/contracts/test_workspace_status_schema.py",
         "cli/python/base_release/tests/test_engine.py",
         "cli/bash/commands/basectl/tests/inspection-json.bats",
         'bats --filter "project installer template"',

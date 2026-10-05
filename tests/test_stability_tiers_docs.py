@@ -11,6 +11,7 @@ INSPECTION_JSON_DOC = REPO_ROOT / "docs" / "inspection-json.md"
 AGENT_BRIEF_SCHEMA = REPO_ROOT / "docs" / "schemas" / "workspace-agent-brief.json"
 WORKSPACE_UPDATE_SCHEMA = REPO_ROOT / "docs" / "schemas" / "workspace-update.json"
 WORKSPACE_TEST_SCHEMA = REPO_ROOT / "docs" / "schemas" / "workspace-test.json"
+WORKSPACE_STATUS_SCHEMA = REPO_ROOT / "docs" / "schemas" / "workspace-status.json"
 WORKSPACE_MANIFEST_SCHEMA = REPO_ROOT / "docs" / "schemas" / "workspace-manifest.json"
 
 
@@ -102,8 +103,21 @@ def test_workspace_test_schema_is_registered_as_stable() -> None:
     assert "test_workspace_test_schema.py" in contracts
 
 
+def test_workspace_status_schema_is_registered_as_stable() -> None:
+    schema = WORKSPACE_STATUS_SCHEMA.read_text(encoding="utf-8")
+    stability = STABILITY_DOC.read_text(encoding="utf-8")
+    command_reference = COMMAND_REFERENCE.read_text(encoding="utf-8")
+    contracts = CONTRACTS_DOC.read_text(encoding="utf-8")
+
+    assert '"$schema": "https://json-schema.org/draft/2020-12/schema"' in schema
+    assert '"schema_version":' in schema
+    assert "schemas/workspace-status.json" in stability
+    assert "schemas/workspace-status.json" in command_reference
+    assert "test_workspace_status_schema.py" in contracts
+
+
 def test_workspace_schema_manifest_definition_is_shared() -> None:
-    schema_paths = (AGENT_BRIEF_SCHEMA, WORKSPACE_UPDATE_SCHEMA, WORKSPACE_TEST_SCHEMA)
+    schema_paths = (AGENT_BRIEF_SCHEMA, WORKSPACE_UPDATE_SCHEMA, WORKSPACE_TEST_SCHEMA, WORKSPACE_STATUS_SCHEMA)
     manifest_schema = json.loads(WORKSPACE_MANIFEST_SCHEMA.read_text(encoding="utf-8"))
 
     assert manifest_schema["type"] == "object"
