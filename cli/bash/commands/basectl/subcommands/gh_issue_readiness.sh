@@ -423,7 +423,11 @@ base_gh_issue_readiness_render_json() {
         "$(base_inspection_json_nullable_string "$_BASE_GH_ISSUE_READINESS_PROJECT_INITIATIVE")"
     ((${#_BASE_GH_ISSUE_READINESS_MISSING_SECTIONS[@]})) && body_status=error
     if ((_BASE_GH_ISSUE_READINESS_PROJECT_VALIDATION_REQUESTED)); then
-        ((${#_BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS[@]})) && project_check_status=error
+        if ((${#_BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS[@]})); then
+            project_check_status=error
+        else
+            project_check_status=ok
+        fi
     fi
     case "$_BASE_GH_ISSUE_READINESS_ISSUE_READY_STATE" in
         ready)
