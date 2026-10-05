@@ -63,7 +63,6 @@ base_test_subcommand_main() {
 
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
-    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
     display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
@@ -86,12 +85,11 @@ base_test_subcommand_main() {
     uv_extras="${BASE_COMMAND_PROTOCOL_FIELDS[uv_extras]:-}"
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$test_command" "$uv_extras" "${extra_args[@]}")" || return $?
-    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
 
     base_project_activate_environment \
         "$resolved_name" "$project_root" "$manifest_path" "$dry_run" "$route_venv_dir" "$uses_uv_manager" >/dev/null
 
     base_std_log_info "Running tests for project '$resolved_name': $display_command"
     base_validate_command_runner "$command_runner"
-    base_project_run_shell_command "$project_root" "$command_to_run" basectl-test "${extra_args[@]}"
+    base_project_run_shell_command "$project_root" "$command_to_run" basectl-test "$mise_config_path" "${extra_args[@]}"
 }

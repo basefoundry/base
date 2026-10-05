@@ -262,7 +262,6 @@ base_run_subcommand_main() {
 
     command_runner="${command_runner:-}"
     command_to_run="$(base_command_with_runner "$command_runner" "$run_command" "$uv_extras" "${extra_args[@]}")" || return $?
-    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$run_command" "$uv_extras" "${extra_args[@]}")" || return $?
     display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
@@ -278,5 +277,5 @@ base_run_subcommand_main() {
 
     base_std_log_info "Running command '$command_name' for project '$resolved_name': $display_command"
     base_validate_command_runner "$command_runner"
-    base_project_run_shell_command "$project_root" "$command_to_run" basectl-run "${extra_args[@]}"
+    base_project_run_shell_command "$project_root" "$command_to_run" basectl-run "$mise_config_path" "${extra_args[@]}"
 }

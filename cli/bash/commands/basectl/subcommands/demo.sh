@@ -62,7 +62,6 @@ base_demo_subcommand_main() {
     command_runner="${command_runner:-}"
     printf -v quoted_demo_script '%q' "$demo_script"
     command_to_run="$(base_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
-    command_to_run="$(base_command_with_mise_config "$mise_config_path" "$command_to_run")" || return $?
     display_command="$(base_display_command_with_runner "$command_runner" "$quoted_demo_script" "" "${extra_args[@]}")" || return $?
     display_command="$(base_command_with_mise_config "$mise_config_path" "$display_command")" || return $?
 
@@ -82,5 +81,5 @@ base_demo_subcommand_main() {
         return $?
     fi
     base_validate_command_runner "$command_runner"
-    base_project_run_shell_command "$project_root" "$command_to_run" basectl-demo "${extra_args[@]}"
+    base_project_run_shell_command "$project_root" "$command_to_run" basectl-demo "$mise_config_path" "${extra_args[@]}"
 }

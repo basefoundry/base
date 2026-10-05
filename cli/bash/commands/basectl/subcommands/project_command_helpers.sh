@@ -389,7 +389,8 @@ base_project_run_shell_command() {
     local working_dir="$1"
     local command_to_run="$2"
     local command_name="$3"
-    shift 3
+    local mise_config_path="${4:-}"
+    shift 4
 
     # Bash assigns the word after `bash -c <command>` to `$0`; use a stable
     # sentinel so delegated extra args start at `$1` and populate `$@`.
@@ -407,6 +408,10 @@ base_project_run_shell_command() {
         if [[ -n "${HOME:-}" ]]; then
             PATH="${PATH:+$PATH:}$HOME/.local/bin"
             export PATH
+        fi
+        if [[ -n "$mise_config_path" ]]; then
+            export MISE_CONFIG_FILE="$mise_config_path"
+            export MISE_OVERRIDE_CONFIG_FILENAMES="$mise_config_path"
         fi
         cd "$working_dir" && bash -c "$command_to_run" "$command_name" "$@"
     )
