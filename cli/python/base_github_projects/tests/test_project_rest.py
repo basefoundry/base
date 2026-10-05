@@ -191,7 +191,7 @@ def test_rest_item_lookup_searches_all_paginated_pages() -> None:
         calls.append(path)
         if "projectsV2/1/items?" in path:
             assert "title%3A" not in path
-            return [{"items": []}, {"items": [item]}]
+            return [[], [item]]
         raise AssertionError(f"unexpected REST path: {path}")
 
     transport = project_rest.RestProjectTransport(run=run, sleep=lambda _seconds: None)

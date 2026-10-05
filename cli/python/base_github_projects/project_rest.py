@@ -367,6 +367,11 @@ def _list_payload(payload: Any, key: str) -> list[dict[str, Any]]:
 
 
 def _paginated_list_payload(payload: Any, key: str) -> list[dict[str, Any]]:
+    if isinstance(payload, list) and all(isinstance(page, list) for page in payload):
+        items: list[dict[str, Any]] = []
+        for page in payload:
+            items.extend(_list_payload(page, key))
+        return items
     if isinstance(payload, list) and all(isinstance(page, dict) and key in page for page in payload):
         items: list[dict[str, Any]] = []
         for page in payload:
