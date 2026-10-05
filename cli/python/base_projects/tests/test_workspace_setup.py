@@ -153,7 +153,7 @@ repos:
                 encoding="utf-8",
             )
 
-            with mock.patch("base_projects.workspace_setup.subprocess.run") as run:
+            with mock.patch("base_projects.workspace_setup.run_workspace_subprocess") as run:
                 status, stdout, stderr = invoke_engine(
                     [
                         "setup",
@@ -394,7 +394,7 @@ repos:
             )
 
             with mock.patch(
-                "base_projects.workspace_setup.subprocess.run",
+                "base_projects.workspace_setup.run_workspace_subprocess",
                 side_effect=subprocess.TimeoutExpired(["basectl", "setup"], 1800),
             ):
                 status, stdout, stderr = invoke_engine(

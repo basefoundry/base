@@ -15,6 +15,7 @@ from base_projects.workspace_manifest import WorkspaceManifestError
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
+from base_projects.workspace_process import run_workspace_subprocess
 from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
 
@@ -255,11 +256,8 @@ def execute_workspace_setup_target(
         env.pop(variable, None)
 
     try:
-        result = subprocess.run(
+        result = run_workspace_subprocess(
             command,
-            check=False,
-            capture_output=True,
-            text=False,
             cwd=target.root,
             env=env,
             timeout=WORKSPACE_SETUP_TIMEOUT_SECONDS,
