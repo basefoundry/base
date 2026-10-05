@@ -6,7 +6,7 @@ on:
       base_version:
         description: Base release version owned by this BOM
         required: true
-        default: "1.9.0"
+        default: "1.10.0"
         type: string
       base_ref:
         description: Immutable Base full commit to validate
@@ -35,12 +35,12 @@ on:
       base_demo_version:
         description: Released base-demo version
         required: true
-        default: "0.1.0"
+        default: "0.2.0"
         type: string
       base_demo_ref:
         description: Immutable base-demo full commit to validate
         required: true
-        default: b8ac2ae490e4965b8131195a11377fd0bd787daf
+        default: c5709ed8dfa623539e9c326554712490e14f1774
         type: string
 
 permissions:
