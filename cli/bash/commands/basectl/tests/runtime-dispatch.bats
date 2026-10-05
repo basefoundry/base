@@ -641,6 +641,24 @@ EOF
     [[ "$output" != *"basectl $(head -n 1 "$BASE_REPO_ROOT/VERSION")"* ]]
 }
 
+@test "basectl preserves literal help after the passthrough delimiter" {
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/basectl.sh"
+            base_std_log_debug() { :; }
+            basectl_get_base_home() { :; }
+            basectl_initialize_run_bundle() { :; }
+            basectl_finalize_run_bundle() { :; }
+            basectl_history_record() { :; }
+            basectl_do_test() { printf "test-args=%s\\n" "$*"; }
+            basectl_main test -- help
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "test-args=-- help" ]
+}
+
 @test "README version badge matches VERSION" {
     local expected_version expected_badge
 
