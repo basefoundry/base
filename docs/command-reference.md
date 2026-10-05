@@ -204,7 +204,7 @@ manifest trust.
 
 | Command | What it does | Important flags |
 |---|---|---|
-| `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl workspace status` | Show read-only workspace project status and latest recorded project check dates. Uses `workspace.manifest` from user config unless `--manifest` is supplied. JSON uses the stable schema [`docs/schemas/workspace-status.json`](schemas/workspace-status.json). | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl workspace check` | Render check-oriented readiness state across workspace projects. Text output summarizes check names and messages; JSON keeps the diagnostic envelope. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>`, `--verify-project-runtime` |
 | `basectl workspace doctor` | Render actionable workspace diagnostics with stable finding IDs and fix guidance. Uses `workspace.manifest` from user config unless `--manifest` is supplied. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>`, `--verify-project-runtime` |
 | `basectl workspace onboarding` | Summarize expected-repository first-day state and a prioritized executable next-actions sequence without cloning or setup. Requires a configured or explicit workspace manifest. | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |

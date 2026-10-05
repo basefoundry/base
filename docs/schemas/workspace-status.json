@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/basefoundry/base/blob/main/docs/schemas/workspace-status.json",
+  "title": "Base workspace status report",
+  "description": "Stable schema version 1 for basectl workspace status --format json. Additional properties are allowed for additive, non-breaking fields.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workspace",
+    "status",
+    "project_count",
+    "projects"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "workspace": {
+      "type": "string"
+    },
+    "status": {
+      "enum": ["ok", "warn", "error"]
+    },
+    "project_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/project"
+      }
+    },
+    "workspace_manifest": {
+      "$ref": "workspace-manifest.json"
+    },
+    "repository_count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "required": [
+        "name",
+        "status",
+        "path",
+        "manifest_path",
+        "venv",
+        "manifest",
+        "last_check",
+        "issues"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "enum": ["ok", "warn", "error"]
+        },
+        "path": {
+          "type": "string"
+        },
+        "manifest_path": {
+          "type": ["string", "null"]
+        },
+        "venv": {
+          "type": "string"
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "last_check": {
+          "type": ["object", "null"],
+          "required": ["checked_at", "status"],
+          "properties": {
+            "checked_at": {
+              "type": "string"
+            },
+            "status": {
+              "enum": ["ok", "warn", "error"]
+            }
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "repository": {
+          "type": "string"
+        },
+        "expected": {
+          "type": "boolean"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "default_branch": {
+          "type": "string"
+        },
+        "python_runtime": {
+          "$ref": "#/$defs/python_runtime"
+        }
+      }
+    },
+    "python_runtime": {
+      "type": "object",
+      "required": ["manager", "venv", "python", "version"],
+      "properties": {
+        "manager": {
+          "type": "string"
+        },
+        "venv": {
+          "type": "string"
+        },
+        "python": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "requires_python": {
+          "type": "string"
+        },
+        "pyproject_requires_python": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
