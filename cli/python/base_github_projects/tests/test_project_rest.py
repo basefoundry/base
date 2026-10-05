@@ -178,6 +178,7 @@ def test_rest_reconcile_recovers_duplicate_add_and_reads_back_fields(  # pylint:
             return payload_fixture["issue"]
         if "projectsV2/1/items?" in path:
             search_count += 1
+            assert "title%3A" not in path
             return [] if search_count <= 3 else [item]
         if path.endswith("projectsV2/1/items") and method == "POST":
             raise ProjectDuplicateItemError("Content already exists in this project (HTTP 422)")
@@ -193,6 +194,7 @@ def test_rest_reconcile_recovers_duplicate_add_and_reads_back_fields(  # pylint:
         raise AssertionError(f"unexpected REST call: {method} {path}")
 
     payload_fixture = payload
+    payload_fixture["issue"]["title"] = 'activate/uninstall: a project literally named "help" can no longer be targeted'
     transport = project_rest.RestProjectTransport(run=run, sleep=lambda _seconds: None)
     updates = (
         FieldUpdate("10", "O_backlog", "Status", "Backlog"),

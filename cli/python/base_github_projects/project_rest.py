@@ -48,7 +48,6 @@ class RestItemLookup:
     project: ProjectInfo
     issue_id: str
     repo: str
-    issue_title: str
     field_ids: tuple[str, ...]
     item_id: str | None = None
 
@@ -188,7 +187,7 @@ class RestProjectTransport:
             query = urlencode(
                 {
                     "per_page": "100",
-                    "q": f'repo:{lookup.repo} is:issue title:"{lookup.issue_title}"',
+                    "q": f"repo:{lookup.repo} is:issue",
                     "fields": fields_query,
                 }
             )
@@ -267,7 +266,6 @@ class RestProjectTransport:
             project=project,
             issue_id=str(issue["id"]),
             repo=f"{request.repo_owner}/{request.repo_name}",
-            issue_title=str(issue.get("title", "")),
             field_ids=field_ids,
         )
         item = self.find_project_item(lookup)
@@ -281,7 +279,6 @@ class RestProjectTransport:
                     project=project,
                     issue_id=str(issue["id"]),
                     repo=f"{request.repo_owner}/{request.repo_name}",
-                    issue_title=str(issue.get("title", "")),
                     field_ids=field_ids,
                     item_id=item_id or None,
                 )
@@ -304,7 +301,6 @@ class RestProjectTransport:
                 project=project,
                 issue_id=str(issue["id"]),
                 repo=f"{request.repo_owner}/{request.repo_name}",
-                issue_title=str(issue.get("title", "")),
                 field_ids=field_ids,
                 item_id=item_id,
             )
