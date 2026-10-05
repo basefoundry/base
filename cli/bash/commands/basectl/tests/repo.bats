@@ -962,6 +962,53 @@ EOF
     [[ "$output" == *"authentication failed"* ]]
 }
 
+@test "default branch ruleset reconciliation preserves controls without a review policy file" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    cat > "$TEST_STATE_DIR/ruleset.json" <<'EOF'
+{"conditions":{"ref_name":{"include":["~DEFAULT_BRANCH"],"exclude":[]}},"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":2,"dismiss_stale_reviews_on_push":true,"require_code_owner_review":true,"require_last_push_approval":true,"required_review_thread_resolution":true,"allowed_merge_methods":["squash"]}},{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":true,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"product-tests","integration_id":999}]}}]}
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" != *"--method"* ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
+    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload.json"
+    printf '%s\n' '{"id":42}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    cat "${BASE_REPO_TEST_STATE_DIR:?}/ruleset.json"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+            base_repo_require_gh() { return 0; }
+            base_std_log_warn() { :; }
+            base_std_log_error() { :; }
+            base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
+        '
+
+    [ "$status" -eq 0 ]
+    grep -Fq '"required_approving_review_count":2' "$TEST_STATE_DIR/ruleset-payload.json"
+    grep -Fq '"dismiss_stale_reviews_on_push":true' "$TEST_STATE_DIR/ruleset-payload.json"
+    grep -Fq '"require_last_push_approval":true' "$TEST_STATE_DIR/ruleset-payload.json"
+    grep -Fq '"required_review_thread_resolution":true' "$TEST_STATE_DIR/ruleset-payload.json"
+    grep -Fq '"context":"product-tests","integration_id":999' "$TEST_STATE_DIR/ruleset-payload.json"
+}
+
 @test "basectl repo init is guarded and lazy-loaded" {
     local bash_libs_dir
 
@@ -2255,11 +2302,16 @@ if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" !
     printf '42\n'
     exit 0
 fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"required_approving_review_count"* ]]; then
-    printf '2\ttrue\n'
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"integration_id"* ]]; then
+    printf '15368\n'
     exit 0
 fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"integration_id"* ]]; then
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" != *"--method"* ]]; then
+    printf '%s\n' '{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":2,"require_code_owner_review":true}}]}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"required_approving_review_count"* ]]; then
+    printf '2\ttrue\n'
     exit 0
 fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
@@ -2741,7 +2793,12 @@ if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
     printf '%s\n' "42"
     exit 0
 fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"integration_id"* ]]; then
+    printf '15368\n'
+    exit 0
+fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" != *"--method PUT"* ]]; then
+    printf '%s\n' '{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0,"require_code_owner_review":false}},{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"base/issue-branch-policy","integration_id":15368}]}}]}'
     exit 0
 fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
@@ -3008,8 +3065,12 @@ if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" && "$*" !
     printf '42\n'
     exit 0
 fi
-if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" != *"--method PUT"* ]]; then
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"integration_id"* ]]; then
     printf '15368\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" != *"--method PUT"* ]]; then
+    printf '%s\n' '{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0,"require_code_owner_review":false}},{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"do_not_enforce_on_create":true,"required_status_checks":[{"context":"base/issue-branch-policy","integration_id":15368}]}}]}'
     exit 0
 fi
 if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/actions/workflows/issue-branch-policy.yml" ]]; then
