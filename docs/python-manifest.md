@@ -256,8 +256,8 @@ running it. See the [Project Demo Workflow](project-demo-workflow.md) for the
 complete `demo.script` contract and passthrough argument behavior.
 
 Review manifests from unfamiliar repositories before running project-owned
-commands, and use `--dry-run` or listing commands first when you only need to
-inspect the resolved invocation.
+commands or demo scripts, and use `--dry-run` or listing commands first when
+you only need to inspect the resolved invocation.
 
 ## Relationship To `pyproject.toml`
 
