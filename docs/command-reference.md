@@ -412,8 +412,11 @@ environments and command execution remain owned by their declared substrates.
 
 Manifest-declared execution entries are trusted project code. Base executes
 the command strings in `test.command`, `build.targets.*.command`, and
-`commands.*`, the executable path in `demo.script`, and the source path in
-`activate.source` from the project root. Review manifests from
+`commands.*`, the executable file path in `demo.script`, and the source path in
+`activate.source` from the project root. `demo.script` is not a shell command
+string: Base validates that it is a relative, executable file inside the
+project root before running it. See the [Project Demo Workflow](project-demo-workflow.md)
+for the complete `demo.script` contract. Review manifests from
 unfamiliar repositories before running `basectl test`, `basectl build`,
 `basectl run`, `basectl demo`, or manifest-backed `basectl activate`; use
 `--dry-run` and `--list` first for command surfaces that support read-only
