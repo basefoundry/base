@@ -34,7 +34,14 @@ demo:
 
 `demo.script` is required when `demo` is present. It must be a non-empty string,
 relative to the project root, stay inside the project, point to a file, and be
-executable.
+executable. Paths may contain spaces; quote the YAML value, for example
+`script: "./demo/demo walkthrough.sh"`.
+
+Keep compound shell logic inside that executable script rather than in
+`demo.script`. For example, `demo/demo walkthrough.sh` can run
+`./build.sh && ./serve.sh`; pass demo options after `--`, such as
+`basectl demo base-demo -- --non-interactive`, and Base forwards them to the
+script unchanged.
 
 `demo.description` is optional. It is human-facing metadata for documentation
 and future listing surfaces; Base does not currently display it in command

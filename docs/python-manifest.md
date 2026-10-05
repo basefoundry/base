@@ -248,10 +248,20 @@ clearly when `runner: uv` is selected and `uv` is not on `PATH`.
 
 Command strings remain trusted project code with or without a runner. Base
 does not parse them into a restricted argument array; shell syntax in
-`test.command`, `commands.*.command`, `build.targets.*.command`, and
-`demo.script` is project-owned behavior. Review manifests from unfamiliar
-repositories before running them, and use `--dry-run` or listing commands first
-when you only need to inspect the resolved invocation.
+`test.command`, `commands.*.command`, and `build.targets.*.command` is
+project-owned behavior. `demo.script` is different: it must be a relative,
+project-owned executable file path, not a shell command string. Base validates
+that the file exists, is executable, and stays inside the project root before
+running it. Paths may contain spaces when quoted in the YAML value, such as
+`script: "./demo/demo walkthrough.sh"`. Put compound shell logic inside that
+script rather than in `demo.script`; arguments after `--`, such as
+`basectl demo base-demo -- --non-interactive`, are passed to the script
+unchanged. See the [Project Demo Workflow](project-demo-workflow.md) for the
+complete `demo.script` contract.
+
+Review manifests from unfamiliar repositories before running project-owned
+commands or demo scripts, and use `--dry-run` or listing commands first when
+you only need to inspect the resolved invocation.
 
 ## Relationship To `pyproject.toml`
 
