@@ -198,8 +198,9 @@ base_repo_merge_default_branch_ruleset_payload() {
         (first_rule($desired_rules; "pull_request")) as $desired_pull_request |
         (first_rule($current_rules; "required_status_checks")) as $current_status_checks |
         (first_rule($desired_rules; "required_status_checks")) as $desired_status_checks |
-        {
-            pull_request:
+        (
+            {}
+            | .pull_request = (
                 (($current_pull_request.parameters // {}) * ($desired_pull_request.parameters // {}))
                 | .required_approving_review_count = (
                     [
@@ -228,8 +229,9 @@ base_repo_merge_default_branch_ruleset_payload() {
                     then $current_pull_request.parameters.allowed_merge_methods
                     else ($desired_pull_request.parameters.allowed_merge_methods // [])
                     end
-                ),
-            required_status_checks:
+                )
+            )
+            | .required_status_checks = (
                 (($current_status_checks.parameters // {}) * ($desired_status_checks.parameters // {}))
                 | .strict_required_status_checks_policy = bool_or(
                     ($current_status_checks.parameters.strict_required_status_checks_policy // false);
@@ -245,7 +247,8 @@ base_repo_merge_default_branch_ruleset_payload() {
                         ($desired_status_checks.parameters.required_status_checks // [])
                     ] | add | unique_by([.context, (.integration_id // null)])
                 )
-        } as $merged_parameters |
+            )
+        ) as $merged_parameters |
         ($desired_rules | map(
             . as $desired_rule |
             (first_rule($current_rules; $desired_rule.type)) as $current_rule |
@@ -369,17 +372,55 @@ base_repo_configure_default_branch_protection() {
     local ruleset_lookup_output=""
     local ruleset_id=""
     local ruleset_write_output=""
+    local effective_payload=""
+    local current_ruleset_status="unavailable (GitHub CLI is not available during dry-run)"
+    local current_review_summary="unavailable"
 
     if [[ "$dry_run" == "1" ]]; then
         payload="$(base_repo_default_branch_ruleset_payload "$require_issue_branch_policy" "$requested_approvals" "$requested_code_owner")"
+        effective_payload="$payload"
+        if command -v gh >/dev/null 2>&1; then
+            ruleset_lookup_output="$(gh api "repos/$repo/rulesets" \
+                --jq 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""' 2>&1)" || {
+                current_ruleset_status="unavailable (GitHub read failed)"
+            }
+            if [[ -n "$ruleset_lookup_output" && "$ruleset_lookup_output" =~ ^[0-9]+$ ]]; then
+                current_ruleset_status="found (ruleset id $ruleset_lookup_output)"
+                current_ruleset="$(gh api "repos/$repo/rulesets/$ruleset_lookup_output" 2>&1)" || {
+                    current_ruleset_status="unavailable (current ruleset read failed)"
+                    current_ruleset=""
+                }
+                if [[ -n "$current_ruleset" ]]; then
+                    if jq -e 'type == "object" and (.rules | type == "array")' <<< "$current_ruleset" >/dev/null 2>&1; then
+                        current_policy="$(jq -r '[.rules[]? | select(.type == "pull_request") | .parameters | [(.required_approving_review_count // 0), (.require_code_owner_review // false)] | @tsv] | first // ""' <<< "$current_ruleset")" || current_policy=""
+                        if [[ -n "$current_policy" ]]; then
+                            IFS=$'\t' read -r current_approvals current_code_owner <<< "$current_policy"
+                            current_review_summary="$current_approvals approving review(s), code-owner review $([[ "$current_code_owner" == "true" ]] && printf required || printf not-required)"
+                        else
+                            current_review_summary="0 approving review(s), code-owner review not-required"
+                        fi
+                        effective_payload="$(base_repo_merge_default_branch_ruleset_payload "$current_ruleset" "$payload")" || {
+                            current_ruleset_status="unavailable (current ruleset could not be reconciled)"
+                            effective_payload="$payload"
+                        }
+                    else
+                        current_ruleset_status="malformed (no effective merge calculated)"
+                    fi
+                fi
+            elif [[ -z "$ruleset_lookup_output" ]]; then
+                current_ruleset_status="not found"
+                current_review_summary="no existing review policy"
+            fi
+        fi
         printf "[DRY-RUN] Would create or update GitHub ruleset 'Base default branch protection' on '%s' targeting '~DEFAULT_BRANCH'.\n" "$repo"
-        printf "[DRY-RUN] Current GitHub ruleset: not read during dry-run.\n"
-        printf "[DRY-RUN] Effective proposed review policy: %s. Existing stronger controls are preserved during apply.\n" "$(base_repo_review_policy_summary "$policy_configured")"
+        printf "[DRY-RUN] Current GitHub ruleset: %s.\n" "$current_ruleset_status"
+        printf "[DRY-RUN] Current GitHub review policy: %s.\n" "$current_review_summary"
+        printf "[DRY-RUN] Effective proposed review policy: %s.\n" "$(base_repo_review_policy_summary "$policy_configured")"
         printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --jq %s\n" \
             "$repo" \
             "$(base_repo_pretty_quote 'map(select(.name == "Base default branch protection" and .source_type == "Repository")) | .[0].id // ""')"
         printf "[DRY-RUN] Would run: gh api repos/%s/rulesets --method POST --input -\n" "$repo"
-        printf "[DRY-RUN] Payload: %s\n" "$payload"
+        printf "[DRY-RUN] Effective payload: %s\n" "$effective_payload"
         return 0
     fi
 

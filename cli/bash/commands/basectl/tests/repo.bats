@@ -997,7 +997,7 @@ EOF
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
             base_repo_require_gh() { return 0; }
             base_std_log_warn() { :; }
-            base_std_log_error() { :; }
+            base_std_log_error() { printf "ERROR: %s\n" "$*" >&2; }
             base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
         '
 
@@ -1007,6 +1007,193 @@ EOF
     grep -Fq '"require_last_push_approval":true' "$TEST_STATE_DIR/ruleset-payload.json"
     grep -Fq '"required_review_thread_resolution":true' "$TEST_STATE_DIR/ruleset-payload.json"
     grep -Fq '"context":"product-tests","integration_id":999' "$TEST_STATE_DIR/ruleset-payload.json"
+}
+
+@test "default branch ruleset reconciliation rejects malformed current state before writing" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    printf '%s\n' '{"rules":"malformed"}'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+            base_repo_require_gh() { return 0; }
+            base_std_log_warn() { :; }
+            base_std_log_error() { printf "ERROR: %s\n" "$*" >&2; }
+            base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"malformed Base default branch protection ruleset"* ]]
+    [ ! -e "$TEST_STATE_DIR/ruleset-payload.json" ]
+}
+
+@test "default branch ruleset reconciliation fails when readback is unavailable" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    cat > "$TEST_STATE_DIR/ruleset.json" <<'EOF'
+{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0,"require_code_owner_review":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
+    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload.json"
+    printf '%s\n' '{"id":42}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    if [[ -e "${BASE_REPO_TEST_STATE_DIR:?}/readback-failed" ]]; then
+        printf 'readback unavailable\n' >&2
+        exit 1
+    fi
+    touch "${BASE_REPO_TEST_STATE_DIR:?}/readback-failed"
+    cat "${BASE_REPO_TEST_STATE_DIR:?}/ruleset.json"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+            base_repo_require_gh() { return 0; }
+            base_std_log_warn() { :; }
+            base_std_log_error() { printf "ERROR: %s\n" "$*" >&2; }
+            base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Unable to read back Base default branch protection"* ]]
+    [ -s "$TEST_STATE_DIR/ruleset-payload.json" ]
+}
+
+@test "default branch ruleset reconciliation rejects weakened readback" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    cat > "$TEST_STATE_DIR/ruleset.json" <<'EOF'
+{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0,"require_code_owner_review":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
+    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payload.json"
+    printf '%s\n' '{"id":42}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    if [[ -e "${BASE_REPO_TEST_STATE_DIR:?}/readback-done" ]]; then
+        printf '%s\n' '{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":0,"require_code_owner_review":false}},{"type":"deletion"},{"type":"non_fast_forward"}]}'
+    else
+        touch "${BASE_REPO_TEST_STATE_DIR:?}/readback-done"
+        cat "${BASE_REPO_TEST_STATE_DIR:?}/ruleset.json"
+    fi
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+            base_repo_require_gh() { return 0; }
+            base_std_log_warn() { :; }
+            base_std_log_error() { printf "ERROR: %s\n" "$*" >&2; }
+            base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"GitHub readback did not preserve the effective Base default branch protection"* ]]
+}
+
+@test "default branch ruleset reconciliation is idempotent on repeat application" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    cat > "$TEST_STATE_DIR/ruleset.json" <<'EOF'
+{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":2,"require_code_owner_review":true,"allowed_merge_methods":["merge_commit"]}},{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"product-tests","integration_id":999}]}}]}
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" && "$*" == *"--method PUT"* ]]; then
+    cat > "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-current.json"
+    cat "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-current.json" >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '\n' >> "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-payloads"
+    printf '%s\n' '{"id":42}'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    if [[ -e "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-current.json" ]]; then
+        cat "${BASE_REPO_TEST_STATE_DIR:?}/ruleset-current.json"
+    else
+        cat "${BASE_REPO_TEST_STATE_DIR:?}/ruleset.json"
+    fi
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_REPO_ROOT="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/repo_github_settings.sh"
+            base_repo_require_gh() { return 0; }
+            base_std_log_warn() { :; }
+            base_std_log_error() { printf "ERROR: %s\n" "$*" >&2; }
+            base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
+            base_repo_configure_default_branch_protection 0 codeforester/base-demo 0 0 false 0
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(sed -n '1p' "$TEST_STATE_DIR/ruleset-payloads")" = "$(sed -n '3p' "$TEST_STATE_DIR/ruleset-payloads")" ]
 }
 
 @test "basectl repo init is guarded and lazy-loaded" {
@@ -2246,6 +2433,38 @@ EOF
     [[ "$output" == *'"operator":"regex"'* ]]
     [[ "$output" == *'^(bug|enhancement|documentation|ci|security)/'* ]]
     [[ "$output" != *'"type":"required_status_checks"'* ]]
+}
+
+@test "basectl repo configure dry-run reports current and effective ruleset policy" {
+    local repo_dir="$TEST_TMPDIR/repo"
+
+    mkdir -p "$repo_dir"
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets" ]]; then
+    printf '42\n'
+    exit 0
+fi
+if [[ "$1" == "api" && "$2" == "repos/codeforester/base-demo/rulesets/42" ]]; then
+    printf '%s\n' '{"rules":[{"type":"pull_request","parameters":{"required_approving_review_count":2,"require_code_owner_review":true,"allowed_merge_methods":["merge_commit"]}},{"type":"deletion"},{"type":"non_fast_forward"},{"type":"required_status_checks","parameters":{"required_status_checks":[{"context":"product-tests","integration_id":999}]}}]}'
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo configure "$repo_dir" --repo codeforester/base-demo --dry-run --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Current GitHub ruleset: found (ruleset id 42)."* ]]
+    [[ "$output" == *"Current GitHub review policy: 2 approving review(s), code-owner review required."* ]]
+    [[ "$output" == *"Effective payload:"* ]]
+    [[ "$output" == *'"required_approving_review_count":2'* ]]
+    [[ "$output" == *'"context":"product-tests","integration_id":999'* ]]
 }
 
 @test "basectl repo configure dry-run reports the repository review policy" {
