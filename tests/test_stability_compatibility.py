@@ -32,6 +32,16 @@ def test_documented_stable_commands_include_new_public_rows() -> None:
     assert "basectl uninstall <project>|--all" in commands
 
 
+def test_documented_stable_commands_must_be_enrolled_in_the_fixture() -> None:
+    reference = load_fixture(CURRENT_FIXTURE)
+    command = "basectl uninstall <project>|--all"
+    reference["commands"].pop(command)
+
+    errors = compatibility.compare_documented_command_enrollment([command], reference)
+
+    assert errors == [f"commands: missing documented Stable command {command!r} from compatibility fixture"]
+
+
 def test_write_snapshot_does_not_copy_exceptions_to_unrelated_output(tmp_path: Path, monkeypatch) -> None:
     docs = tmp_path / "docs" / "stability-baseline"
     docs.mkdir(parents=True)
