@@ -54,6 +54,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
   baseline exceptions when regenerating the fixture, and documents the completed
   report and usage-error behavior for `version` in the shared inspection-v1 enum.
 
+- Stability compatibility: publish the workspace test JSON schema and validate
+  the command's stable envelope against it.
+
 ### Fixed
 
 - Corrected uninstall-all ordering so the Base runtime is removed only after all

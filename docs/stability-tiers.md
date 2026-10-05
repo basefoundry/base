@@ -78,6 +78,8 @@ Stable JSON contracts include:
   [`schemas/workspace-agent-brief.json`](schemas/workspace-agent-brief.json).
 - `basectl workspace update --format json`, whose schema version 1 is published
   at [`schemas/workspace-update.json`](schemas/workspace-update.json).
+- `basectl workspace test --format json`, whose schema version 1 is published
+  at [`schemas/workspace-test.json`](schemas/workspace-test.json).
 
 Additive keys are allowed when they do not change the meaning of existing keys.
 Removing keys, renaming keys, changing value types, or changing enum meanings is

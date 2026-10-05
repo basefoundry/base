@@ -687,6 +687,15 @@ action also applies the shared repository URL sanitizer defensively. Ordinary
 command supplies validation, the brief recommends `basectl test`; it does not
 expose or execute the raw command.
 
+`basectl workspace test --manifest <path>` runs each selected repository's
+declared test command serially. The JSON report's `project_count` includes
+every selected repository, and `counts.passed`, `counts.failed`, and
+`counts.skipped` partition those projects by result; therefore their sum equals
+`project_count`. A project without a declared test command is skipped, while a
+delegated command failure is failed and includes its exit code and redacted
+captured output. The published v1 shape is
+[`docs/schemas/workspace-test.json`](schemas/workspace-test.json).
+
 `basectl workspace clone --manifest <path>` clones or validates expected
 repositories through `basectl repo clone`. It clones missing required
 repositories by default, skips missing optional repositories unless

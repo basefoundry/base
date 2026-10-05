@@ -52,7 +52,8 @@ jobs:
         run: |
           python -m pytest -q \
             tests/contracts/test_workspace_agent_brief_schema.py \
-            tests/contracts/test_workspace_update_schema.py
+            tests/contracts/test_workspace_update_schema.py \
+            tests/contracts/test_workspace_test_schema.py
 
   python:
     name: Python tests (${{ matrix.python-version }})

@@ -118,6 +118,9 @@
         "--profile": {
           "takes_value": true
         },
+        "--project": {
+          "takes_value": true
+        },
         "--remote-network": {
           "takes_value": false
         },
@@ -217,6 +220,9 @@
         "--help": {
           "takes_value": false
         },
+        "--project": {
+          "takes_value": true
+        },
         "--workspace": {
           "takes_value": true
         },
@@ -238,6 +244,9 @@
         },
         "--help": {
           "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
         },
         "--workspace": {
           "takes_value": true
@@ -285,6 +294,9 @@
           "takes_value": false
         },
         "--profile": {
+          "takes_value": true
+        },
+        "--project": {
           "takes_value": true
         },
         "--remote-network": {
@@ -338,6 +350,9 @@
         },
         "--print": {
           "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
         },
         "--workspace": {
           "takes_value": true
@@ -961,6 +976,9 @@
         "--profile": {
           "takes_value": true
         },
+        "--project": {
+          "takes_value": true
+        },
         "--yes": {
           "takes_value": false
         },
@@ -1439,6 +1457,9 @@
         "--profile": {
           "takes_value": true
         },
+        "--project": {
+          "takes_value": true
+        },
         "--recreate-venv": {
           "takes_value": false
         },
@@ -1489,6 +1510,9 @@
         "--profile": {
           "takes_value": true
         },
+        "--project": {
+          "takes_value": true
+        },
         "--recreate-venv": {
           "takes_value": false
         },
@@ -1536,6 +1560,9 @@
         "--manifest-sha256": {
           "takes_value": true
         },
+        "--project": {
+          "takes_value": true
+        },
         "--test-requirements-sha256": {
           "takes_value": true
         },
@@ -1554,6 +1581,9 @@
       "flags": {
         "--help": {
           "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
         },
         "--workspace": {
           "takes_value": true
@@ -1580,6 +1610,9 @@
         },
         "--help": {
           "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
         },
         "--workspace": {
           "takes_value": true
@@ -1630,6 +1663,9 @@
         },
         "--help": {
           "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
         },
         "-h": {
           "takes_value": false
@@ -1727,6 +1763,9 @@
         "--manifest": {
           "takes_value": true
         },
+        "--verify-project-runtime": {
+          "takes_value": false
+        },
         "--workspace": {
           "takes_value": true
         },
@@ -1808,6 +1847,9 @@
         },
         "--manifest": {
           "takes_value": true
+        },
+        "--verify-project-runtime": {
+          "takes_value": false
         },
         "--workspace": {
           "takes_value": true
@@ -2434,25 +2476,6 @@
             "status"
           ],
           "type": "object"
-        },
-        "workspaceManifest": {
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "schema_version": {
-              "const": 1
-            }
-          },
-          "required": [
-            "name",
-            "path",
-            "schema_version"
-          ],
-          "type": "object"
         }
       },
       "properties": {
@@ -2478,7 +2501,7 @@
           "type": "string"
         },
         "workspace_manifest": {
-          "$ref": "#/$defs/workspaceManifest"
+          "$ref": "workspace-manifest.json"
         }
       },
       "required": [
@@ -2486,6 +2509,118 @@
         "repositories",
         "repository_count",
         "schema_version",
+        "workspace",
+        "workspace_manifest"
+      ],
+      "type": "object"
+    },
+    "workspace-test.json": {
+      "$defs": {
+        "counts": {
+          "properties": {
+            "failed": {
+              "type": "integer"
+            },
+            "passed": {
+              "type": "integer"
+            },
+            "skipped": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "failed",
+            "passed",
+            "skipped"
+          ],
+          "type": "object"
+        },
+        "project": {
+          "properties": {
+            "detail": {
+              "type": "string"
+            },
+            "exit_code": {
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "project": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "repository": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "failed",
+                "passed",
+                "skipped"
+              ]
+            },
+            "stderr": {
+              "type": "string"
+            },
+            "stdout": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "project",
+            "repository",
+            "required",
+            "status"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "counts": {
+          "$ref": "#/$defs/counts"
+        },
+        "fail_fast": {
+          "type": "boolean"
+        },
+        "project_count": {
+          "type": "integer"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/project"
+          },
+          "type": "array"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "selected_projects": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "workspace_manifest": {
+          "$ref": "workspace-manifest.json"
+        }
+      },
+      "required": [
+        "counts",
+        "fail_fast",
+        "project_count",
+        "projects",
+        "schema_version",
+        "selected_projects",
         "workspace",
         "workspace_manifest"
       ],
@@ -2582,25 +2717,6 @@
             "status"
           ],
           "type": "object"
-        },
-        "workspaceManifest": {
-          "properties": {
-            "name": {
-              "type": "string"
-            },
-            "path": {
-              "type": "string"
-            },
-            "schema_version": {
-              "const": 1
-            }
-          },
-          "required": [
-            "name",
-            "path",
-            "schema_version"
-          ],
-          "type": "object"
         }
       },
       "properties": {
@@ -2632,7 +2748,7 @@
           "type": "string"
         },
         "workspace_manifest": {
-          "$ref": "#/$defs/workspaceManifest"
+          "$ref": "workspace-manifest.json"
         }
       },
       "required": [
