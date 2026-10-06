@@ -527,3 +527,44 @@ jobs:
           if ((${#bash_files[@]})); then
             shellcheck --shell=bash --severity=warning --format=tty "${bash_files[@]}"
           fi
+
+  core-product-validation:
+    name: Core product validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - stability-compatibility
+      - python
+      - bats
+      - integration
+      - security
+    if: ${{ always() }}
+
+    steps:
+      - name: Require every core product lane to pass
+        env:
+          STABILITY_RESULT: ${{ needs['stability-compatibility'].result }}
+          PYTHON_RESULT: ${{ needs.python.result }}
+          BATS_RESULT: ${{ needs.bats.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          SECURITY_RESULT: ${{ needs.security.result }}
+        run: |
+          set -u
+          failed=0
+          for lane in \
+            "stability-compatibility:$STABILITY_RESULT" \
+            "python:$PYTHON_RESULT" \
+            "bats:$BATS_RESULT" \
+            "integration:$INTEGRATION_RESULT" \
+            "security:$SECURITY_RESULT"; do
+            name="${lane%%:*}"
+            result="${lane#*:}"
+            printf '%s: %s\n' "$name" "$result"
+            if [[ "$result" != success ]]; then
+              failed=1
+            fi
+          done
+          if ((failed)); then
+            echo "One or more required core product lanes did not succeed." >&2
+            exit 1
+          fi

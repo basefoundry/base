@@ -457,10 +457,23 @@ updates a named repository ruleset, `Base default branch protection`, targeting
 branch deletion and non-fast-forward updates such as force pushes. When the
 trusted Issue Branch Policy workflow is active and has produced a recent
 trusted success, the ruleset also requires `base/issue-branch-policy`, bound to
-the GitHub Actions integration. It does not manage other status checks,
-approval counts, CODEOWNERS, teams, or repository secrets. Pass
+the GitHub Actions integration. It does not add other status checks
+automatically, change approval counts, or manage CODEOWNERS, teams, or
+repository secrets; existing stronger rules remain in place when the named
+ruleset is refreshed. Pass
 `--no-protect-default-branch` when a repository intentionally skips this
 Base-managed ruleset.
+
+Base also publishes a separate `Core product validation` status for pull
+requests. It is an aggregate over the representative Python, BATS, integration,
+stable-compatibility, and security lanes in `tests.yml`; a failed, cancelled, or
+skipped dependency fails the aggregate. The macOS smoke, Ubuntu source-checkout,
+moving-provider, and Windows contract jobs remain visible platform and
+compatibility evidence outside this aggregate, while Project Intake remains
+advisory. After the workflow has produced a trusted successful status, the
+repository owner may explicitly add the exact `Core product validation` check
+to the default-branch ruleset. `basectl repo configure` preserves that
+additional required check and does not change the human-approval count.
 
 When an existing Base ruleset already declares one or more
 `allowed_merge_methods`, `repo configure` preserves that exact non-empty list;

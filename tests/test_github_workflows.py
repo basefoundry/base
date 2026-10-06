@@ -224,7 +224,44 @@ def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
         "Integration tests",
         "${{ matrix.name }}",
         "Security scanners",
+        "Core product validation",
     }
+
+
+def test_core_product_gate_is_always_reported_and_requires_core_lanes() -> None:
+    workflow = load_workflow(TESTS_WORKFLOW)
+    triggers = workflow.get("on") or workflow.get(True)
+    job = workflow["jobs"]["core-product-validation"]
+    step = job["steps"]
+    run_commands = "\n".join(
+        item.get("run", "")
+        for item in step
+        if isinstance(item, dict)
+    )
+
+    assert workflow["name"] == "Tests"
+    assert triggers == {"push": {"branches": ["main"]}, "pull_request": None}
+    assert workflow["permissions"] == {"contents": "read"}
+    assert job["name"] == "Core product validation"
+    assert job["if"] == "${{ always() }}"
+    assert job["needs"] == [
+        "stability-compatibility",
+        "python",
+        "bats",
+        "integration",
+        "security",
+    ]
+    gate_step = job["steps"][0]
+    assert set(gate_step["env"]) == {
+        "STABILITY_RESULT",
+        "PYTHON_RESULT",
+        "BATS_RESULT",
+        "INTEGRATION_RESULT",
+        "SECURITY_RESULT",
+    }
+    assert 'if [[ "$result" != success ]]' in run_commands
+    assert "needs['stability-compatibility'].result" in str(gate_step["env"]["STABILITY_RESULT"])
+    assert "One or more required core product lanes did not succeed." in run_commands
 
 
 def test_tests_workflow_pins_all_base_bash_libs_checkouts_to_ga_revision() -> None:
