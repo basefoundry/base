@@ -157,6 +157,65 @@ def test_run_rest_passes_json_patch_and_timeout(monkeypatch: pytest.MonkeyPatch)
     }
 
 
+def test_run_rest_can_slurp_paginated_responses(monkeypatch: pytest.MonkeyPatch) -> None:
+    completed = project_rest.subprocess.CompletedProcess(
+        ["gh"], 0, stdout='[{"items":[]},{"items":[{"id":101}]}]', stderr=""
+    )
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **_kwargs: object) -> project_rest.subprocess.CompletedProcess[str]:
+        calls.append(command)
+        return completed
+
+    monkeypatch.setattr(project_rest.subprocess, "run", fake_run)
+
+    assert project_rest.run_rest("orgs/basefoundry/projectsV2/1/items", paginate=True) == [
+        {"items": []},
+        {"items": [{"id": 101}]},
+    ]
+    assert calls[0] == [
+        "gh",
+        "api",
+        "--paginate",
+        "--slurp",
+        "orgs/basefoundry/projectsV2/1/items",
+    ]
+
+
+def test_rest_item_lookup_searches_all_paginated_pages() -> None:
+    payload = fixture()
+    item = copy.deepcopy(payload["item"])
+    calls: list[str] = []
+
+    def run(path: str, **_kwargs: object) -> object:
+        calls.append(path)
+        if "projectsV2/1/items?" in path:
+            assert "title%3A" not in path
+            return [[], [item]]
+        raise AssertionError(f"unexpected REST path: {path}")
+
+    transport = project_rest.RestProjectTransport(run=run, sleep=lambda _seconds: None)
+    project = project_rest.ProjectInfo(
+        project_id="PVT_kwDOExample",
+        title="base",
+        project_number=1,
+        owner_login="basefoundry",
+        owner_type="Organization",
+    )
+
+    found = transport.find_project_item(
+        project_rest.RestItemLookup(
+            project=project,
+            issue_id="1311",
+            repo="basefoundry/base",
+            field_ids=("10",),
+        )
+    )
+
+    assert found == item
+    assert len(calls) == 1
+
+
 def test_rest_reconcile_recovers_duplicate_add_and_reads_back_fields(  # pylint: disable=too-many-return-statements
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -178,6 +237,7 @@ def test_rest_reconcile_recovers_duplicate_add_and_reads_back_fields(  # pylint:
             return payload_fixture["issue"]
         if "projectsV2/1/items?" in path:
             search_count += 1
+            assert "title%3A" not in path
             return [] if search_count <= 3 else [item]
         if path.endswith("projectsV2/1/items") and method == "POST":
             raise ProjectDuplicateItemError("Content already exists in this project (HTTP 422)")
@@ -193,6 +253,7 @@ def test_rest_reconcile_recovers_duplicate_add_and_reads_back_fields(  # pylint:
         raise AssertionError(f"unexpected REST call: {method} {path}")
 
     payload_fixture = payload
+    payload_fixture["issue"]["title"] = 'activate/uninstall: a project literally named "help" can no longer be targeted'
     transport = project_rest.RestProjectTransport(run=run, sleep=lambda _seconds: None)
     updates = (
         FieldUpdate("10", "O_backlog", "Status", "Backlog"),

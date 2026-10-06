@@ -48,7 +48,6 @@ class RestItemLookup:
     project: ProjectInfo
     issue_id: str
     repo: str
-    issue_title: str
     field_ids: tuple[str, ...]
     item_id: str | None = None
 
@@ -58,8 +57,11 @@ def run_rest(
     *,
     method: str = "GET",
     payload: Mapping[str, object] | None = None,
+    paginate: bool = False,
 ) -> Any:
     command = ["gh", "api"]
+    if paginate:
+        command.extend(["--paginate", "--slurp"])
     if method != "GET":
         command.extend(["--method", method])
     command.append(path)
@@ -101,6 +103,10 @@ def run_rest(
         raise ProjectError("GitHub REST returned invalid JSON.") from exc
 
 
+def run_rest_pages(path: str) -> Any:
+    return run_rest(path, paginate=True)
+
+
 def is_project_auth_error(message: str) -> bool:
     lowered = message.lower()
     return any(
@@ -127,9 +133,11 @@ class RestProjectTransport:
         self,
         *,
         run: Callable[..., Any] = run_rest,
+        run_pages: Callable[..., Any] | None = None,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         self._run = run
+        self._run_pages = run_pages if run_pages is not None else (run_rest_pages if run is run_rest else run)
         self._sleep = sleep
 
     def find_owner_and_project(self, owner: str, title: str) -> OwnerInfo:
@@ -188,12 +196,12 @@ class RestProjectTransport:
             query = urlencode(
                 {
                     "per_page": "100",
-                    "q": f'repo:{lookup.repo} is:issue title:"{lookup.issue_title}"',
+                    "q": f"repo:{lookup.repo} is:issue",
                     "fields": fields_query,
                 }
             )
-            items = self._run(self._project_path(lookup.project, f"items?{query}"))
-            for item in _list_payload(items, "items"):
+            items = self._run_pages(self._project_path(lookup.project, f"items?{query}"))
+            for item in _paginated_list_payload(items, "items"):
                 if _item_matches(item, lookup.issue_id, lookup.item_id):
                     return item
             if attempt < 3:
@@ -267,7 +275,6 @@ class RestProjectTransport:
             project=project,
             issue_id=str(issue["id"]),
             repo=f"{request.repo_owner}/{request.repo_name}",
-            issue_title=str(issue.get("title", "")),
             field_ids=field_ids,
         )
         item = self.find_project_item(lookup)
@@ -281,14 +288,13 @@ class RestProjectTransport:
                     project=project,
                     issue_id=str(issue["id"]),
                     repo=f"{request.repo_owner}/{request.repo_name}",
-                    issue_title=str(issue.get("title", "")),
                     field_ids=field_ids,
                     item_id=item_id or None,
                 )
             )
         if item is None:
             raise ProjectError(
-                f"REST Project item for issue #{request.issue_number} was not visible "
+                f"REST Project item for issue #{request.issue_number} could not be located "
                 "after bounded recovery attempts."
             )
         item_id = str(item.get("id", ""))
@@ -304,7 +310,6 @@ class RestProjectTransport:
                 project=project,
                 issue_id=str(issue["id"]),
                 repo=f"{request.repo_owner}/{request.repo_name}",
-                issue_title=str(issue.get("title", "")),
                 field_ids=field_ids,
                 item_id=item_id,
             )
@@ -359,6 +364,20 @@ def _list_payload(payload: Any, key: str) -> list[dict[str, Any]]:
     if isinstance(payload, dict) and isinstance(payload.get(key), list):
         return [item for item in payload[key] if isinstance(item, dict)]
     raise ProjectError(f"GitHub REST response did not contain a '{key}' list.")
+
+
+def _paginated_list_payload(payload: Any, key: str) -> list[dict[str, Any]]:
+    if isinstance(payload, list) and all(isinstance(page, list) for page in payload):
+        items: list[dict[str, Any]] = []
+        for page in payload:
+            items.extend(_list_payload(page, key))
+        return items
+    if isinstance(payload, list) and all(isinstance(page, dict) and key in page for page in payload):
+        items: list[dict[str, Any]] = []
+        for page in payload:
+            items.extend(_list_payload(page, key))
+        return items
+    return _list_payload(payload, key)
 
 
 def _project_number(project: Mapping[str, object]) -> int:
