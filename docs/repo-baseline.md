@@ -464,6 +464,14 @@ ruleset is refreshed. Pass
 `--no-protect-default-branch` when a repository intentionally skips this
 Base-managed ruleset.
 
+If a repository owner adds an additional required status check, such as
+`Core product validation`, first ensure that the Base revision being used has
+ruleset reconciliation that preserves existing required checks. Older
+revisions can rebuild the named ruleset from the Base template and remove a
+manually added check when `repo configure` is rerun. Treat preservation as a
+prerequisite before relying on repeated configuration; the additional check
+remains an explicit repository-owner decision.
+
 Base also publishes a separate `Core product validation` status for pull
 requests. It is an aggregate over the representative Python, BATS, integration,
 stable-compatibility, and security lanes in `tests.yml`; a failed, cancelled, or
