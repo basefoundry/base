@@ -110,6 +110,23 @@ jobs:
             printf '  enabled: false\n'
           } >> "$HOME/.base.d/config.yaml"
 
+      - name: Install mise for selected project trust
+        run: |
+          set -euo pipefail
+          if ! command -v mise >/dev/null 2>&1; then
+            if [[ "$RUNNER_OS" == "macOS" ]]; then
+              brew install mise
+            else
+              installer="$RUNNER_TEMP/mise-install.sh"
+              curl --fail --silent --show-error --location https://mise.run --output "$installer"
+              sh "$installer"
+              echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+          fi
+          command -v mise
+          mise --version
+
       - name: Trust the selected base-demo mise configuration
         env:
           BASE_DEMO_ROOT: ${{ github.workspace }}/../base-demo

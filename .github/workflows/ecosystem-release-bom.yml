@@ -189,6 +189,23 @@ jobs:
         if: matrix.platform == 'macos-14'
         run: ./bin/basectl setup --ci base --format json
 
+      - name: Install mise for selected project trust
+        run: |
+          set -euo pipefail
+          if ! command -v mise >/dev/null 2>&1; then
+            if [[ "$RUNNER_OS" == "macOS" ]]; then
+              brew install mise
+            else
+              installer="$RUNNER_TEMP/mise-install.sh"
+              curl --fail --silent --show-error --location https://mise.run --output "$installer"
+              sh "$installer"
+              echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+              export PATH="$HOME/.local/bin:$PATH"
+            fi
+          fi
+          command -v mise
+          mise --version
+
       - name: Trust the selected base-demo mise configuration
         run: |
           set -euo pipefail
