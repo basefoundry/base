@@ -198,6 +198,8 @@ def test_downstream_version_bumps_are_release_triggered_idempotent_and_review_ga
     assert "gh pr create" in run_commands
     assert "uv lock --upgrade-package base-cli" in run_commands
     assert 'git -C "$clone_dir" push --set-upstream origin' in run_commands
+    assert 'version_slug="${version//./-}"' in run_commands
+    assert 'bump-${component}-${version_slug}' in run_commands
     assert "gh pr merge" not in run_commands
 
 

@@ -233,7 +233,8 @@ jobs:
 
             clone_dir="$(mktemp -d)"
             gh repo clone "$TARGET_REPOSITORY" "$clone_dir" -- --depth 1
-            branch="ci/${issue_number}-$(date -u +%Y%m%d)-bump-${component}-${version}"
+            version_slug="${version//./-}"
+            branch="ci/${issue_number}-$(date -u +%Y%m%d)-bump-${component}-${version_slug}"
             git -C "$clone_dir" switch --create "$branch"
 
             bump_args=(
