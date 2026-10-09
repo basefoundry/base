@@ -361,6 +361,11 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
     assert job["env"]["BASE_DEMO_FULL_VALIDATION"] == "1"
     assert job["env"]["BASE_CLI_SOURCE_DIR"].endswith(".dependencies/base-cli/lib/python")
 
+    install_mise_step_index = next(
+        index
+        for index, step in enumerate(steps)
+        if isinstance(step, dict) and step.get("name") == "Install mise for selected project trust"
+    )
     trust_step_index = next(
         index
         for index, step in enumerate(steps)
@@ -371,6 +376,11 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
         for index, step in enumerate(steps)
         if isinstance(step, dict) and "basectl setup --ci base-demo" in step.get("run", "")
     )
+    assert install_mise_step_index < trust_step_index < setup_step_index
+    assert "brew install mise" in steps[install_mise_step_index]["run"]
+    assert "https://mise.run" in steps[install_mise_step_index]["run"]
+    assert "command -v mise" in steps[install_mise_step_index]["run"]
+    assert "mise --version" in steps[install_mise_step_index]["run"]
     assert trust_step_index < setup_step_index
     assert 'mise trust "$mise_config"' in steps[trust_step_index]["run"]
 
@@ -413,6 +423,11 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
     bom_workflow = load_workflow(ECOSYSTEM_RELEASE_BOM_WORKFLOW)
     bom_compatibility = bom_workflow["jobs"]["compatibility"]
     bom_steps = bom_compatibility["steps"]
+    bom_install_mise_step_index = next(
+        index
+        for index, step in enumerate(bom_steps)
+        if isinstance(step, dict) and step.get("name") == "Install mise for selected project trust"
+    )
     bom_trust_step_index = next(
         index
         for index, step in enumerate(bom_steps)
@@ -423,6 +438,11 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
         for index, step in enumerate(bom_steps)
         if isinstance(step, dict) and "basectl setup --ci base-demo" in step.get("run", "")
     )
+    assert bom_install_mise_step_index < bom_trust_step_index < bom_setup_step_index
+    assert "brew install mise" in bom_steps[bom_install_mise_step_index]["run"]
+    assert "https://mise.run" in bom_steps[bom_install_mise_step_index]["run"]
+    assert "command -v mise" in bom_steps[bom_install_mise_step_index]["run"]
+    assert "mise --version" in bom_steps[bom_install_mise_step_index]["run"]
     assert bom_trust_step_index < bom_setup_step_index
     assert 'mise trust "$mise_config"' in bom_steps[bom_trust_step_index]["run"]
 
