@@ -1,8 +1,8 @@
 # Base Product Requirements
 
 Status: maintained product requirements document
-Last reviewed: 2026-09-08
-Base era reviewed: 1.9.0 + Unreleased
+Last reviewed: 2026-10-10
+Base era reviewed: 1.10.0
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide

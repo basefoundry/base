@@ -8,6 +8,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-10
+
 - PR policy examples now use only labels that Base manages or documents; the
   dead `breaking-change` mapping was removed and governance coverage checks for
   future unknown label triggers.

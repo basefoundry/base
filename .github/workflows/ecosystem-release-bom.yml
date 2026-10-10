@@ -15,22 +15,22 @@ on:
       base_cli_version:
         description: Released base-cli version
         required: true
-        default: "0.4.3"
+        default: "0.5.1"
         type: string
       base_cli_ref:
         description: Immutable base-cli full commit to validate
         required: true
-        default: 8a93d22156ba75a99965f7c355f867acba630069
+        default: aa20cfe89bc3568ff19f8cc1414372feadb00fd4
         type: string
       base_bash_libs_version:
         description: Released base-bash-libs version
         required: true
-        default: "2.1.0"
+        default: "2.2.2"
         type: string
       base_bash_libs_ref:
         description: Immutable base-bash-libs full commit to validate
         required: true
-        default: 36fec50c446dcea8c521a1ba3e7fee2394f169c0
+        default: 1333c0e7e4c3004663cda635e04965cb9d76511d
         type: string
       base_demo_version:
         description: Released base-demo version

@@ -62,7 +62,7 @@ def test_entrypoint_reports_incompatible_selected_provider(tmp_path, module):
     assert completed.returncode == 1
     assert "refresh_run_bundle_index" in completed.stderr
     assert str(provider_root) in completed.stderr
-    assert "v0.4.3" in completed.stderr
+    assert "v0.5.1" in completed.stderr
     assert "BASE_CLI_SOURCE_DIR" in completed.stderr
     assert "Traceback" not in completed.stderr
     assert not (tmp_path / "runs").exists()

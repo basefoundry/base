@@ -75,7 +75,7 @@ evidence.
 
 ## Compatibility and release truth
 
-Base's current published release is v1.9.0. Companion repositories publish on
+Base's current published release is v1.10.0. Companion repositories publish on
 their own schedules. A coordinated Base release records exact component tags,
 full commits, platform evidence, and BOM results; a moving sibling checkout is
 useful development input but is not release evidence. Homebrew promotes a

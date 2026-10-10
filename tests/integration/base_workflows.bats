@@ -632,7 +632,7 @@ assert record["identity"] == {"project_root": str(root), "manifest_path": str(ma
     [ "$status" -eq 1 ]
     [[ "$output" == *"refresh_run_bundle_index must be callable"* ]]
     [[ "$output" == *"$TEST_BASE_HOME/../base-cli/lib/python"* ]]
-    [[ "$output" == *"v0.4.3"* ]]
+    [[ "$output" == *"aa20cfe89bc3568ff19f8cc1414372feadb00fd4"* ]]
     [[ "$output" == *"BASE_CLI_SOURCE_DIR"* ]]
     [[ "$output" != *"Traceback"* ]]
 

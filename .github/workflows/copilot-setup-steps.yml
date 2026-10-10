@@ -29,7 +29,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           repository: basefoundry/base-cli
-          ref: v0.4.3
+          ref: aa20cfe89bc3568ff19f8cc1414372feadb00fd4
           path: .dependencies/base-cli
 
       - name: Set up Python

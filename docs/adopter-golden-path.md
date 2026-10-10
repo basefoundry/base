@@ -237,7 +237,7 @@ follows:
 
 The full runtime verification was intentionally not reported as green: the
 existing local `base-demo` environment had stale `base-cli==0.4.2` state while
-the manifest requires `0.4.3`, and the isolated home did not contain the
+the manifest requires `0.5.1`, and the isolated home did not contain the
 project's mise-managed tools. The recovery is the documented setup/sync path,
 followed by `check --verify-project-runtime` and the project test. This keeps
 the recipe honest about the difference between deterministic Base-path smoke

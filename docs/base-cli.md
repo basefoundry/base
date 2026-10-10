@@ -74,7 +74,7 @@ Python resolves the installed distribution normally. `BASE_CLI_SOURCE` reports
 the selected provider, and an explicit or sibling path that exists but is
 malformed fails loudly instead of silently selecting a different version.
 
-The release-pinned provider, currently **v0.4.3**, is authoritative for released
+The release-pinned provider, currently **v0.5.1**, is authoritative for released
 Base. Compatible moving source checkouts are also supported for development;
 their version string alone does not establish compatibility. CI runs the full
 source suite against both the pinned tag and current `base-cli` main, using
