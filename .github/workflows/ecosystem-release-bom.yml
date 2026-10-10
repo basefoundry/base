@@ -141,6 +141,7 @@ jobs:
       - name: Expose peer checkouts for workspace validation
         run: |
           set -euo pipefail
+          ln -s "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.dependencies/base"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-cli" "$GITHUB_WORKSPACE/../base-cli"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-demo" "$GITHUB_WORKSPACE/../base-demo"

@@ -154,6 +154,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert all(
         command in compatibility_commands
         for command in (
+            'ln -s "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.dependencies/base"',
             'ln -s "$GITHUB_WORKSPACE/.dependencies/base-cli" "$GITHUB_WORKSPACE/../base-cli"',
             'ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"',
             'ln -s "$GITHUB_WORKSPACE/.dependencies/base-demo" "$GITHUB_WORKSPACE/../base-demo"',
