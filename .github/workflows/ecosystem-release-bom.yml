@@ -209,10 +209,15 @@ jobs:
       - name: Trust the selected base-demo mise configuration
         run: |
           set -euo pipefail
-          mise_config="$GITHUB_WORKSPACE/../base-demo/.mise.toml"
-          if [[ -f "$mise_config" ]]; then
-            mise trust "$mise_config"
-          else
+          for mise_config in \
+            "$GITHUB_WORKSPACE/.dependencies/base-demo/.mise.toml" \
+            "$GITHUB_WORKSPACE/../base-demo/.mise.toml"; do
+            if [[ -f "$mise_config" ]]; then
+              mise trust "$mise_config"
+            fi
+          done
+          if [[ ! -f "$GITHUB_WORKSPACE/.dependencies/base-demo/.mise.toml" && \
+                ! -f "$GITHUB_WORKSPACE/../base-demo/.mise.toml" ]]; then
             printf 'No mise configuration declared by base-demo; continuing without provider trust.\n'
           fi
 
