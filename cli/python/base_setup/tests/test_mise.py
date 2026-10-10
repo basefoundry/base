@@ -74,6 +74,7 @@ class MiseTests(unittest.TestCase):
             "mise_details",
             "mise_environment",
             "mise_executable",
+            "mise_trust_status",
             "missing_tool_names",
             "reconcile_mise",
             "require_mise_trusted_for_setup",
@@ -98,6 +99,12 @@ class MiseTests(unittest.TestCase):
 
         self.assertEqual(environment["MISE_CONFIG_FILE"], str(mise_path))
         self.assertEqual(environment["MISE_OVERRIDE_CONFIG_FILENAMES"], str(mise_path))
+
+    def test_mise_trust_status_accepts_mise_prefix_and_home_relative_path(self) -> None:
+        mise_path = Path.home() / "work" / "base-demo" / ".mise.toml"
+        trust_output = "\x1b[2mmise\x1b[0m trusted ~/work/base-demo"
+
+        self.assertEqual(delegates.mise_trust_status(trust_output, mise_path), "trusted")
 
     def test_mise_dry_run_invokes_mise_install_in_project_root(self) -> None:
         ctx = fake_context()
