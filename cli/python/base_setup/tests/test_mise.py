@@ -267,7 +267,7 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(
             log_lines,
             [
-                f"{project_root.resolve()} trust --show config={project_root.resolve() / '.mise.toml'}",
+                f"{project_root.resolve()} trust --show config=",
                 f"{project_root.resolve()} ls --missing --json config={project_root.resolve() / '.mise.toml'}",
             ],
         )
@@ -302,7 +302,7 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(
             log_lines,
             [
-                f"{project_root.resolve()} trust --show config={declared_path.resolve()}",
+                f"{project_root.resolve()} trust --show config=",
                 f"{project_root.resolve()} ls --missing --json config={declared_path.resolve()}",
             ],
         )
@@ -345,7 +345,7 @@ class MiseTests(unittest.TestCase):
         self.assertEqual(check.fix, f"mise trust {project_root.resolve() / '.mise.toml'}")
         self.assertEqual(
             log_lines,
-            [f"{project_root.resolve()} trust --show config={project_root.resolve() / '.mise.toml'}"],
+            [f"{project_root.resolve()} trust --show config="],
         )
 
     def test_mise_check_warns_when_trust_probe_times_out(self) -> None:
@@ -377,10 +377,8 @@ class MiseTests(unittest.TestCase):
             env=mock.ANY,
             timeout_seconds=delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
-        self.assertEqual(
-            run_capture.call_args.kwargs["env"]["MISE_CONFIG_FILE"],
-            str(project_root.resolve() / ".mise.toml"),
-        )
+        self.assertNotIn("MISE_CONFIG_FILE", run_capture.call_args.kwargs["env"])
+        self.assertNotIn("MISE_OVERRIDE_CONFIG_FILENAMES", run_capture.call_args.kwargs["env"])
 
 
     def test_mise_check_reports_missing_tools(self) -> None:
@@ -463,11 +461,12 @@ class MiseTests(unittest.TestCase):
             run_capture.call_args_list[1].kwargs["timeout_seconds"],
             delegates.process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
-        for call in run_capture.call_args_list:
-            self.assertEqual(
-                call.kwargs["env"]["MISE_CONFIG_FILE"],
-                str(project_root.resolve() / ".mise.toml"),
-            )
+        self.assertNotIn("MISE_CONFIG_FILE", run_capture.call_args_list[0].kwargs["env"])
+        self.assertNotIn("MISE_OVERRIDE_CONFIG_FILENAMES", run_capture.call_args_list[0].kwargs["env"])
+        self.assertEqual(
+            run_capture.call_args_list[1].kwargs["env"]["MISE_CONFIG_FILE"],
+            str(project_root.resolve() / ".mise.toml"),
+        )
 
 
 

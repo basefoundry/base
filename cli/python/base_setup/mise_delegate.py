@@ -75,11 +75,14 @@ def check_mise_trust(
     mise_bin: Path,
     details: dict[str, object],
 ) -> ArtifactCheck | None:
+    trust_environment = os.environ.copy()
+    trust_environment.pop("MISE_CONFIG_FILE", None)
+    trust_environment.pop("MISE_OVERRIDE_CONFIG_FILENAMES", None)
     try:
         trust_check = process.run_capture(
             [str(mise_bin), "trust", "--show"],
             cwd=project_root,
-            env=mise_environment(mise_path),
+            env=trust_environment,
             timeout_seconds=process.DIAGNOSTIC_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
@@ -106,7 +109,8 @@ def check_mise_trust(
             finding_id="BASE-P022",
             details=details | {"returncode": trust_check.returncode},
         )
-    if mise_config_untrusted(trust_text):
+    trust_status = mise_trust_status(trust_text, mise_path)
+    if trust_status == "untrusted":
         return ArtifactCheck(
             name="mise",
             ok=False,
@@ -115,7 +119,7 @@ def check_mise_trust(
             finding_id="BASE-P022",
             details=details | {"trusted": False},
         )
-    if "trusted" not in trust_text.lower():
+    if trust_status != "trusted":
         return ArtifactCheck(
             name="mise",
             ok=False,
@@ -126,6 +130,22 @@ def check_mise_trust(
             details=details,
         )
     return None
+
+
+def mise_trust_status(trust_text: str, mise_path: Path) -> str:
+    """Return the trust state for the selected config, ignoring unrelated files."""
+    trusted_paths = {str(mise_path.resolve()), str(mise_path.resolve().parent)}
+    for line in trust_text.splitlines():
+        line_path, separator, line_status = line.rpartition(":")
+        if separator and line_path.strip() in trusted_paths:
+            if mise_config_untrusted(line_status):
+                return "untrusted"
+            if "trusted" in line_status.lower():
+                return "trusted"
+            return "unknown"
+    if mise_config_untrusted(trust_text):
+        return "untrusted"
+    return "unknown"
 
 
 def check_mise_missing_tools(
