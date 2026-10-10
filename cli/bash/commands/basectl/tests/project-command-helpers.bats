@@ -376,13 +376,13 @@ manifest=$project_root/base_manifest.yaml" ]
 
     run base_project_run_shell_command \
         "$working_dir" \
-        'if [[ "$MISE_CONFIG_FILE" == "$1" ]]; then printf "config=%s\n" "$MISE_CONFIG_FILE"; else exit 1; fi; true && printf "override=%s\n" "$MISE_OVERRIDE_CONFIG_FILENAMES"' \
+        '[[ -z "${MISE_CONFIG_FILE:-}" ]] && printf "config=unset\n" || exit 1; printf "override=%s\n" "$MISE_OVERRIDE_CONFIG_FILENAMES"' \
         basectl-test \
         "$mise_config" \
         "$mise_config"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"config=$mise_config"* ]]
+    [[ "$output" == *"config=unset"* ]]
     [[ "$output" == *"override=$mise_config"* ]]
 }
 
