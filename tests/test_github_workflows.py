@@ -108,6 +108,11 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         if isinstance(step, dict) and step.get("name") == "Verify release inputs and bind platform evidence"
     )
     verification_command = verification_step["run"]
+    expose_step = next(
+        step
+        for step in compatibility["steps"]
+        if isinstance(step, dict) and step.get("name") == "Expose peer checkouts for workspace validation"
+    )
 
     assert workflow["name"] == "Ecosystem Release BOM"
     assert workflow["permissions"] == {"contents": "read"}
@@ -154,12 +159,13 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert all(
         command in compatibility_commands
         for command in (
-            'ln -s "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.dependencies/base"',
+            'git worktree add --detach "$GITHUB_WORKSPACE/.dependencies/base" "$BASE_REF"',
             'ln -s "$GITHUB_WORKSPACE/.dependencies/base-cli" "$GITHUB_WORKSPACE/../base-cli"',
             'ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"',
             'ln -s "$GITHUB_WORKSPACE/.dependencies/base-demo" "$GITHUB_WORKSPACE/../base-demo"',
         )
     )
+    assert expose_step["env"]["BASE_REF"] == "${{ inputs.base_ref }}"
     assert "yaml.safe_load" in run_commands and "Install BOM YAML parser" in str(assemble["steps"])
     assert "--format json --no-notify --yes" in compatibility_commands
     assert 'base_demo_commit="$(git -C "$GITHUB_WORKSPACE/../base-demo" rev-parse HEAD)"' in compatibility_commands

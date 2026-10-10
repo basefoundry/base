@@ -139,9 +139,11 @@ jobs:
             --component basefoundry/base-demo "$BASE_DEMO_VERSION" "$BASE_DEMO_REF" "$GITHUB_WORKSPACE/.dependencies/base-demo"
 
       - name: Expose peer checkouts for workspace validation
+        env:
+          BASE_REF: ${{ inputs.base_ref }}
         run: |
           set -euo pipefail
-          ln -s "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/.dependencies/base"
+          git worktree add --detach "$GITHUB_WORKSPACE/.dependencies/base" "$BASE_REF"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-cli" "$GITHUB_WORKSPACE/../base-cli"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-bash-libs" "$GITHUB_WORKSPACE/../base-bash-libs"
           ln -s "$GITHUB_WORKSPACE/.dependencies/base-demo" "$GITHUB_WORKSPACE/../base-demo"
