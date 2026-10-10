@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -134,17 +135,38 @@ def check_mise_trust(
 
 def mise_trust_status(trust_text: str, mise_path: Path) -> str:
     """Return the trust state for the selected config, ignoring unrelated files."""
-    trusted_paths = {str(mise_path.resolve()), str(mise_path.resolve().parent)}
-    for line in trust_text.splitlines():
+    trusted_paths = {mise_path.resolve(), mise_path.resolve().parent}
+    for raw_line in trust_text.splitlines():
+        line = re.sub(r"\x1b\[[0-9;]*m", "", raw_line).strip()
+        if not line or "no trusted config files found" in line.lower():
+            continue
+
         line_path, separator, line_status = line.rpartition(":")
-        if separator and line_path.strip() in trusted_paths:
-            if mise_config_untrusted(line_status):
-                return "untrusted"
-            if "trusted" in line_status.lower():
-                return "trusted"
-            return "unknown"
-    if mise_config_untrusted(trust_text):
-        return "untrusted"
+        if separator:
+            candidate = line_path.strip()
+            status = line_status.strip().lower()
+        else:
+            prefix = "mise "
+            if line.lower().startswith(f"{prefix}untrusted "):
+                candidate = line[len(f"{prefix}untrusted ") :].strip()
+                status = "untrusted"
+            elif line.lower().startswith(f"{prefix}trusted "):
+                candidate = line[len(f"{prefix}trusted ") :].strip()
+                status = "trusted"
+            else:
+                continue
+
+        try:
+            resolved_candidate = Path(candidate.strip("'\"")).expanduser().resolve()
+        except (OSError, RuntimeError):
+            continue
+        if resolved_candidate not in trusted_paths:
+            continue
+        if mise_config_untrusted(status):
+            return "untrusted"
+        if "trusted" in status:
+            return "trusted"
+        return "unknown"
     return "unknown"
 
 

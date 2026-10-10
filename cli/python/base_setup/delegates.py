@@ -15,6 +15,7 @@ from .mise_delegate import mise_details
 from .mise_delegate import mise_environment
 from .mise_delegate import mise_executable
 from .mise_delegate import missing_tool_names
+from .mise_delegate import mise_trust_status
 from .mise_delegate import reconcile_mise
 from .mise_delegate import require_mise_trusted_for_setup
 from .mise_delegate import resolve_mise_path
@@ -31,6 +32,7 @@ __all__ = (
     "mise_details",
     "mise_environment",
     "mise_executable",
+    "mise_trust_status",
     "missing_tool_names",
     "process",
     "reconcile_brewfile",

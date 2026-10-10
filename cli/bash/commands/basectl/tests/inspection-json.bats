@@ -17,6 +17,19 @@ run_inspection_basectl() {
         "$BASE_REPO_ROOT/bin/basectl" "$@"
 }
 
+run_inspection_basectl_with_env() {
+    local variable="$1"
+    local value="$2"
+    shift 2
+
+    run --separate-stderr env \
+        HOME="$TEST_HOME" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        "$variable=$value" \
+        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" "$@"
+}
+
 write_inspection_issue_gh_mock() {
     cat > "$TEST_MOCKBIN/gh" <<'EOF'
 #!/usr/bin/env bash
@@ -207,7 +220,7 @@ EOF
     write_inspection_issue_gh_mock
     write_complete_inspection_issue_body
 
-    BASE_GH_TEST_EMPTY_METADATA=1 run_inspection_basectl \
+    run_inspection_basectl_with_env BASE_GH_TEST_EMPTY_METADATA 1 \
         gh issue readiness 00123 --repo basefoundry/base \
         --project-owner basefoundry --project-number 010 --format json
 
@@ -244,7 +257,7 @@ EOF
     assert_json "$output" \
         '.status == "warn" and .error == null and .data.readiness == "partial" and .data.project.status == "skipped"'
 
-    BASE_GH_TEST_PROJECT_MISSING=1 run_inspection_basectl \
+    run_inspection_basectl_with_env BASE_GH_TEST_PROJECT_MISSING 1 \
         gh issue readiness 123 --repo basefoundry/base \
         --project-owner basefoundry --project-number 10 --format json
 
