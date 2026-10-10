@@ -15,12 +15,12 @@ The strict, dependency-free validator is
       "installer_sha256": "f0522bf20b13e2f487767324f4688f1b1ed33b1c1bc1158a404f0e428ea3e993"
     },
     "base-cli": {
-      "version": "0.4.3",
-      "commit": "8a93d22156ba75a99965f7c355f867acba630069"
+      "version": "0.5.1",
+      "commit": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4"
     },
     "base-bash-libs": {
-      "version": "2.1.0",
-      "commit": "36fec50c446dcea8c521a1ba3e7fee2394f169c0"
+      "version": "2.2.2",
+      "commit": "1333c0e7e4c3004663cda635e04965cb9d76511d"
     }
   }
 }

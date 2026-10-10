@@ -67,7 +67,7 @@ def provider_description() -> str:
 def compatibility_error(problem: str) -> BaseCliCompatibilityError:
     return BaseCliCompatibilityError(
         f"Base's selected base-cli {provider_description()} is incompatible: {problem}. "
-        "Install or upgrade base-cli to the release-pinned v0.4.3 provider, or set "
+        "Install or upgrade base-cli to the release-pinned v0.5.1 provider, or set "
         "BASE_CLI_SOURCE_DIR to a compatible source checkout. Source overrides take "
         "precedence over the installed package; repair or remove an incompatible override."
     )

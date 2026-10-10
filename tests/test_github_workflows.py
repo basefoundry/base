@@ -20,7 +20,7 @@ TESTS_WORKFLOW = WORKFLOW_DIR / "tests.yml"
 BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
 IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
 FULL_COMMIT_SHA_ACTION_REF = re.compile(r"^[^@]+@[0-9a-f]{40}$")
-BASE_BASH_LIBS_GA_COMMIT = "36fec50c446dcea8c521a1ba3e7fee2394f169c0"
+BASE_BASH_LIBS_GA_COMMIT = "1333c0e7e4c3004663cda635e04965cb9d76511d"
 
 
 def workflow_files() -> list[Path]:
@@ -397,7 +397,7 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
         "basefoundry/base-bash-libs",
     ]
     assert BASE_BASH_LIBS_GA_COMMIT in str(steps)
-    assert "v0.4.3" in str(steps)
+    assert "aa20cfe89bc3568ff19f8cc1414372feadb00fd4" in str(steps)
 
     for command in (
         "basectl setup --ci base-demo",
@@ -666,7 +666,7 @@ def test_source_provider_matrix_keeps_pin_and_exercises_moving_compatibility() -
     job = load_workflow(TESTS_WORKFLOW)["jobs"]["ubuntu-source-checkout"]
     matrix = job["strategy"]["matrix"]["include"]
     assert matrix == [
-        {"provider-ref": "v0.4.3", "name": "Ubuntu source-checkout suite"},
+        {"provider-ref": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4", "name": "Ubuntu source-checkout suite"},
         {"provider-ref": "main", "name": "Moving provider source-checkout suite"},
     ]
     assert job["strategy"]["fail-fast"] is False
