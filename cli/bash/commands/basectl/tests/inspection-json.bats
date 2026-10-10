@@ -13,7 +13,7 @@ run_inspection_basectl() {
     run --separate-stderr env \
         HOME="$TEST_HOME" \
         BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASE_REPO_ROOT/bin/basectl" "$@"
 }
 
@@ -26,7 +26,7 @@ run_inspection_basectl_with_env() {
         HOME="$TEST_HOME" \
         BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
         "$variable=$value" \
-        PATH="$TEST_MOCKBIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASE_REPO_ROOT/bin/basectl" "$@"
 }
 
