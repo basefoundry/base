@@ -367,8 +367,7 @@ base_command_with_mise_config() {
         return 0
     fi
 
-    printf 'MISE_CONFIG_FILE=%q MISE_OVERRIDE_CONFIG_FILENAMES=%q %s\n' \
-        "$mise_config_path" "$mise_config_path" "$command"
+    printf 'MISE_OVERRIDE_CONFIG_FILENAMES=%q %s\n' "$mise_config_path" "$command"
 }
 
 base_uv_extra_flags() {
@@ -410,7 +409,10 @@ base_project_run_shell_command() {
             export PATH
         fi
         if [[ -n "$mise_config_path" ]]; then
-            export MISE_CONFIG_FILE="$mise_config_path"
+            # MISE_CONFIG_FILE makes mise resolve relative task directories
+            # from HOME on current mise releases. The override filename still
+            # selects the explicit project config without changing that root.
+            unset MISE_CONFIG_FILE
             export MISE_OVERRIDE_CONFIG_FILENAMES="$mise_config_path"
         fi
         cd "$working_dir" && bash -c "$command_to_run" "$command_name" "$@"
