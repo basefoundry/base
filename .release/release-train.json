@@ -11,31 +11,36 @@
       "repository": "basefoundry/base-cli",
       "version": "0.5.1",
       "milestone": "v0.5.1",
-      "resolved_ref": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4"
+      "resolved_ref": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4",
+      "legacy_mutable": true
     },
     {
       "repository": "basefoundry/base-cli-demo",
       "version": "0.2.0",
       "milestone": "v0.2.0",
-      "resolved_ref": "1ae55d70ddbaae536261ec77dc26461996791050"
+      "resolved_ref": "1ae55d70ddbaae536261ec77dc26461996791050",
+      "legacy_mutable": true
     },
     {
       "repository": "basefoundry/base-bash-libs",
       "version": "2.2.2",
       "milestone": "v2.2.2",
-      "resolved_ref": "1333c0e7e4c3004663cda635e04965cb9d76511d"
+      "resolved_ref": "1333c0e7e4c3004663cda635e04965cb9d76511d",
+      "legacy_mutable": true
     },
     {
       "repository": "basefoundry/base-bash-libs-demo",
       "version": "0.1.2",
       "milestone": "v0.1.2",
-      "resolved_ref": "ab4da09cdca638354570aee1b44a3f47a8664551"
+      "resolved_ref": "ab4da09cdca638354570aee1b44a3f47a8664551",
+      "legacy_mutable": true
     },
     {
       "repository": "basefoundry/base-demo",
       "version": "0.2.1",
       "milestone": "v0.2.1",
-      "resolved_ref": "784c8c975fe4954b5274219cb0a86ffec821e029"
+      "resolved_ref": "784c8c975fe4954b5274219cb0a86ffec821e029",
+      "legacy_mutable": true
     }
   ],
   "gates": {

@@ -121,6 +121,7 @@ def validate_manifest(data: dict[str, Any]) -> list[Finding]:
         version = participant.get("version")
         milestone = participant.get("milestone")
         ref = participant.get("resolved_ref")
+        legacy_mutable = participant.get("legacy_mutable", False)
         if not isinstance(repository, str) or not re.fullmatch(r"[^/]+/[^/]+", repository):
             findings.append(finding("error", label, "repository must be owner/name."))
         elif repository in seen_repositories:
@@ -133,6 +134,8 @@ def validate_manifest(data: dict[str, Any]) -> list[Finding]:
             findings.append(finding("error", label, f"milestone must be v{version}; got {milestone!r}."))
         if not isinstance(ref, str) or not SHA_RE.fullmatch(ref):
             findings.append(finding("error", label, "resolved_ref must be a full lowercase 40-character SHA."))
+        if not isinstance(legacy_mutable, bool):
+            findings.append(finding("error", label, "legacy_mutable must be a boolean when present."))
 
     gates = data.get("gates")
     if not isinstance(gates, dict):
@@ -300,17 +303,48 @@ def check_remote_state(root: Path, data: dict[str, Any]) -> list[Finding]:
             else:
                 findings.append(finding("ok", f"milestone_{repository}", f"{participant['milestone']} is empty."))
 
+        immutable_policy, policy_error = gh_api(f"repos/{repository}/immutable-releases")
+        if policy_error:
+            findings.append(finding("error", f"immutable_policy_{repository}", policy_error))
+            immutable_enabled = False
+        elif immutable_policy.get("enabled") is not True:
+            findings.append(
+                finding(
+                    "error",
+                    f"immutable_policy_{repository}",
+                    "Repository-level immutable-release enforcement is not enabled.",
+                )
+            )
+            immutable_enabled = False
+        else:
+            findings.append(
+                finding(
+                    "ok",
+                    f"immutable_policy_{repository}",
+                    "Repository-level immutable-release enforcement is enabled.",
+                )
+            )
+            immutable_enabled = True
+
         release, error = gh_api(f"repos/{repository}/releases/tags/v{version}")
         if error:
             findings.append(finding("error", f"release_{repository}", error))
         elif release.get("draft") or release.get("prerelease"):
             findings.append(finding("error", f"release_{repository}", f"v{version} is draft or prerelease."))
-        elif release.get("immutable") is not True:
+        elif release.get("immutable") is True:
+            findings.append(finding("ok", f"release_{repository}", f"v{version} is public and immutable."))
+        elif participant.get("legacy_mutable") is True and immutable_enabled:
+            findings.append(
+                finding(
+                    "warn",
+                    f"release_{repository}",
+                    f"v{version} is a declared pre-enforcement legacy release and remains mutable.",
+                )
+            )
+        else:
             findings.append(
                 finding("error", f"release_{repository}", f"v{version} is not reported immutable by GitHub.")
             )
-        else:
-            findings.append(finding("ok", f"release_{repository}", f"v{version} is public and immutable."))
 
         peeled_sha, error = resolve_tag_commit(repository, version)
         if error:

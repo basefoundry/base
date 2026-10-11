@@ -33,7 +33,10 @@ A release train is not ready when any of these are true:
 3. A version, changelog, README, context file, lockfile, dependency pin, or
    workflow default disagrees with the selected release state.
 4. A component is represented by a branch name, short SHA, mutable ref, draft,
-   prerelease, or a GitHub Release that is not reported immutable.
+   prerelease, or a newly published GitHub Release that is not reported
+   immutable. A manifest may explicitly mark a pre-enforcement historical
+   release as `legacy_mutable` for one train only; that produces a warning, not
+   a pass, and repository-level immutable-release enforcement must still be on.
 5. The release BOM is missing, does not use full 40-character SHAs, omits a
    required platform, or does not validate on Ubuntu 24.04 and macOS 14.
 6. Public release assets, checksums, package metadata, or hosted readback have
@@ -47,7 +50,7 @@ evidence-backed explanation, before the final empty-milestone preflight.
 
 `.release/release-train.json` is the machine-readable planning state. It records
 the target Base version, the current version during planning, each selected
-component release, full immutable component commits, the expected milestones,
+component release, full 40-character component commits, the expected milestones,
 and the BOM workflow inputs. The file is deliberately JSON so the preflight can
 run without adding a new parser dependency.
 
@@ -94,6 +97,11 @@ updates Homebrew.
    immutable-release metadata, and public documentation.
 9. Close the release issue and milestone only after the public readback is
    complete. Preserve the evidence paths in the release issue.
+
+The `legacy_mutable` marker is a narrow migration aid for releases published
+before GitHub immutability was enabled. It must not be copied to a new
+component version: remove it when the next component release enters the
+manifest, and require the new release to read back as immutable.
 
 ## Patch versus minor scope
 
