@@ -1,0 +1,3 @@
+interface:
+  display_name: "Base Release Train"
+  short_description: "Audit and coordinate Base ecosystem releases"

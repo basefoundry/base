@@ -23,6 +23,9 @@ worktree-based PR trains, see [GitHub Workflow](github-workflow.md).
 For release preparation, tagging, GitHub Releases, and the Homebrew tap update,
 see [Release Process](release-process.md).
 
+For cross-repository release milestones, immutable pins, BOM gates, and public
+readback, see [Cross-Repository Release Train](release-train.md).
+
 For the smallest consumer-side identity, installer, and read-only command check,
 see [Downstream Release Smoke Test](downstream-release-smoke-test.md).
 
@@ -136,6 +139,9 @@ reference. The filename should answer "what is this about?"
   report work beyond raw runtime logs.
 - [Release Process](release-process.md) defines the Base release ceremony,
   version-file policy, GitHub Release flow, and Homebrew tap follow-up.
+- [Cross-Repository Release Train](release-train.md) defines the shared
+  milestone, immutable-reference, BOM, and public-readback gates used before
+  a Base ecosystem release.
 - [Ecosystem Release BOM](release-bom.md) defines the immutable cross-repository
   compatibility and release-provenance record.
 - [Release Stabilization and Independent Review Policy](release-stabilization-policy.md)

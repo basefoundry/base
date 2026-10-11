@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "candidate": {
+    "repository": "basefoundry/base",
+    "target_version": "1.10.1",
+    "current_version": "1.10.0",
+    "milestone": "v1.10.1"
+  },
+  "participants": [
+    {
+      "repository": "basefoundry/base-cli",
+      "version": "0.5.1",
+      "milestone": "v0.5.1",
+      "resolved_ref": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4"
+    },
+    {
+      "repository": "basefoundry/base-cli-demo",
+      "version": "0.2.0",
+      "milestone": "v0.2.0",
+      "resolved_ref": "1ae55d70ddbaae536261ec77dc26461996791050"
+    },
+    {
+      "repository": "basefoundry/base-bash-libs",
+      "version": "2.2.2",
+      "milestone": "v2.2.2",
+      "resolved_ref": "1333c0e7e4c3004663cda635e04965cb9d76511d"
+    },
+    {
+      "repository": "basefoundry/base-bash-libs-demo",
+      "version": "0.1.2",
+      "milestone": "v0.1.2",
+      "resolved_ref": "ab4da09cdca638354570aee1b44a3f47a8664551"
+    },
+    {
+      "repository": "basefoundry/base-demo",
+      "version": "0.2.1",
+      "milestone": "v0.2.1",
+      "resolved_ref": "784c8c975fe4954b5274219cb0a86ffec821e029"
+    }
+  ],
+  "gates": {
+    "empty_milestones": true,
+    "immutable_releases": true,
+    "public_readback": true,
+    "release_bom": {
+      "workflow": "ecosystem-release-bom.yml",
+      "platforms": ["ubuntu-24.04", "macos-14"],
+      "inputs": {
+        "base_cli_version": "0.5.1",
+        "base_cli_ref": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4",
+        "base_bash_libs_version": "2.2.2",
+        "base_bash_libs_ref": "1333c0e7e4c3004663cda635e04965cb9d76511d",
+        "base_demo_version": "0.2.1",
+        "base_demo_ref": "784c8c975fe4954b5274219cb0a86ffec821e029"
+      }
+    }
+  }
+}

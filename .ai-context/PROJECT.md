@@ -4,12 +4,12 @@
 
 - Name: Base
 - Repository: `github.com/basefoundry/base`
-- Current release: `1.9.0`
+- Current release: `1.10.0`
 - Primary platform: macOS
 - Linux posture: Ubuntu/Debian runtime support, source-checkout validation, and
   apt-backed setup are implemented and tested; broader Linux distribution
   support remains tracked in `docs/linux-support.md`.
-- Native Windows is a staged future capability targeted for 1.11.0. The current
+- Native Windows is a staged future capability targeted for 1.12.0. The current
   Phase 0 contract and CI are documented in `docs/windows-support.md`, but the
   current release does not support native Windows. Ubuntu/Debian under WSL2
   follows the supported Linux contract; Git Bash and WSL2 are not substitutes
