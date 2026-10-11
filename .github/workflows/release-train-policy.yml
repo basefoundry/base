@@ -26,8 +26,34 @@ jobs:
       - name: Install policy dependencies
         run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
 
-      - name: Run local release-train preflight
+      - name: Select release-train preflight mode
+        id: release-train-mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_version="$(jq -r '.candidate.current_version' .release/release-train.json)"
+          target_version="$(jq -r '.candidate.target_version' .release/release-train.json)"
+          actual_version="$(sed -n '1p' VERSION)"
+          case "$actual_version" in
+            "$current_version")
+              echo "mode=planning" >> "$GITHUB_OUTPUT"
+              ;;
+            "$target_version")
+              echo "mode=release-prep" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::VERSION $actual_version matches neither current version $current_version nor release-prep target $target_version."
+              exit 1
+              ;;
+          esac
+
+      - name: Run local planning preflight
+        if: steps.release-train-mode.outputs.mode == 'planning'
         run: python tools/release_train_check.py --format json
+
+      - name: Run local release-prep preflight
+        if: steps.release-train-mode.outputs.mode == 'release-prep'
+        run: python tools/release_train_check.py --release-prep --format json
 
   hosted-preflight:
     name: Hosted release-train readback

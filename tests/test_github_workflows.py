@@ -16,6 +16,7 @@ BASE_CHECK_WORKFLOW = WORKFLOW_DIR / "base-check.yml"
 ECOSYSTEM_RELEASE_BOM_WORKFLOW = WORKFLOW_DIR / "ecosystem-release-bom.yml"
 BASE_DEMO_E2E_WORKFLOW = WORKFLOW_DIR / "base-demo-e2e.yml"
 DOWNSTREAM_VERSION_BUMPS_WORKFLOW = WORKFLOW_DIR / "downstream-version-bumps.yml"
+RELEASE_TRAIN_POLICY_WORKFLOW = WORKFLOW_DIR / "release-train-policy.yml"
 TESTS_WORKFLOW = WORKFLOW_DIR / "tests.yml"
 BASE_PROJECT_CONFIG = REPO_ROOT / ".github" / "base-project.yml"
 IMPLEMENTATION_ISSUE_TEMPLATE = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "implementation.yml"
@@ -208,6 +209,28 @@ def test_downstream_version_bumps_are_release_triggered_idempotent_and_review_ga
     assert 'version_slug="${version//./-}"' in run_commands
     assert 'bump-${component}-${version_slug}' in run_commands
     assert "gh pr merge" not in run_commands
+
+
+def test_release_train_policy_selects_planning_or_release_prep_mode() -> None:
+    workflow = load_workflow(RELEASE_TRAIN_POLICY_WORKFLOW)
+    job = workflow["jobs"]["local-preflight"]
+    steps = job["steps"]
+    selector = workflow_step_by_name(job, "Select release-train preflight mode")
+    planning = workflow_step_by_name(job, "Run local planning preflight")
+    release_prep = workflow_step_by_name(job, "Run local release-prep preflight")
+
+    selector_run = selector["run"]
+    assert "candidate.current_version" in selector_run
+    assert "candidate.target_version" in selector_run
+    assert "actual_version" in selector_run
+    assert 'mode=planning' in selector_run
+    assert 'mode=release-prep' in selector_run
+    assert "matches neither current version" in selector_run
+    assert planning["if"] == "steps.release-train-mode.outputs.mode == 'planning'"
+    assert release_prep["if"] == "steps.release-train-mode.outputs.mode == 'release-prep'"
+    assert planning["run"] == "python tools/release_train_check.py --format json"
+    assert release_prep["run"] == "python tools/release_train_check.py --release-prep --format json"
+    assert steps.index(selector) < steps.index(planning) < steps.index(release_prep)
 
 
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
