@@ -14,9 +14,9 @@ def test_downstream_release_smoke_test_binds_identity_before_the_read_only_check
     text = DOC.read_text(encoding="utf-8")
 
     for required in (
-        "release_tag=v1.9.0",
-        "expected_commit=ac8d294421e1bfc14afa8c6a2a12f1affb5268ee",
-        "expected_install_sha256=f0522bf20b13e2f487767324f4688f1b1ed33b1c1bc1158a404f0e428ea3e993",
+        "release_tag=v1.10.0",
+        "expected_commit=167947add351b8d609b5ab17342425e9a337acbb",
+        "expected_install_sha256=94840a0e37b993065781fac3efa86ed692f974917d57a77170dae29efff539ca",
         "bash -n",
         "--detach",
         "basectl\" check --format json",
