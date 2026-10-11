@@ -184,7 +184,7 @@ Expected updates include command changes, architecture changes, workflow
 changes, manifest schema changes, release/status changes, and durable product
 decisions.
 
-Base provider validation covers both release-pinned base-cli v0.4.3 and compatible
+Base provider validation covers both release-pinned base-cli v0.5.1 and compatible
 moving sources. The pinned release remains authoritative. Base-owned Python
 entrypoints preflight adapter capabilities and identify incompatible selected
 sources; see `docs/testing.md` for the installed, explicit, and sibling matrix.

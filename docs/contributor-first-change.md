@@ -19,7 +19,7 @@ Choose the smallest path that matches the change:
 
 Base's supported contributor platforms are macOS 14 or newer and Ubuntu/Debian
 as documented by the repository. Native Windows is not yet a supported
-contributor environment; the staged Windows work is planned for v1.11.0.
+contributor environment; the staged Windows work is planned for v1.12.0.
 
 ## Path 1: documentation-only
 

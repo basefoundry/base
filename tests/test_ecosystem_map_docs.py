@@ -14,7 +14,7 @@ def test_ecosystem_map_is_linked_and_keeps_support_boundaries_explicit() -> None
         "Support matrix",
         "not independent adoption evidence",
         "Native Windows",
-        "v1.11.0 Windows milestone",
+        "v1.12.0 Windows milestone",
         "moving sibling checkout",
         "Homebrew",
     ):

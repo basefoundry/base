@@ -20,6 +20,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 - Updated the release BOM workflow default to the released `base-demo` v0.2.1
   commit and corrected stale Base context metadata.
+- Aligned release-pinned provider, development-line, and native-Windows
+  documentation with the current 1.10.0 release, 1.11.0 development line, and
+  v1.12.0 Windows target.
 
 ## [1.10.0] - 2026-10-10
 
