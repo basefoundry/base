@@ -6,13 +6,16 @@ artifact.  It validates the versioned train policy locally and, when
 ``--remote`` is supplied, reads hosted milestones and releases through ``gh``.
 """
 
+# Keep the policy validation paths together so the JSON output stays easy to
+# audit and consume from CI and agent harnesses.
+# pylint: disable=too-many-branches,too-many-statements
+
 from __future__ import annotations
 
 import argparse
 import json
 import re
 import subprocess
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -89,7 +92,9 @@ def validate_manifest(data: dict[str, Any]) -> list[Finding]:
     candidate_version = candidate.get("target_version")
     candidate_milestone = candidate.get("milestone")
     if not isinstance(candidate_version, str) or not SEMVER_RE.fullmatch(candidate_version):
-        findings.append(finding("error", "candidate_version", "candidate.target_version must be SemVer X.Y.Z."))
+        findings.append(
+            finding("error", "candidate_version", "candidate.target_version must be SemVer X.Y.Z.")
+        )
     if candidate_milestone != f"v{candidate_version}":
         findings.append(
             finding(
@@ -335,7 +340,11 @@ def check_remote_state(root: Path, data: dict[str, Any]) -> list[Finding]:
                 actual = inputs.get(name, {}).get("default")
                 if actual != expected:
                     findings.append(
-                        finding("error", f"bom_default_{name}", f"BOM default {name}={actual!r}; expected {expected!r}.")
+                        finding(
+                            "error",
+                            f"bom_default_{name}",
+                            f"BOM default {name}={actual!r}; expected {expected!r}.",
+                        )
                     )
             if not expected_inputs:
                 findings.append(finding("warn", "bom_defaults", "No BOM defaults are declared in the train manifest."))
@@ -368,7 +377,8 @@ def render(findings: list[Finding], output_format: str) -> int:
     warnings = [item for item in findings if item.status == "warn"]
     status = "error" if errors else "warn" if warnings else "ok"
     if output_format == "json":
-        print(json.dumps({"schema_version": 1, "status": status, "findings": [asdict(item) for item in findings]}, indent=2))
+        payload = {"schema_version": 1, "status": status, "findings": [asdict(item) for item in findings]}
+        print(json.dumps(payload, indent=2))
     else:
         print(f"Release-train preflight: {status}")
         for item in findings:
