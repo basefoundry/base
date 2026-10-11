@@ -6,7 +6,7 @@ checksum, and one read-only Base command. It complements the full
 [release process](release-process.md), the hosted release gates, and the
 [release BOM policy](release-bom.md); it does not replace any of them.
 
-The example below uses the public Base `v1.9.0` release. For a later release,
+The example below uses the public Base `v1.10.0` release. For a later release,
 replace both expected values with the full commit and reviewed `install.sh`
 SHA-256 recorded for that release.
 
@@ -15,9 +15,9 @@ SHA-256 recorded for that release.
 Use a full commit, never a moving branch or a short SHA:
 
 ```bash
-release_tag=v1.9.0
-expected_commit=ac8d294421e1bfc14afa8c6a2a12f1affb5268ee
-expected_install_sha256=f0522bf20b13e2f487767324f4688f1b1ed33b1c1bc1158a404f0e428ea3e993
+release_tag=v1.10.0
+expected_commit=167947add351b8d609b5ab17342425e9a337acbb
+expected_install_sha256=94840a0e37b993065781fac3efa86ed692f974917d57a77170dae29efff539ca
 release_repo=https://github.com/basefoundry/base.git
 release_root="$(mktemp -d)"
 trap 'rm -rf "$release_root"' EXIT

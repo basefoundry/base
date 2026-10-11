@@ -13,7 +13,7 @@ architecture discussion.
   under WSL2 follows that Linux contract; broader Linux distribution and
   non-Ubuntu/Debian WSL support remain outside the current contract. Keep
   platform details in `docs/linux-support.md`.
-- Native Windows is a staged future capability targeted for 1.11.0. Phase 0 may
+- Native Windows is a staged future capability targeted for 1.12.0. Phase 0 may
   define and test the contract, but the native launcher and read-only command
   subset remain deferred until their platform adapters exist. Git Bash is not a
   native Windows tier, and WSL2 remains a Linux runtime path.
