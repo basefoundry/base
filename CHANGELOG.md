@@ -8,6 +8,19 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+### Added
+
+- Added a versioned cross-repository release-train policy, machine-readable
+  participant manifest, read-only preflight, and workflow gate for milestone,
+  immutable-reference, BOM, and public-readback checks.
+- Added the repository-local `base-release-train` Codex skill source with
+  explicit mutation and publication boundaries.
+
+### Changed
+
+- Updated the release BOM workflow default to the released `base-demo` v0.2.1
+  commit and corrected stale Base context metadata.
+
 ## [1.10.0] - 2026-10-10
 
 - PR policy examples now use only labels that Base manages or documents; the
