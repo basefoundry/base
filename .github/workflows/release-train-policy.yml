@@ -70,7 +70,16 @@ jobs:
       - name: Install policy dependencies
         run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
 
+      - name: Check hosted release-train credential
+        env:
+          GH_TOKEN: ${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}
+        run: |
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "::error::BASE_RELEASE_TRAIN_TOKEN is required for cross-repository immutable-release readback."
+            exit 1
+          fi
+
       - name: Run hosted release-train preflight
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}
         run: python tools/release_train_check.py --remote --format json
