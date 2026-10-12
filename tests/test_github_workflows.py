@@ -233,6 +233,17 @@ def test_release_train_policy_selects_planning_or_release_prep_mode() -> None:
     assert steps.index(selector) < steps.index(planning) < steps.index(release_prep)
 
 
+def test_release_train_policy_uses_dedicated_hosted_readback_credential() -> None:
+    workflow = load_workflow(RELEASE_TRAIN_POLICY_WORKFLOW)
+    job = workflow["jobs"]["hosted-preflight"]
+    credential = workflow_step_by_name(job, "Check hosted release-train credential")
+    preflight = workflow_step_by_name(job, "Run hosted release-train preflight")
+
+    assert credential["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
+    assert "BASE_RELEASE_TRAIN_TOKEN is required" in credential["run"]
+    assert preflight["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
+
+
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:
     workflow = load_workflow(TESTS_WORKFLOW)
     triggers = workflow.get("on") or workflow.get(True)
