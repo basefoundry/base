@@ -84,6 +84,19 @@ setup() {
     [ "$(base_read_version "$base_home")" = "1.8.0" ]
 }
 
+@test "base_read_version ignores an enclosing unrelated Git checkout" {
+    local parent_home="$TEST_TMPDIR/parent"
+    local base_home="$parent_home/Cellar/base/1.8.0/libexec"
+
+    mkdir -p "$base_home"
+    printf '1.8.0\n' > "$base_home/VERSION"
+    printf '1.9.0\n' > "$base_home/DEVELOPMENT_VERSION"
+    init_git_repo "$parent_home"
+    commit_all "$parent_home"
+
+    [ "$(base_read_version "$base_home")" = "1.8.0" ]
+}
+
 @test "base_read_version returns unknown when version file is missing" {
     local base_home="$TEST_TMPDIR/base"
 
