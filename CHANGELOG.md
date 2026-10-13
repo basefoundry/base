@@ -8,6 +8,16 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+## [1.10.3] - 2026-10-13
+
+### Fixed
+
+- Keep packaged Base installs on the published version when the install
+  directory is nested inside an unrelated Git checkout, including the
+  Homebrew layout.
+- Add regression coverage for packaged version identity and the enclosing
+  repository case found during the v1.10.2 Homebrew readback.
+
 ## [1.10.2] - 2026-10-13
 
 ### Added
