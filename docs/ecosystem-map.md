@@ -75,7 +75,9 @@ evidence.
 
 ## Compatibility and release truth
 
-Base's current published release is v1.10.0. Companion repositories publish on
+Base's current release line is v1.10.1. The release-prep commit is the candidate
+until publication; after publication, the public tag and BOM are the release
+truth. Companion repositories publish on
 their own schedules. A coordinated Base release records exact component tags,
 full commits, platform evidence, and BOM results; a moving sibling checkout is
 useful development input but is not release evidence. Homebrew promotes a

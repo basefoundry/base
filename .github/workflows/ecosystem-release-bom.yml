@@ -6,7 +6,7 @@ on:
       base_version:
         description: Base release version owned by this BOM
         required: true
-        default: "1.10.0"
+        default: "1.10.1"
         type: string
       base_ref:
         description: Immutable Base full commit to validate
