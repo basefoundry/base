@@ -4,7 +4,7 @@ Base releases are explicit release ceremonies, not automatic side effects of
 ordinary pull requests.
 
 Use this checklist when preparing and publishing a new Base release such as
-`1.10.1` or `1.11.0`.
+`1.10.2` or `1.11.0`.
 
 ## Ownership
 
@@ -56,7 +56,7 @@ Base keeps two related version identities during development:
 A clean exact `vX.Y.Z` checkout and a packaged install report `VERSION` without
 a development suffix. A dirty checkout, including one based on a release tag,
 reports the development identity with its revision and `.dirty`. This keeps a
-published release such as `1.10.1` distinct from mutable `main` work targeting
+published release such as `1.10.2` distinct from mutable `main` work targeting
 `1.11.0`.
 
 Stable consumer installs must use Homebrew or an explicit release tag. Source
@@ -128,8 +128,11 @@ first mutation. It creates an annotated tag, verifies the local peeled SHA,
 pushes the tag, verifies the remote peeled SHA, and creates the GitHub Release
 with `--verify-tag` in the configured repository. The successful command then
 verifies GitHub's annotated tag object resolves to the same commit SHA. When
-`--bom` is supplied, it also uploads and verifies `release-bom.json` and
-`release-bom.sha256` as release assets. It does not update the Homebrew tap; it
+`--bom` is supplied, it passes `release-bom.json` and
+`release-bom.sha256` to GitHub during release creation and verifies them as
+release assets. This ordering is required for immutable releases: never create
+an empty immutable release and attempt to upload the BOM afterward. It does not
+update the Homebrew tap; it
 prints the tap handoff checklist when `release.homebrew` is declared.
 
 ## Downstream Version-Bump Automation

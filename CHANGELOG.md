@@ -8,6 +8,21 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-10-13
+
+### Added
+
+- Added the repeatable patch-release dogfood sequence to the cross-repository
+  release-train playbook, including single-component and all-component pin
+  changes.
+
+### Fixed
+
+- Recovered the governed release path after v1.10.1 by publishing immutable
+  release BOM assets atomically with the GitHub Release creation flow.
+- Aligned the release manifest, BOM workflow defaults, version identity, and
+  current-release documentation on Base 1.10.2.
+
 ## [1.10.1] - 2026-10-13
 
 ### Added
