@@ -8,6 +8,16 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+## [1.10.4] - 2026-10-13
+
+### Fixed
+
+- Published the packaged-install version identity correction as an
+  asset-complete recovery release after the v1.10.3 immutable release could
+  not receive its BOM assets.
+- Retained the regression coverage that prevents an enclosing Git checkout
+  from changing the version reported by a packaged Base installation.
+
 ## [1.10.3] - 2026-10-13
 
 ### Fixed

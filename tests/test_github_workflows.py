@@ -128,7 +128,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "base_demo_version",
         "base_demo_ref",
     }
-    assert inputs["base_version"]["default"] == "1.10.3"
+    assert inputs["base_version"]["default"] == "1.10.4"
     assert inputs["base_demo_version"]["default"] == "0.2.1"
     assert inputs["base_demo_ref"]["default"] == "784c8c975fe4954b5274219cb0a86ffec821e029"
     assert assemble["needs"] == "compatibility"
