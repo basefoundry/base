@@ -56,7 +56,7 @@ Base keeps two related version identities during development:
 A clean exact `vX.Y.Z` checkout and a packaged install report `VERSION` without
 a development suffix. A dirty checkout, including one based on a release tag,
 reports the development identity with its revision and `.dirty`. This keeps a
-published release such as `1.10.0` distinct from mutable `main` work targeting
+published release such as `1.10.1` distinct from mutable `main` work targeting
 `1.11.0`.
 
 Stable consumer installs must use Homebrew or an explicit release tag. Source
