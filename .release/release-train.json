@@ -2,9 +2,9 @@
   "schema_version": 1,
   "candidate": {
     "repository": "basefoundry/base",
-    "target_version": "1.10.3",
-    "current_version": "1.10.2",
-    "milestone": "v1.10.3"
+    "target_version": "1.10.4",
+    "current_version": "1.10.3",
+    "milestone": "v1.10.4"
   },
   "participants": [
     {
