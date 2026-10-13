@@ -105,8 +105,34 @@ manifest, and require the new release to read back as immutable.
 
 ## Patch versus minor scope
 
-The Base `1.10.1` dogfood patch may contain documentation, CI, internal
+The Base `1.10.2` recovery patch may contain documentation, CI, internal
 preflight tooling, release manifests, and non-breaking AI harness fixtures. It
 must not silently establish a new supported public command contract. The
 stable `basectl release train` command surface, machine-readable contract, and
 replayable AI harness are tracked for Base `1.11.0` in issue #2499.
+
+## Patch-release dogfood sequence
+
+Use this sequence to exercise the release process with progressively different
+dependency inputs. Every component patch must have an issue-backed fix or
+guardrail; version-only releases create noise without testing a real contract.
+
+1. Recover Base with a patch release that keeps the latest released component
+   pins unchanged. For the v1.10.2 recovery release, the selected pins are
+   `base-cli` 0.5.1, `base-bash-libs` 2.2.2, and `base-demo` 0.2.1.
+2. For a single-component exercise, publish the component patch first, verify
+   its public tag, release, and peeled commit, then update the Base manifest and
+   BOM inputs and repeat the full Base preflight, BOM, publication, and
+   Homebrew readback. Do not use a component branch or local checkout as a
+   released dependency.
+3. Repeat the single-component exercise for each Base BOM participant. The
+   companion demos remain independently aligned but are not Base BOM inputs.
+4. For an all-component exercise after those single-component releases, publish
+   another patch of each component so the final Base diff changes all three
+   pins—for example `base-cli` 0.5.3, `base-bash-libs` 2.2.4, and `base-demo`
+   0.2.3—then publish the next Base patch with all three exact refs.
+
+Each cycle ends only after the immutable release assets, checksums, package or
+installer metadata, downstream documentation, and Homebrew upgrade path have
+been read back publicly. A green component workflow alone is not release
+evidence.
