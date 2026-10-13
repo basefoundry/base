@@ -21,15 +21,28 @@ base_version_git_revision() {
     local base_home="$1"
     local revision=""
 
+    base_version_is_git_checkout "$base_home" || return 1
     revision="$(git -C "$base_home" rev-parse --short=12 HEAD 2>/dev/null)" || return 1
     [[ -n "$revision" ]] || return 1
     printf '%s\n' "$revision"
+}
+
+base_version_is_git_checkout() {
+    local base_home="$1"
+    local base_root=""
+    local git_root=""
+
+    base_root="$(cd -- "$base_home" 2>/dev/null && pwd -P)" || return 1
+    git_root="$(git -C "$base_home" rev-parse --show-toplevel 2>/dev/null)" || return 1
+    git_root="$(cd -- "$git_root" 2>/dev/null && pwd -P)" || return 1
+    [[ "$git_root" == "$base_root" ]]
 }
 
 base_version_exact_tag() {
     local base_home="$1"
     local tag=""
 
+    base_version_is_git_checkout "$base_home" || return 1
     tag="$(git -C "$base_home" describe --tags --exact-match --match 'v[0-9]*' HEAD 2>/dev/null)" || return 1
     [[ -n "$tag" ]] || return 1
     printf '%s\n' "$tag"
@@ -39,6 +52,7 @@ base_version_worktree_dirty() {
     local base_home="$1"
     local status=""
 
+    base_version_is_git_checkout "$base_home" || return 1
     status="$(git -C "$base_home" status --porcelain --untracked-files=normal 2>/dev/null)" || return 1
     [[ -n "$status" ]]
 }
