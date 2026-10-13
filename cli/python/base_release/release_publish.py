@@ -322,20 +322,3 @@ def stage_release_files(
             yield notes_path, bom_assets
     except OSError as exc:
         raise ReleaseError(f"Unable to prepare local release files: {exc}") from exc
-
-
-def upload_release_bom_assets(ctx: ReleaseContext, assets: tuple[Path, Path]) -> None:
-    """Attach the BOM and its digest to the already-created GitHub Release."""
-    run_release_step(
-        [
-            "gh",
-            "release",
-            "upload",
-            ctx.tag_name,
-            *(str(asset) for asset in assets),
-            "--repo",
-            ctx.release.github.repository,
-            "--clobber",
-        ],
-        cwd=ctx.manifest_path.parent,
-    )

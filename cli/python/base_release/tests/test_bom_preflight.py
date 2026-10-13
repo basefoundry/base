@@ -127,27 +127,31 @@ def test_valid_pair_and_legacy_bom_succeed(publication, mode, sidecar_present):
         assert not commands
     else:
         assert commands[0][:3] == ["git", "tag", "-a"]
-        assert commands[-1][:3] == ["gh", "release", "upload"]
+        create_command = next(command for command in commands if command[:3] == ["gh", "release", "create"])
+        assert {Path(path).name for path in create_command[4:6]} == {
+            "release-bom.json",
+            "release-bom.sha256",
+        }
 
 
 def test_publish_uses_prevalidated_snapshot_after_input_disappears(publication, monkeypatch):
     ctx, commands = publication
     expected = ctx.bom_path.read_bytes()
-    uploaded = {}
+    attached = {}
 
     def run_step(command, **_):
         commands.append(command)
         if command[:3] == ["git", "tag", "-a"]:
             ctx.bom_path.unlink()
             ctx.bom_path.with_suffix(".sha256").unlink()
-        if command[:3] == ["gh", "release", "upload"]:
-            uploaded.update({Path(path).name: Path(path).read_bytes() for path in command[4:6]})
+        if command[:3] == ["gh", "release", "create"]:
+            attached.update({Path(path).name: Path(path).read_bytes() for path in command[4:6]})
 
     monkeypatch.setattr(engine, "run_release_step", run_step)
     monkeypatch.setattr("base_release.release_publish.run_release_step", run_step)
     assert invoke_mode(ctx, "publish") == 0
-    assert uploaded["release-bom.json"] == expected
-    assert uploaded["release-bom.sha256"] == (
+    assert attached["release-bom.json"] == expected
+    assert attached["release-bom.sha256"] == (
         f"{hashlib.sha256(expected).hexdigest()}  release-bom.json\n".encode()
     )
 

@@ -613,7 +613,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         verify_github.assert_called_once()
 
 
-    def test_publish_with_bom_uploads_and_verifies_stable_release_assets(self) -> None:
+    def test_publish_with_bom_attaches_and_verifies_stable_release_assets(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             manifest_path = self.manifest_factory.write_release(root)
@@ -625,13 +625,15 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 encoding="utf-8",
             )
             commands: list[tuple[list[str], Path | None]] = []
-            uploaded_contents: dict[str, bytes] = {}
+            attached_contents: dict[str, bytes] = {}
 
             def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
                 commands.append((command, cwd))
-                if command[:3] == ["gh", "release", "upload"]:
-                    uploaded_contents[Path(command[4]).name] = Path(command[4]).read_bytes()
-                    uploaded_contents[Path(command[5]).name] = Path(command[5]).read_bytes()
+                if command[:3] == ["gh", "release", "create"]:
+                    for argument in command[4:]:
+                        path = Path(argument)
+                        if path.is_file():
+                            attached_contents[path.name] = path.read_bytes()
 
             with (
                 mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS),
@@ -669,14 +671,18 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 )
 
         self.assertEqual((status, stderr), (0, ""), stdout)
-        upload_commands = [command for command, _cwd in commands if command[:3] == ["gh", "release", "upload"]]
-        self.assertEqual(len(upload_commands), 1)
-        upload_command = upload_commands[0]
-        self.assertEqual(upload_command[0:4], ["gh", "release", "upload", "v1.2.3"])
-        self.assertEqual(upload_command[6:], ["--repo", "codeforester/demo", "--clobber"])
-        self.assertEqual(uploaded_contents["release-bom.json"], bom_bytes)
+        create_commands = [command for command, _cwd in commands if command[:3] == ["gh", "release", "create"]]
+        self.assertEqual(len(create_commands), 1)
+        create_command = create_commands[0]
+        self.assertEqual(create_command[0:4], ["gh", "release", "create", "v1.2.3"])
+        asset_paths = [Path(create_command[4]), Path(create_command[5])]
+        self.assertEqual({path.name for path in asset_paths}, {"release-bom.json", "release-bom.sha256"})
         self.assertEqual(
-            uploaded_contents["release-bom.sha256"].decode(),
+            attached_contents["release-bom.json"],
+            bom_bytes,
+        )
+        self.assertEqual(
+            attached_contents["release-bom.sha256"].decode(),
             f"{hashlib.sha256(bom_bytes).hexdigest()}  release-bom.json\n",
         )
         verify_github.assert_called_once()
