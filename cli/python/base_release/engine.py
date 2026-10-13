@@ -21,7 +21,7 @@ from .release_publish import inspect_remote_annotated_tag, release_publish_recov
 from .release_publish import release_tag_push_recovery_guidance, require_interactive_publish_confirmation
 from .release_publish import run_release_step, verify_github_release
 from .release_publish import verify_local_annotated_tag, verify_remote_annotated_tag
-from .release_publish import stage_release_files, upload_release_bom_assets
+from .release_publish import stage_release_files
 from .release_readiness import extract_changelog_section, gh_cli_finding, github_release_finding
 from .release_readiness import require_release_provenance
 
@@ -203,16 +203,15 @@ def publish_and_verify_github_release(
 ) -> None:
     """Publish only pre-staged files; never reread the original BOM after tagging."""
     project_root = ctx.manifest_path.parent
+    asset_arguments = [str(asset) for asset in bom_assets] if bom_assets is not None else []
     run_release_step(
         [
-            "gh", "release", "create", ctx.tag_name, "--verify-tag",
+            "gh", "release", "create", ctx.tag_name, *asset_arguments, "--verify-tag",
             "--repo", ctx.release.github.repository, "--title", title,
             "--notes-file", str(notes_path),
         ],
         cwd=project_root,
     )
-    if bom_assets is not None:
-        upload_release_bom_assets(ctx, bom_assets)
     verify_github_release(
         ctx,
         expected_sha,
