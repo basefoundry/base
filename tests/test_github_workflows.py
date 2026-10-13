@@ -237,11 +237,24 @@ def test_release_train_policy_uses_dedicated_hosted_readback_credential() -> Non
     workflow = load_workflow(RELEASE_TRAIN_POLICY_WORKFLOW)
     job = workflow["jobs"]["hosted-preflight"]
     credential = workflow_step_by_name(job, "Check hosted release-train credential")
-    preflight = workflow_step_by_name(job, "Run hosted release-train preflight")
+    selector = workflow_step_by_name(job, "Select hosted release-train preflight mode")
+    planning = workflow_step_by_name(job, "Run hosted planning preflight")
+    release_prep = workflow_step_by_name(job, "Run hosted release-prep preflight")
 
     assert credential["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
     assert "BASE_RELEASE_TRAIN_TOKEN is required" in credential["run"]
-    assert preflight["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
+    assert "candidate.current_version" in selector["run"]
+    assert "candidate.target_version" in selector["run"]
+    assert "actual_version" in selector["run"]
+    assert "mode=planning" in selector["run"]
+    assert "mode=release-prep" in selector["run"]
+    assert "matches neither current version" in selector["run"]
+    assert planning["if"] == "steps.hosted-release-train-mode.outputs.mode == 'planning'"
+    assert release_prep["if"] == "steps.hosted-release-train-mode.outputs.mode == 'release-prep'"
+    assert planning["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
+    assert release_prep["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
+    assert planning["run"] == "python tools/release_train_check.py --remote --format json"
+    assert release_prep["run"] == "python tools/release_train_check.py --remote --release-prep --format json"
 
 
 def test_tests_workflow_runs_once_per_pr_commit_and_on_main() -> None:

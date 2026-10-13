@@ -79,7 +79,35 @@ jobs:
             exit 1
           fi
 
-      - name: Run hosted release-train preflight
+      - name: Select hosted release-train preflight mode
+        id: hosted-release-train-mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_version="$(jq -r '.candidate.current_version' .release/release-train.json)"
+          target_version="$(jq -r '.candidate.target_version' .release/release-train.json)"
+          actual_version="$(sed -n '1p' VERSION)"
+          case "$actual_version" in
+            "$current_version")
+              echo "mode=planning" >> "$GITHUB_OUTPUT"
+              ;;
+            "$target_version")
+              echo "mode=release-prep" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::VERSION $actual_version matches neither current version $current_version nor release-prep target $target_version."
+              exit 1
+              ;;
+          esac
+
+      - name: Run hosted planning preflight
+        if: steps.hosted-release-train-mode.outputs.mode == 'planning'
         env:
           GH_TOKEN: ${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}
         run: python tools/release_train_check.py --remote --format json
+
+      - name: Run hosted release-prep preflight
+        if: steps.hosted-release-train-mode.outputs.mode == 'release-prep'
+        env:
+          GH_TOKEN: ${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}
+        run: python tools/release_train_check.py --remote --release-prep --format json
