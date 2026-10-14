@@ -112,3 +112,33 @@ def test_short_component_ref_is_a_blocker(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert "resolved_ref must be a full lowercase 40-character SHA" in result.stdout
+
+
+def test_missing_candidate_repository_returns_structured_json_error(tmp_path: Path) -> None:
+    manifest = create_fixture(tmp_path)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    del data["candidate"]["repository"]
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    result = run_checker(tmp_path, manifest)
+
+    payload = json.loads(result.stdout)
+    assert result.returncode == 1
+    assert payload["status"] == "error"
+    assert any(item["name"] == "candidate_repository" for item in payload["findings"])
+    assert "Traceback" not in result.stderr
+
+
+def test_missing_candidate_milestone_returns_structured_json_error(tmp_path: Path) -> None:
+    manifest = create_fixture(tmp_path)
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    del data["candidate"]["milestone"]
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    result = run_checker(tmp_path, manifest)
+
+    payload = json.loads(result.stdout)
+    assert result.returncode == 1
+    assert payload["status"] == "error"
+    assert any(item["name"] == "candidate_milestone" for item in payload["findings"])
+    assert "Traceback" not in result.stderr

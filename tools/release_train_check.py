@@ -94,13 +94,17 @@ def validate_manifest(data: dict[str, Any]) -> list[Finding]:
     if not isinstance(candidate, dict):
         findings.append(finding("error", "candidate", "candidate must be an object."))
         candidate = {}
+    candidate_repository = candidate.get("repository")
+    if not isinstance(candidate_repository, str) or not re.fullmatch(r"[^/]+/[^/]+", candidate_repository):
+        findings.append(finding("error", "candidate_repository", "candidate.repository must be owner/name."))
     candidate_version = candidate.get("target_version")
     candidate_milestone = candidate.get("milestone")
-    if not isinstance(candidate_version, str) or not SEMVER_RE.fullmatch(candidate_version):
+    valid_candidate_version = isinstance(candidate_version, str) and SEMVER_RE.fullmatch(candidate_version)
+    if not valid_candidate_version:
         findings.append(
             finding("error", "candidate_version", "candidate.target_version must be SemVer X.Y.Z.")
         )
-    if candidate_milestone != f"v{candidate_version}":
+    if valid_candidate_version and candidate_milestone != f"v{candidate_version}":
         findings.append(
             finding(
                 "error",
