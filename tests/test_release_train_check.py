@@ -9,7 +9,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
-import release_train_check as checker  # noqa: E402
+# pylint: disable=wrong-import-position
+import release_train_check as checker
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -198,7 +199,9 @@ def remote_api(*, immutable: bool = True, tag_sha: str = "a" * 40):
     return fake
 
 
-def test_remote_gates_pass_with_immutable_release_and_peeled_tag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_remote_gates_pass_with_immutable_release_and_peeled_tag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     manifest = create_fixture(tmp_path)
     data = json.loads(manifest.read_text(encoding="utf-8"))
     monkeypatch.setattr(checker, "gh_api", remote_api())
