@@ -448,6 +448,8 @@ def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
                 "gh",
                 "api",
                 f"repos/{ctx.release.github.repository}/releases",
+                "--method",
+                "GET",
                 "--paginate",
                 "--slurp",
                 "--field",

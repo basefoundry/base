@@ -82,6 +82,7 @@ def test_github_release_finding_sees_mutable_draft_through_rest_list() -> None:
     assert "mutable draft" in finding.message
     command = run.call_args.args[0]
     assert command[:3] == ["gh", "api", "repos/basefoundry/base/releases"]
+    assert command[3:5] == ["--method", "GET"]
     assert "--paginate" in command
     assert "--slurp" in command
 
