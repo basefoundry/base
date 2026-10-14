@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "path": "VERSION"
+  },
+  "surfaces": [
+    {
+      "name": "readme_release_identity",
+      "path": "README.md",
+      "must_contain": [
+        "version-{version}-blue",
+        "Base `{version}` is the current release.",
+        "Base {version} release also owns"
+      ]
+    },
+    {
+      "name": "project_context_release",
+      "path": ".ai-context/PROJECT.md",
+      "must_contain": ["Current release: `{version}`"]
+    },
+    {
+      "name": "status_context_release",
+      "path": ".ai-context/STATUS.md",
+      "must_contain": ["Base `{version}` is the current release."]
+    },
+    {
+      "name": "changelog_release",
+      "path": "CHANGELOG.md",
+      "must_contain": ["## [{version}]"]
+    },
+    {
+      "name": "technical_overview_release",
+      "path": "docs/technical-overview.md",
+      "must_contain": ["Base **{version}** ("]
+    },
+    {
+      "name": "release_bom_current_train",
+      "path": "docs/release-bom.md",
+      "must_contain": ["For the Base {version} release train"]
+    },
+    {
+      "name": "ecosystem_map_current_release",
+      "path": "docs/ecosystem-map.md",
+      "must_contain": ["Base's current release line is v{version}."]
+    },
+    {
+      "name": "bootstrap_stable_ref",
+      "path": "docs/bootstrap.md",
+      "must_contain": [
+        "git clone --branch v{version}",
+        "raw.githubusercontent.com/basefoundry/base/v{version}/install.sh",
+        "--branch v{version}"
+      ]
+    },
+    {
+      "name": "release_process_current_release",
+      "path": "docs/release-process.md",
+      "must_contain": ["The latest published Base release is `{version}`."]
+    },
+    {
+      "name": "product_requirements_reviewed_release",
+      "path": "docs/product-requirements.md",
+      "must_contain": ["Base era reviewed: {version}"]
+    }
+  ],
+  "exceptions": [
+    {
+      "name": "historical_downstream_smoke_fixture",
+      "path": "docs/downstream-release-smoke-test.md",
+      "reason": "The document intentionally preserves the v1.10.0 tag and installer checksum as a historical downstream smoke-test fixture.",
+      "expires": "2027-01-31"
+    }
+  ]
+}

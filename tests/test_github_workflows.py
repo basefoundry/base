@@ -215,10 +215,12 @@ def test_release_train_policy_selects_planning_or_release_prep_mode() -> None:
     workflow = load_workflow(RELEASE_TRAIN_POLICY_WORKFLOW)
     job = workflow["jobs"]["local-preflight"]
     steps = job["steps"]
+    version_check = workflow_step_by_name(job, "Check version consistency")
     selector = workflow_step_by_name(job, "Select release-train preflight mode")
     planning = workflow_step_by_name(job, "Run local planning preflight")
     release_prep = workflow_step_by_name(job, "Run local release-prep preflight")
 
+    assert version_check["run"] == "python tools/version_consistency_check.py --format json"
     selector_run = selector["run"]
     assert "candidate.current_version" in selector_run
     assert "candidate.target_version" in selector_run
@@ -230,17 +232,19 @@ def test_release_train_policy_selects_planning_or_release_prep_mode() -> None:
     assert release_prep["if"] == "steps.release-train-mode.outputs.mode == 'release-prep'"
     assert planning["run"] == "python tools/release_train_check.py --format json"
     assert release_prep["run"] == "python tools/release_train_check.py --release-prep --format json"
-    assert steps.index(selector) < steps.index(planning) < steps.index(release_prep)
+    assert steps.index(version_check) < steps.index(selector) < steps.index(planning) < steps.index(release_prep)
 
 
 def test_release_train_policy_uses_dedicated_hosted_readback_credential() -> None:
     workflow = load_workflow(RELEASE_TRAIN_POLICY_WORKFLOW)
     job = workflow["jobs"]["hosted-preflight"]
+    version_check = workflow_step_by_name(job, "Check version consistency")
     credential = workflow_step_by_name(job, "Check hosted release-train credential")
     selector = workflow_step_by_name(job, "Select hosted release-train preflight mode")
     planning = workflow_step_by_name(job, "Run hosted planning preflight")
     release_prep = workflow_step_by_name(job, "Run hosted release-prep preflight")
 
+    assert version_check["run"] == "python tools/version_consistency_check.py --format json"
     assert credential["env"]["GH_TOKEN"] == "${{ secrets.BASE_RELEASE_TRAIN_TOKEN }}"
     assert "BASE_RELEASE_TRAIN_TOKEN is required" in credential["run"]
     assert "candidate.current_version" in selector["run"]

@@ -78,6 +78,38 @@ The checker is read-only. It never creates milestones or issues, changes a
 Project field, pushes a branch, merges a pull request, creates a release, or
 updates Homebrew.
 
+## Version-consistency contract
+
+Every release-aware repository declares its authoritative version file and
+required public version surfaces in
+`.release/version-consistency.json`. Base runs the reusable checker on every
+release-train pull request:
+
+```bash
+python3 tools/version_consistency_check.py
+python3 tools/version_consistency_check.py --format json
+```
+
+The checker validates the authority, file-specific required text, and every
+allowlist exception's rationale and expiry. It does not reject historical
+examples merely because they contain an older version; such examples must be
+listed explicitly as expiring exceptions. Registry or public-release
+readback remains a separate hosted gate: `release_train_check.py --remote`
+checks GitHub release/tag state, while package repositories must add their own
+registry readback to the same release-prep workflow.
+
+Adoption status is tracked here until each repository carries the same small
+contract and workflow invocation:
+
+| Repository | Current adoption |
+| --- | --- |
+| `base` | Implemented by `.release/version-consistency.json` and `Release Train Policy` |
+| `base-cli` | Tracked for adoption in #2536 |
+| `base-bash-libs` | Tracked for adoption in #2536 |
+| `base-demo` | Tracked for adoption in #2536 |
+| `base-cli-demo` | Tracked for adoption in #2536 |
+| `base-bash-libs-demo` | Tracked for adoption in #2536 |
+
 ## Lifecycle
 
 1. Create or confirm the exact `vX.Y.Z` milestone in every repository that
