@@ -441,7 +441,18 @@ def gh_cli_finding() -> ReleaseFinding:
 def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
     try:
         result = subprocess.run(
-            ["gh", "release", "view", ctx.tag_name, "--repo", ctx.release.github.repository],
+            [
+                "gh",
+                "release",
+                "view",
+                ctx.tag_name,
+                "--repo",
+                ctx.release.github.repository,
+                "--json",
+                "isDraft",
+                "--jq",
+                ".isDraft",
+            ],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -452,6 +463,12 @@ def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
         return ReleaseFinding("error", "github_release", f"Unable to inspect GitHub Release {ctx.tag_name}: {exc}.")
 
     if result.returncode == 0:
+        if result.stdout.strip().lower() == "true":
+            return ReleaseFinding(
+                "ok",
+                "github_release",
+                f"GitHub Release {ctx.tag_name} is a mutable draft available for guarded recovery.",
+            )
         return ReleaseFinding("error", "github_release", f"GitHub Release {ctx.tag_name} already exists.")
 
     detail = result.stdout.lower()
