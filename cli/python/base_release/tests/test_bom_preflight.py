@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from base_release import engine
+from base_release import engine, release_publish
 from base_release.release_bom import canonical_bom_bytes, write_bom_digest_sidecar
 from base_release.release_model import ReleaseContext, ReleaseError, ReleaseFinding
 from base_release.release_parser import ReleaseArguments
@@ -48,7 +48,27 @@ def publication_fixture(tmp_path, monkeypatch):
     monkeypatch.setattr(engine, "local_tag_ref_exists", lambda *_: False)
     states = iter([("absent", None), ("draft", 123), ("draft", 123), ("published", 123)])
     monkeypatch.setattr("base_release.release_publish.github_release_state", lambda _: next(states))
-    monkeypatch.setattr("base_release.release_publish.capture_release_step", lambda *_, **__: "")
+    def capture(command, **_):
+        if command[:3] == ["gh", "api", "repos/basefoundry/base/releases"] and "--method" in command:
+            return "123"
+        return ""
+
+    monkeypatch.setattr("base_release.release_publish.capture_release_step", capture)
+    records = iter([
+        release_publish.GithubReleaseRecord(
+            123, "v1.9.0", "Base v1.9.0", "Fixture release\n", True, False, BASE_COMMIT, None
+        ),
+        release_publish.GithubReleaseRecord(
+            123, "v1.9.0", "Base v1.9.0", "Fixture release\n", True, False, BASE_COMMIT, None
+        ),
+        release_publish.GithubReleaseRecord(
+            123, "v1.9.0", "Base v1.9.0", "", False, False, BASE_COMMIT, None
+        ),
+    ])
+    monkeypatch.setattr(
+        "base_release.release_publish.github_release_record",
+        lambda _ctx, _release_id: next(records),
+    )
     monkeypatch.setattr("base_release.release_publish.github_release_asset_names", lambda *_: set())
     monkeypatch.setattr("base_release.release_publish.verify_release_assets", lambda *_, **__: None)
     monkeypatch.setattr(engine, "verify_release_assets", lambda *_, **__: None)
@@ -148,8 +168,12 @@ def test_publish_uses_prevalidated_snapshot_after_input_disappears(publication, 
         if command[:3] == ["git", "tag", "-a"]:
             ctx.bom_path.unlink()
             ctx.bom_path.with_suffix(".sha256").unlink()
-        if command[:3] == ["gh", "release", "upload"]:
-            attached[Path(command[4]).name] = Path(command[4]).read_bytes()
+        if len(command) > 2 and command[:2] == ["gh", "api"] and command[2].startswith("https://uploads.github.com"):
+            input_path = Path(command[command.index("--input") + 1])
+            attached[input_path.name] = input_path.read_bytes()
+        if command[:3] == ["gh", "api", "repos/basefoundry/base/releases"] and "--method" in command:
+            return "123"
+        return ""
 
     monkeypatch.setattr(engine, "run_release_step", run_step)
     monkeypatch.setattr("base_release.release_publish.run_release_step", run_step)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -438,20 +439,19 @@ def gh_cli_finding() -> ReleaseFinding:
     return ReleaseFinding("error", "gh", "GitHub CLI is not authenticated for github.com.")
 
 
+# The readback has distinct diagnostics for command, JSON, multiplicity, and state failures.
+# pylint: disable=too-many-return-statements
 def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
     try:
         result = subprocess.run(
             [
                 "gh",
-                "release",
-                "view",
-                ctx.tag_name,
-                "--repo",
-                ctx.release.github.repository,
-                "--json",
-                "isDraft",
-                "--jq",
-                ".isDraft",
+                "api",
+                f"repos/{ctx.release.github.repository}/releases",
+                "--paginate",
+                "--slurp",
+                "--field",
+                "per_page=100",
             ],
             check=False,
             stdout=subprocess.PIPE,
@@ -463,16 +463,37 @@ def github_release_finding(ctx: ReleaseContext) -> ReleaseFinding:
         return ReleaseFinding("error", "github_release", f"Unable to inspect GitHub Release {ctx.tag_name}: {exc}.")
 
     if result.returncode == 0:
-        if result.stdout.strip().lower() == "true":
+        try:
+            pages = json.loads(result.stdout)
+            if not isinstance(pages, list) or any(not isinstance(page, list) for page in pages):
+                raise ValueError("release list was not a list of pages")
+            records = [
+                record
+                for page in pages
+                if isinstance(page, list)
+                for record in page
+                if isinstance(record, dict) and record.get("tag_name") == ctx.tag_name
+            ]
+        except (TypeError, ValueError):
+            return ReleaseFinding(
+                "error", "github_release", f"GitHub Release {ctx.tag_name} readback was not valid JSON."
+            )
+        if len(records) > 1:
+            return ReleaseFinding(
+                "error", "github_release", f"GitHub has multiple releases for tag {ctx.tag_name}."
+            )
+        if records and records[0].get("draft") is True:
             return ReleaseFinding(
                 "ok",
                 "github_release",
                 f"GitHub Release {ctx.tag_name} is a mutable draft available for guarded recovery.",
             )
-        return ReleaseFinding("error", "github_release", f"GitHub Release {ctx.tag_name} already exists.")
+        if records:
+            return ReleaseFinding("error", "github_release", f"GitHub Release {ctx.tag_name} already exists.")
+        return ReleaseFinding("ok", "github_release", f"GitHub Release {ctx.tag_name} is available.")
 
     detail = result.stdout.lower()
-    if "release not found" in detail or "could not resolve to a release" in detail:
+    if "not found" in detail or "could not resolve" in detail:
         return ReleaseFinding("ok", "github_release", f"GitHub Release {ctx.tag_name} is available.")
 
     error_detail = last_non_empty_line(result.stdout)

@@ -576,6 +576,8 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 mock.patch("base_release.engine.verify_local_annotated_tag") as verify_local,
                 mock.patch("base_release.engine.verify_remote_annotated_tag") as verify_remote,
                 mock.patch("base_release.engine.verify_github_release") as verify_github,
+                mock.patch("base_release.engine.create_or_resume_draft_release", return_value=123),
+                mock.patch("base_release.engine.publish_draft_release"),
                 mock.patch(
                     "base_release.engine.run_release_step",
                     side_effect=fake_run_release_step,
@@ -633,6 +635,8 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 mock.patch("base_release.engine.verify_local_annotated_tag"),
                 mock.patch("base_release.engine.verify_remote_annotated_tag"),
                 mock.patch("base_release.engine.verify_github_release") as verify_github,
+                mock.patch("base_release.engine.create_or_resume_draft_release", return_value=123),
+                mock.patch("base_release.engine.publish_draft_release"),
                 mock.patch(
                     "base_release.engine.run_release_step",
                     side_effect=lambda command, cwd=None: commands.append((command, cwd)),
@@ -1218,27 +1222,32 @@ class ReleaseHelperTests(unittest.TestCase):
         with mock.patch(
             "base_release.release_publish.capture_release_step",
             side_effect=(
-                "v1.2.3",
+                '{"id":42,"tag_name":"v1.2.3","name":"Base v1.2.3",'
+                '"body":"","draft":false,"prerelease":false,'
+                f'"target_commitish":"{READY_SHA}","immutable":true}}',
                 f"tag\t{tag_object_sha}",
                 f"commit\t{READY_SHA}",
             ),
         ) as capture:
-            release_publish.verify_github_release(ctx, READY_SHA)
+            release_publish.verify_github_release(ctx, READY_SHA, release_id=42)
 
         commands = [call.args[0] for call in capture.call_args_list]
+        self.assertIn("repos/codeforester/demo/releases/42", commands[0])
         self.assertIn("repos/codeforester/demo/git/ref/tags/v1.2.3", commands[1])
         self.assertIn(f"repos/codeforester/demo/git/tags/{tag_object_sha}", commands[2])
 
         with mock.patch(
             "base_release.release_publish.capture_release_step",
             side_effect=(
-                "v1.2.3",
+                '{"id":42,"tag_name":"v1.2.3","name":"Base v1.2.3",'
+                '"body":"","draft":false,"prerelease":false,'
+                f'"target_commitish":"{READY_SHA}","immutable":true}}',
                 f"tag\t{tag_object_sha}",
                 f"commit\t{'c' * 40}",
             ),
         ):
             with self.assertRaisesRegex(ReleaseError, "expected commit"):
-                release_publish.verify_github_release(ctx, READY_SHA)
+                release_publish.verify_github_release(ctx, READY_SHA, release_id=42)
 
     def test_run_release_step_uses_bounded_timeout(self) -> None:
         completed = subprocess.CompletedProcess(["git", "tag"], 0, stdout="")

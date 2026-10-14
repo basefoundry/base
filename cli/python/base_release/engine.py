@@ -213,14 +213,15 @@ def publish_and_verify_github_release(
     bom_assets: tuple[Path, Path] | None,
 ) -> None:
     """Create/resume a draft, verify assets, then make the release immutable."""
-    release_id = create_or_resume_draft_release(ctx, title, notes_path)
-    verify_github_release(ctx, expected_sha)
+    release_id = create_or_resume_draft_release(ctx, title, notes_path, expected_sha)
+    verify_github_release(ctx, expected_sha, release_id=release_id)
     if bom_assets is not None:
         upload_and_verify_release_assets(ctx, release_id, tuple(bom_assets))
     publish_draft_release(ctx, release_id)
     verify_github_release(
         ctx,
         expected_sha,
+        release_id=release_id,
         expected_assets=("release-bom.json", "release-bom.sha256") if bom_assets else (),
     )
     if bom_assets is not None:
@@ -236,7 +237,10 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
         findings = findings + (github_release_finding(ctx),)
         blockers = tuple(finding for finding in findings if finding.status != "ok")
     elif release_publication_recovery_available(ctx, blockers):
-        print(f"Resuming the existing GitHub draft release for {ctx.manifest.project_name} v{ctx.version}.")
+        print(
+            f"Resuming the existing GitHub draft release for {ctx.manifest.project_name} v{ctx.version}.",
+            file=sys.stderr,
+        )
         blockers = ()
     if blockers:
         print(f"\nRelease publish blocked by readiness findings for {ctx.manifest.project_name} v{ctx.version}\n")

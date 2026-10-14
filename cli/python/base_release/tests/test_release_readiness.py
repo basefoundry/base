@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 import pytest
 
 from base_release.release_bom import canonical_bom_bytes
-from base_release.release_readiness import bom_finding
+from base_release.release_readiness import bom_finding, github_release_finding
 from base_release.tests._bom_fixtures import BASE_COMMIT, valid_bom
 
 
@@ -63,6 +65,40 @@ def test_bom_finding_requires_bom_when_manifest_opts_in() -> None:
     assert finding.name == "bom"
     assert "release.bom.required" in finding.message
     assert "--bom" in finding.message
+
+
+def test_github_release_finding_sees_mutable_draft_through_rest_list() -> None:
+    ctx = release_context(None)
+    ctx.tag_name = "v1.9.0"
+    response = subprocess.CompletedProcess(
+        ["gh", "api"],
+        0,
+        stdout=json.dumps([[{"id": 42, "tag_name": "v1.9.0", "draft": True}]]),
+    )
+    with mock.patch("base_release.release_readiness.subprocess.run", return_value=response) as run:
+        finding = github_release_finding(ctx)
+
+    assert finding.status == "ok"
+    assert "mutable draft" in finding.message
+    command = run.call_args.args[0]
+    assert command[:3] == ["gh", "api", "repos/basefoundry/base/releases"]
+    assert "--paginate" in command
+    assert "--slurp" in command
+
+
+def test_github_release_finding_blocks_published_release_from_rest_list() -> None:
+    ctx = release_context(None)
+    ctx.tag_name = "v1.9.0"
+    response = subprocess.CompletedProcess(
+        ["gh", "api"],
+        0,
+        stdout=json.dumps([[{"id": 42, "tag_name": "v1.9.0", "draft": False}]]),
+    )
+    with mock.patch("base_release.release_readiness.subprocess.run", return_value=response):
+        finding = github_release_finding(ctx)
+
+    assert finding.status == "error"
+    assert "already exists" in finding.message
 
 
 @pytest.mark.parametrize(
