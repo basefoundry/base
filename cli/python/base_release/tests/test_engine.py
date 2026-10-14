@@ -844,6 +844,35 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         self.assertIn("resume an existing mutable draft", stderr)
 
 
+    def test_publish_dry_run_recovers_existing_tag_when_main_advanced(self) -> None:
+        blockers = (
+            ReleaseFinding("error", "bom", "BOM references the tagged release commit."),
+            ReleaseFinding("error", "release_commit", "main advanced after the tag was pushed."),
+            ReleaseFinding("error", "local_tag", "Local tag already exists."),
+            ReleaseFinding("error", "remote_tag", "Remote tag already exists."),
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            manifest_path = self.manifest_factory.write_release(root)
+
+            with (
+                mock.patch("base_release.engine.release_findings", return_value=blockers),
+                mock.patch("base_release.engine.github_release_state", return_value=("absent", None)),
+                mock.patch("base_release.engine.release_bom_commit", return_value=READY_SHA),
+                mock.patch("base_release.engine.verify_local_annotated_tag"),
+                mock.patch("base_release.engine.verify_remote_annotated_tag"),
+            ):
+                status, stdout, stderr = run_engine(
+                    ["publish", "--dry-run", "--version", "1.2.3", "--manifest", str(manifest_path)],
+                    root,
+                )
+
+        self.assertEqual(status, 0)
+        self.assertIn("Resuming tagged release publication", stderr)
+        self.assertIn(f"Verified reviewed release commit: {READY_SHA}", stdout)
+        self.assertIn("Would reuse verified annotated tag: v1.2.3", stdout)
+
+
     def test_publish_fails_when_readiness_has_errors(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
