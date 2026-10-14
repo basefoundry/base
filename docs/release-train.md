@@ -74,6 +74,12 @@ README, context metadata, and the changelog, add `--release-prep`:
 python3 tools/release_train_check.py --remote --release-prep --format json
 ```
 
+The BOM workflow's `base_version` dispatch default is checked against both
+`candidate.target_version` and `gates.release_bom.inputs.base_version` in the
+release-train manifest. Update those values together in the release-prep PR;
+do not rely on a stale workflow default. Dispatch publication validation with
+all `-f` inputs explicit, including `base_version` and the exact `base_ref`.
+
 The checker is read-only. It never creates milestones or issues, changes a
 Project field, pushes a branch, merges a pull request, creates a release, or
 updates Homebrew.

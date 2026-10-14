@@ -1,5 +1,6 @@
 # pylint: disable=too-many-lines
 
+import json
 import re
 from pathlib import Path
 
@@ -14,6 +15,7 @@ COPILOT_INSTRUCTIONS = REPO_ROOT / ".github" / "copilot-instructions.md"
 COPILOT_SETUP_WORKFLOW = WORKFLOW_DIR / "copilot-setup-steps.yml"
 BASE_CHECK_WORKFLOW = WORKFLOW_DIR / "base-check.yml"
 ECOSYSTEM_RELEASE_BOM_WORKFLOW = WORKFLOW_DIR / "ecosystem-release-bom.yml"
+RELEASE_TRAIN_MANIFEST = REPO_ROOT / ".release" / "release-train.json"
 BASE_DEMO_E2E_WORKFLOW = WORKFLOW_DIR / "base-demo-e2e.yml"
 DOWNSTREAM_VERSION_BUMPS_WORKFLOW = WORKFLOW_DIR / "downstream-version-bumps.yml"
 RELEASE_TRAIN_POLICY_WORKFLOW = WORKFLOW_DIR / "release-train-policy.yml"
@@ -129,6 +131,10 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "base_demo_ref",
     }
     assert inputs["base_version"]["default"] == "1.10.4"
+    manifest = json.loads(RELEASE_TRAIN_MANIFEST.read_text(encoding="utf-8"))
+    manifest_bom_inputs = manifest["gates"]["release_bom"]["inputs"]
+    assert manifest_bom_inputs["base_version"] == manifest["candidate"]["target_version"]
+    assert inputs["base_version"]["default"] == manifest_bom_inputs["base_version"]
     assert inputs["base_demo_version"]["default"] == "0.2.1"
     assert inputs["base_demo_ref"]["default"] == "784c8c975fe4954b5274219cb0a86ffec821e029"
     assert assemble["needs"] == "compatibility"
