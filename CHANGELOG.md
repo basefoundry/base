@@ -8,6 +8,22 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+## [1.10.5] - 2026-10-14
+
+### Added
+
+- Add release-train preflight coverage for release preparation, remote
+  immutable-release and tag-peel gates, BOM defaults, and malformed manifests.
+- Bind the Ecosystem Release BOM Base version to the release-train candidate.
+
+### Fixed
+
+- Make downstream version-bump automation retry transient GitHub API failures,
+  use REST mutations, and verify the resulting issue and pull request state.
+- Make the finding-ID registry scan ignore stale generated Python bytecode.
+- Enforce cross-surface release-version consistency and draft-first publication
+  recovery so immutable releases receive their assets before publication.
+
 ## [1.10.4] - 2026-10-13
 
 ### Fixed

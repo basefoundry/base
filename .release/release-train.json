@@ -2,9 +2,9 @@
   "schema_version": 1,
   "candidate": {
     "repository": "basefoundry/base",
-    "target_version": "1.10.4",
-    "current_version": "1.10.3",
-    "milestone": "v1.10.4"
+    "target_version": "1.10.5",
+    "current_version": "1.10.4",
+    "milestone": "v1.10.5"
   },
   "participants": [
     {
@@ -51,7 +51,7 @@
       "workflow": "ecosystem-release-bom.yml",
       "platforms": ["ubuntu-24.04", "macos-14"],
       "inputs": {
-        "base_version": "1.10.4",
+        "base_version": "1.10.5",
         "base_cli_version": "0.5.1",
         "base_cli_ref": "aa20cfe89bc3568ff19f8cc1414372feadb00fd4",
         "base_bash_libs_version": "2.2.2",
