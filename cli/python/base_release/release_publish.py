@@ -76,6 +76,25 @@ def release_publish_recovery_guidance(ctx: ReleaseContext, _title: str) -> str:
     )
 
 
+def release_bom_commit(ctx: ReleaseContext) -> str:
+    """Return the reviewed commit from a canonical, sidecar-verified BOM."""
+    if ctx.bom_path is None:
+        raise ReleaseError("Tagged release recovery requires the original release BOM.")
+    try:
+        snapshot = read_validated_bom(
+            ctx.bom_path,
+            expected_repository=ctx.release.github.repository,
+            expected_version=ctx.version,
+        )
+        document = json.loads(snapshot.content)
+        commit = document["release"]["commit"]
+    except (KeyError, TypeError, json.JSONDecodeError, ReleaseBomError) as exc:
+        raise ReleaseError(f"Unable to read the reviewed release commit from the release BOM: {exc}") from exc
+    if not isinstance(commit, str) or len(commit) not in FULL_GIT_SHA_LENGTHS:
+        raise ReleaseError("The release BOM does not contain a full release commit SHA.")
+    return commit.lower()
+
+
 def release_tag_push_recovery_guidance(ctx: ReleaseContext, title: str, state: RemoteTagState) -> str:
     """Describe non-destructive recovery after local tag creation and push failure."""
     tag = shlex.quote(ctx.tag_name)

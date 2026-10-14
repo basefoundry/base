@@ -23,6 +23,7 @@ from .release_publish import (
     inspect_remote_annotated_tag,
     local_tag_ref_exists,
     release_publish_recovery_guidance,
+    release_bom_commit,
 )
 from .release_publish import release_tag_push_recovery_guidance, require_interactive_publish_confirmation
 from .release_publish import run_release_step, verify_github_release
@@ -233,12 +234,16 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     title = render_release_title(ctx)
     findings = tuple(release_findings(ctx))
     blockers = tuple(finding for finding in findings if finding.status != "ok")
+    recovery_commit = None
     if not blockers:
         findings = findings + (github_release_finding(ctx),)
         blockers = tuple(finding for finding in findings if finding.status != "ok")
-    elif release_publication_recovery_available(ctx, blockers):
+    else:
+        recovery_commit = release_publication_recovery_commit(ctx, blockers)
+    if recovery_commit is not None:
         print(
-            f"Resuming the existing GitHub draft release for {ctx.manifest.project_name} v{ctx.version}.",
+            f"Resuming tagged release publication for {ctx.manifest.project_name} v{ctx.version} "
+            f"from reviewed commit {recovery_commit}.",
             file=sys.stderr,
         )
         blockers = ()
@@ -250,12 +255,15 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     notes = extract_changelog_section(ctx.changelog, ctx.version)
 
     if args.dry_run:
-        expected_sha = require_release_provenance(ctx)
+        expected_sha = recovery_commit or require_release_provenance(ctx)
         print(f"DRY RUN: release publish for {ctx.manifest.project_name} v{ctx.version}")
         print("")
         print(f"Verified reviewed release commit: {expected_sha}")
-        print(f"Would create annotated tag: {ctx.tag_name}")
-        print(f"Would push tag to origin: {ctx.tag_name}")
+        if recovery_commit is None:
+            print(f"Would create annotated tag: {ctx.tag_name}")
+            print(f"Would push tag to origin: {ctx.tag_name}")
+        else:
+            print(f"Would reuse verified annotated tag: {ctx.tag_name}")
         print(f"Would create GitHub Release: {title}")
         if ctx.release.bom is not None and ctx.release.bom.required:
             print("Release BOM requirement: required by manifest")
@@ -270,7 +278,7 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     if not args.yes:
         require_interactive_publish_confirmation(ctx, title)
 
-    expected_sha = require_release_provenance(ctx)
+    expected_sha = recovery_commit or require_release_provenance(ctx)
     with stage_release_files(ctx, notes, expected_sha) as (notes_path, bom_assets):
         publish_release_from_staged_files(ctx, title, notes_path, expected_sha, bom_assets)
 
@@ -282,24 +290,23 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     return base_cli.ExitCode.SUCCESS
 
 
-def release_publication_recovery_available(
+def release_publication_recovery_commit(
     ctx: ReleaseContext, blockers: tuple[ReleaseFinding, ...],
-) -> bool:
-    """Allow only a known draft/tag interruption to resume publication."""
-    if not blockers or {finding.name for finding in blockers} - {"local_tag", "remote_tag"}:
-        return False
+) -> str | None:
+    """Return a BOM/tag commit only for safe recovery after tooling advances main."""
+    allowed = {"bom", "release_commit", "local_tag", "remote_tag"}
+    if not blockers or {finding.name for finding in blockers} - allowed:
+        return None
     state, _ = github_release_state(ctx)
-    if state == "draft":
-        return True
-    if state != "absent":
-        return False
+    if state not in {"absent", "draft"}:
+        return None
     try:
-        expected_sha = require_release_provenance(ctx)
+        expected_sha = release_bom_commit(ctx)
         verify_local_annotated_tag(ctx.manifest_path.parent, ctx.tag_name, expected_sha)
         verify_remote_annotated_tag(ctx.manifest_path.parent, ctx.tag_name, expected_sha)
     except ReleaseError:
-        return False
-    return True
+        return None
+    return expected_sha
 
 
 def publish_release_from_staged_files(
