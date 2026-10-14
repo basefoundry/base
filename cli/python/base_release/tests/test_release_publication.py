@@ -74,8 +74,21 @@ def test_release_state_reads_drafts_from_paginated_release_list(tmp_path, monkey
 
     assert release_publish.github_release_state(ctx) == ("draft", 42)
     assert "releases/tags" not in calls[0][2]
+    assert calls[0][3:5] == ["--method", "GET"]
     assert "--paginate" in calls[0]
     assert "--slurp" in calls[0]
+
+
+def test_release_asset_readback_uses_explicit_get(tmp_path, monkeypatch) -> None:
+    ctx = release_context(tmp_path)
+
+    def capture(command, **_):
+        assert command[3:5] == ["--method", "GET"]
+        return json.dumps([[{"id": 7, "name": "release-bom.json"}]])
+
+    monkeypatch.setattr(release_publish, "capture_release_step", capture)
+
+    assert release_publish.github_release_assets(ctx, 42) == {"release-bom.json": 7}
 
 
 def test_reconcile_draft_updates_stale_title_and_notes_with_raw_fields(tmp_path, monkeypatch) -> None:
