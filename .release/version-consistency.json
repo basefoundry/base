@@ -61,6 +61,12 @@
       "name": "product_requirements_reviewed_release",
       "path": "docs/product-requirements.md",
       "must_contain": ["Base era reviewed: {version}"]
+    },
+    {
+      "name": "historical_downstream_smoke_fixture",
+      "path": "docs/downstream-release-smoke-test.md",
+      "must_contain": ["v1.10.0"],
+      "exception": "historical_downstream_smoke_fixture"
     }
   ],
   "exceptions": [

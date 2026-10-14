@@ -26,9 +26,6 @@ jobs:
       - name: Install policy dependencies
         run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
 
-      - name: Check version consistency
-        run: python tools/version_consistency_check.py --format json
-
       - name: Select release-train preflight mode
         id: release-train-mode
         shell: bash
@@ -72,9 +69,6 @@ jobs:
 
       - name: Install policy dependencies
         run: python -m pip install --disable-pip-version-check PyYAML==6.0.3
-
-      - name: Check version consistency
-        run: python tools/version_consistency_check.py --format json
 
       - name: Check hosted release-train credential
         env:

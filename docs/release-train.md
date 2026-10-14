@@ -82,8 +82,9 @@ updates Homebrew.
 
 Every release-aware repository declares its authoritative version file and
 required public version surfaces in
-`.release/version-consistency.json`. Base runs the reusable checker on every
-release-train pull request:
+`.release/version-consistency.json`. Base's release-train preflight delegates
+to the reusable checker on every release-train pull request; invoke it
+directly when debugging the contract:
 
 ```bash
 python3 tools/version_consistency_check.py
@@ -91,7 +92,9 @@ python3 tools/version_consistency_check.py --format json
 ```
 
 The checker validates the authority, file-specific required text, and every
-allowlist exception's rationale and expiry. It does not reject historical
+allowlist exception's rationale and expiry. An active exception must be
+attached to a named surface, and that surface is reported as a warning until
+the exception expires. The checker does not reject historical
 examples merely because they contain an older version; such examples must be
 listed explicitly as expiring exceptions. Registry or public-release
 readback remains a separate hosted gate: `release_train_check.py --remote`

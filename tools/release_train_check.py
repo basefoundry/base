@@ -21,6 +21,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from . import version_consistency_check
+except ImportError:  # Script execution from the repository root.
+    import version_consistency_check
+
+try:
     import yaml
 except ImportError:  # pragma: no cover - the development contract installs PyYAML.
     yaml = None
@@ -159,53 +164,16 @@ def check_local_identity(root: Path, data: dict[str, Any], release_prep: bool) -
     candidate = data["candidate"]
     target = candidate["target_version"]
     expected = target if release_prep else candidate["current_version"]
-    findings: list[Finding] = []
-    version_path = root / "VERSION"
-    try:
-        actual = version_path.read_text(encoding="utf-8").splitlines()[0].strip()
-    except (OSError, IndexError) as exc:
-        return [finding("error", "version_file", f"Unable to read {version_path}: {exc}")]
-    if actual != expected:
-        mode = "release-prep" if release_prep else "planning"
-        findings.append(finding("error", "version_file", f"{mode} expects VERSION {expected}; found {actual}."))
-    else:
-        findings.append(finding("ok", "version_file", f"VERSION matches {expected}."))
-
-    expected_text = f"Base `{expected}` is the current release."
-    text_files = {
-        "readme_current_release": root / "README.md",
-        "context_project_current_release": root / ".ai-context" / "PROJECT.md",
-        "context_status_current_release": root / ".ai-context" / "STATUS.md",
-    }
-    for name, path in text_files.items():
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            findings.append(finding("error", name, f"Unable to read {path}: {exc}"))
-            continue
-        marker = expected_text
-        if name == "readme_current_release" and f"version-{expected}-blue" not in text:
-            findings.append(finding("error", name, f"{path} is missing the version-{expected}-blue badge."))
-        elif name == "context_project_current_release" and f"Current release: `{expected}`" not in text:
-            findings.append(finding("error", name, f"{path} is missing the current-release marker for {expected}."))
-        elif name == "context_status_current_release" and expected_text not in text:
-            findings.append(finding("error", name, f"{path} is missing the current-release marker for {expected}."))
-        elif name == "readme_current_release" and marker not in text:
-            findings.append(finding("error", name, f"{path} is missing the current-release sentence for {expected}."))
-        else:
-            findings.append(finding("ok", name, f"{path.name} records Base {expected}."))
-
-    changelog = root / "CHANGELOG.md"
-    try:
-        changelog_text = changelog.read_text(encoding="utf-8")
-    except OSError as exc:
-        findings.append(finding("error", "changelog", f"Unable to read {changelog}: {exc}"))
-    else:
-        if f"## [{expected}]" not in changelog_text:
-            findings.append(finding("error", "changelog", f"CHANGELOG.md has no release section for {expected}."))
-        else:
-            findings.append(finding("ok", "changelog", f"CHANGELOG.md has a section for {expected}."))
-    return findings
+    checker_args = argparse.Namespace(
+        root=root,
+        config=root / ".release" / "version-consistency.json",
+        version=expected,
+        format="json",
+    )
+    return [
+        finding(item.status, item.name, item.message)
+        for item in version_consistency_check.run_check(checker_args)
+    ]
 
 
 def check_worktree(root: Path) -> Finding:
