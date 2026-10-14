@@ -189,6 +189,44 @@ def capture_github_step(command: list[str], *, cwd: Path | None = None) -> str:
     raise ReleaseError("GitHub command did not execute.")
 
 
+def download_github_step(command: list[str], destination: Path, *, cwd: Path | None = None) -> None:
+    """Stream a binary GitHub response to a file with bounded retry recovery."""
+    last_error: ReleaseError | None = None
+    for attempt, delay in enumerate((0, *RELEASE_API_RETRY_DELAYS_SECONDS)):
+        if delay:
+            time.sleep(delay)
+        try:
+            with destination.open("wb") as output:
+                result = subprocess.run(
+                    command,
+                    cwd=cwd,
+                    stdout=output,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False,
+                    timeout=RELEASE_STEP_TIMEOUT_SECONDS,
+                )
+        except subprocess.TimeoutExpired as exc:
+            last_error = ReleaseError(f"Release command timed out after {exc.timeout} seconds: {shlex.join(command)}")
+        except OSError as exc:
+            last_error = ReleaseError(f"Unable to run release command: {shlex.join(command)}: {exc}")
+        else:
+            if result.returncode == 0:
+                return
+            detail = last_non_empty_line(result.stderr or "")
+            message = f"Release command failed: {shlex.join(command)}"
+            if detail:
+                message = f"{message}: {detail}"
+            last_error = ReleaseError(message)
+        if (
+            last_error is None
+            or attempt == len(RELEASE_API_RETRY_DELAYS_SECONDS)
+            or not is_github_rate_limit_error(last_error)
+        ):
+            raise last_error or ReleaseError("GitHub binary download did not execute.")
+    raise last_error or ReleaseError("GitHub binary download did not execute.")
+
+
 def parse_github_release_record(payload: object, *, description: str) -> GithubReleaseRecord:
     if not isinstance(payload, dict):
         raise ReleaseError(f"{description} did not return a GitHub release object.")
@@ -340,16 +378,15 @@ def verify_downloaded_release_asset(ctx: ReleaseContext, release_id: int, asset:
         if asset_id is None:
             raise ReleaseError(f"GitHub Release is missing required asset: {asset.name}.")
         downloaded = download_directory / asset.name
-        capture_github_step(
+        download_github_step(
             [
                 "gh",
                 "api",
                 f"repos/{ctx.release.github.repository}/releases/assets/{asset_id}",
                 "--header",
                 "Accept: application/octet-stream",
-                "--output",
-                str(downloaded),
             ],
+            downloaded,
             cwd=ctx.manifest_path.parent,
         )
         try:

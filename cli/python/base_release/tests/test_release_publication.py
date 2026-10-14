@@ -182,14 +182,29 @@ def test_asset_readback_rejects_different_downloaded_bytes(tmp_path, monkeypatch
 
     monkeypatch.setattr(release_publish, "github_release_assets", lambda *_: {asset.name: 7})
 
-    def download(command, **_):
-        downloaded = Path(command[command.index("--output") + 1])
+    def download(command, destination, **_):
+        assert "--output" not in command
+        downloaded = Path(destination)
         downloaded.write_bytes(b"tampered BOM")
-        return ""
 
-    monkeypatch.setattr(release_publish, "capture_github_step", download)
+    monkeypatch.setattr(release_publish, "download_github_step", download)
     with pytest.raises(ReleaseError, match="differs from the reviewed staged bytes"):
         release_publish.verify_downloaded_release_asset(ctx, 42, asset)
+
+
+def test_download_github_step_streams_binary_stdout_to_destination(tmp_path, monkeypatch) -> None:
+    destination = tmp_path / "release-bom.json"
+
+    def run(command, *, stdout, **_):
+        assert "--output" not in command
+        stdout.write(b"binary BOM")
+        return type("Result", (), {"returncode": 0, "stderr": ""})()
+
+    monkeypatch.setattr(release_publish.subprocess, "run", run)
+
+    release_publish.download_github_step(["gh", "api", "asset"], destination)
+
+    assert destination.read_bytes() == b"binary BOM"
 
 
 def test_publish_draft_rechecks_state_and_publishes_successfully(tmp_path, monkeypatch) -> None:
