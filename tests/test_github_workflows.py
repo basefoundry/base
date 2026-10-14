@@ -200,16 +200,22 @@ def test_downstream_version_bumps_are_release_triggered_idempotent_and_review_ga
     assert job["env"]["GH_TOKEN"] == "${{ secrets.BASE_DOWNSTREAM_TOKEN }}"
     assert "BASE_DOWNSTREAM_TOKEN is required" in run_commands
     assert "gh auth setup-git" in run_commands
+    assert "gh_retry()" in run_commands
+    assert 'sleep "$delay"' in run_commands
+    assert "Retrying GitHub command after transient failure" in run_commands
     assert "base-release-bump:" in run_commands
     assert "downloaded_installer_sha256=\"$(curl -fsSL" in run_commands
     assert "supplied $supplied_installer_sha256" in run_commands
     assert "installer_sha256=\"$downloaded_installer_sha256\"" in run_commands
-    assert "gh issue create" in run_commands
+    assert 'gh_retry api --method POST "repos/$TARGET_REPOSITORY/issues"' in run_commands
     assert "repos/$TARGET_REPOSITORY/issues?state=all&per_page=100" in run_commands
-    assert "gh issue reopen" in run_commands
-    assert "gh issue comment" in run_commands
+    assert 'gh_retry api --method PATCH "repos/$TARGET_REPOSITORY/issues/$issue_number"' in run_commands
+    assert 'gh_retry api --method POST "repos/$TARGET_REPOSITORY/issues/$issue_number/comments"' in run_commands
     assert "trap cleanup_issue_on_failure EXIT" in run_commands
-    assert "gh pr create" in run_commands
+    assert 'gh_retry api --method POST "repos/$TARGET_REPOSITORY/pulls"' in run_commands
+    assert 'pr_body_readback="$(gh_retry api' in run_commands
+    assert "gh issue " not in run_commands
+    assert "gh pr " not in run_commands
     assert "uv lock --upgrade-package base-cli" in run_commands
     assert 'git -C "$clone_dir" push --set-upstream origin' in run_commands
     assert 'version_slug="${version//./-}"' in run_commands
