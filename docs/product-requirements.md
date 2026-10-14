@@ -2,7 +2,7 @@
 
 Status: maintained product requirements document
 Last reviewed: 2026-10-13
-Base era reviewed: 1.10.1
+Base era reviewed: 1.10.4
 
 This document is the product-facing source of truth for what Base is trying to
 be, who it serves, which outcomes matter, and what boundaries should guide

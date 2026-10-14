@@ -51,6 +51,35 @@ def create_fixture(tmp_path: Path) -> Path:
     (tmp_path / ".ai-context" / "PROJECT.md").write_text("Current release: `1.10.0`\n", encoding="utf-8")
     (tmp_path / ".ai-context" / "STATUS.md").write_text("Base `1.10.0` is the current release.\n", encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text("## [Unreleased]\n\n## [1.10.0]\n", encoding="utf-8")
+    (tmp_path / ".release").mkdir()
+    (tmp_path / ".release" / "version-consistency.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "authority": {"path": "VERSION"},
+                "surfaces": [
+                    {
+                        "name": "readme",
+                        "path": "README.md",
+                        "must_contain": ["version-{version}-blue", "Base `{version}` is the current release."],
+                    },
+                    {
+                        "name": "project",
+                        "path": ".ai-context/PROJECT.md",
+                        "must_contain": ["Current release: `{version}`"],
+                    },
+                    {
+                        "name": "status",
+                        "path": ".ai-context/STATUS.md",
+                        "must_contain": ["Base `{version}` is the current release."],
+                    },
+                    {"name": "changelog", "path": "CHANGELOG.md", "must_contain": ["## [{version}]"]},
+                ],
+                "exceptions": [],
+            }
+        ),
+        encoding="utf-8",
+    )
     manifest = tmp_path / "train.json"
     manifest.write_text(json.dumps(valid_manifest()), encoding="utf-8")
     return manifest
