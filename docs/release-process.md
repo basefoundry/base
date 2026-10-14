@@ -45,7 +45,7 @@ changed intentionally.
 
 ## Version Policy
 
-The latest published Base release is `1.10.4`. The release-prep PR changes the
+The latest published Base release is `1.10.5`. The release-prep PR changes the
 authoritative version and every configured public version surface together;
 `tools/version_consistency_check.py` blocks publication when one is stale.
 

@@ -75,7 +75,7 @@ evidence.
 
 ## Compatibility and release truth
 
-Base's current release line is v1.10.4. The release-prep commit is the candidate
+Base's current release line is v1.10.5. The release-prep commit is the candidate
 until publication; after publication, the public tag and BOM are the release
 truth. Companion repositories publish on
 their own schedules. A coordinated Base release records exact component tags,

@@ -130,7 +130,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
         "base_demo_version",
         "base_demo_ref",
     }
-    assert inputs["base_version"]["default"] == "1.10.4"
+    assert inputs["base_version"]["default"] == "1.10.5"
     manifest = json.loads(RELEASE_TRAIN_MANIFEST.read_text(encoding="utf-8"))
     manifest_bom_inputs = manifest["gates"]["release_bom"]["inputs"]
     assert manifest_bom_inputs["base_version"] == manifest["candidate"]["target_version"]

@@ -2,7 +2,7 @@
 
 ## Current Release
 
-Base `1.10.4` is the current release. The repo-root `VERSION` file is updated
+Base `1.10.5` is the current release. The repo-root `VERSION` file is updated
 only during release-prep PRs, not on every ordinary PR. `DEVELOPMENT_VERSION`
 records the numeric next development line; an untagged source checkout reports
 that line with a Git revision and `.dirty` when applicable, while tagged and
@@ -66,13 +66,14 @@ Recent trust and workspace updates are part of the current implementation:
 
 ## Active Development Direction
 
-The `v1.10.4` release line is active; final publication and public readback are
-tracked in issue #2532. The immutable assetless v1.10.3 recovery artifact is
+The `v1.10.5` release line is active; final publication and public readback are
+tracked in issue #2539. The v1.10.4 release completed the prior recovery train;
+the immutable assetless v1.10.3 recovery artifact is
 documented in issue #2530, and the earlier v1.10.1 assetless publication remains
 documented in issue #2520. Future work is tracked in GitHub Issues,
 with GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
 broader prompt ergonomics, broader Linux distribution support, and broader
-setup policy work remaining outside the 1.10.4 release contract.
+setup policy work remaining outside the 1.10.5 release contract.
 
 The accepted product position is now a local operating contract for
 deterministic readiness and handoff within a project, from a single repository
