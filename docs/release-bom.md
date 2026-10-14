@@ -129,19 +129,21 @@ publish` validate that sidecar when it is present. A malformed, mismatched,
 unreadable, or non-UTF-8 BOM/sidecar blocks publication before creating or
 pushing any tag. A dangling sidecar symlink is invalid, not an absent sidecar.
 After final provenance verification, publication stages the validated BOM,
-digest, and release notes before creating the tag. It uploads that snapshot
-as `release-bom.json` and `release-bom.sha256` without rereading the source
-files after tagging, and verifies both asset names after publication. Direct callers that
-supply a canonical BOM without a sidecar retain the compatibility fallback of
-having the stable publish asset generated from the BOM bytes. A BOM remains
+digest, and release notes before creating the tag. It creates or resumes a
+mutable GitHub draft, uploads that snapshot as `release-bom.json` and
+`release-bom.sha256`, and downloads both assets for byte-for-byte readback
+before publishing the draft. It never creates an immutable empty release and
+then attempts to upload the BOM, and it never rereads the source files after
+staging. Direct callers that supply a canonical BOM without a sidecar retain
+the compatibility fallback of having the stable publish asset generated from
+the BOM bytes. A BOM remains
 optional for manifests without the opt-in so historical releases remain
 inspectable; Base's own `base_manifest.yaml` requires this governed release
 path. Generate its artifact with the `Ecosystem Release BOM` workflow and pass
 the downloaded `release-bom.json` to both `release check` and `release publish`.
 
-If GitHub Release creation or upload fails after the tag is pushed, recovery
-must retain the original reviewed BOM and its digest. Creating the Release
-alone does not complete a governed release: restore the matching pair under
-the stable asset names and download/verify them against the reviewed artifact.
-Inspect an existing Release before retrying; do not blindly overwrite
-conflicting assets or regenerate evidence from another checkout.
+If GitHub draft creation or upload fails after the tag is pushed, recovery must
+retain the original reviewed BOM and its digest. Re-run the guarded publish
+command: it inspects and resumes the existing draft, uploads only missing
+assets, and stops if an existing asset conflicts. Do not create a second
+release or regenerate evidence from another checkout.

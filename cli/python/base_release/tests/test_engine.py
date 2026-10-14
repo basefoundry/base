@@ -562,9 +562,6 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
             commands: list[tuple[list[str], Path | None]] = []
 
             def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
-                if command[:3] == ["gh", "release", "create"]:
-                    notes_path = Path(command[-1])
-                    self.assertIn("Added the release assistant.", notes_path.read_text(encoding="utf-8"))
                 commands.append((command, cwd))
 
             with (
@@ -575,6 +572,7 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                     create=True,
                 ),
                 mock.patch("base_release.engine.require_release_provenance", return_value=READY_SHA),
+                mock.patch("base_release.engine.local_tag_ref_exists", return_value=False),
                 mock.patch("base_release.engine.verify_local_annotated_tag") as verify_local,
                 mock.patch("base_release.engine.verify_remote_annotated_tag") as verify_remote,
                 mock.patch("base_release.engine.verify_github_release") as verify_github,
@@ -583,6 +581,11 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                     side_effect=fake_run_release_step,
                     create=True,
                 ),
+                mock.patch(
+                    "base_release.release_publish.github_release_state",
+                    side_effect=[("absent", None), ("draft", 123), ("draft", 123), ("published", 123)],
+                ),
+                mock.patch("base_release.release_publish.capture_release_step", return_value=""),
             ):
                 status, stdout, stderr = run_engine(
                     ["publish", "--yes", "--version", "1.2.3", "--manifest", str(manifest_path)],
@@ -597,20 +600,13 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         self.assertEqual(commands[0][1], root.resolve())
         self.assertEqual(commands[1][0], ["git", "push", "origin", "v1.2.3"])
         self.assertEqual(commands[1][1], root.resolve())
-        self.assertEqual(commands[2][0][:8], [
-            "gh", "release", "create", "v1.2.3", "--verify-tag", "--repo", "codeforester/demo", "--title"
-        ])
-        self.assertEqual(
-            commands[2][1],
-            root.resolve(),
-        )
         self.assertIn("GitHub Release published: https://github.com/codeforester/demo/releases/tag/v1.2.3", stdout)
         self.assertIn("Tag URL: https://github.com/codeforester/demo/tree/v1.2.3", stdout)
         self.assertIn("Homebrew handoff required after GitHub release", stdout)
         self.assertIn(f"Release commit verified: {READY_SHA}", stdout)
         verify_local.assert_called_once_with(root.resolve(), "v1.2.3", READY_SHA)
         verify_remote.assert_called_once_with(root.resolve(), "v1.2.3", READY_SHA)
-        verify_github.assert_called_once()
+        self.assertEqual(verify_github.call_count, 2)
 
 
     def test_publish_with_bom_attaches_and_verifies_stable_release_assets(self) -> None:
@@ -625,16 +621,6 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 encoding="utf-8",
             )
             commands: list[tuple[list[str], Path | None]] = []
-            attached_contents: dict[str, bytes] = {}
-
-            def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
-                commands.append((command, cwd))
-                if command[:3] == ["gh", "release", "create"]:
-                    for argument in command[4:]:
-                        path = Path(argument)
-                        if path.is_file():
-                            attached_contents[path.name] = path.read_bytes()
-
             with (
                 mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS),
                 mock.patch(
@@ -643,18 +629,26 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                     create=True,
                 ),
                 mock.patch("base_release.engine.require_release_provenance", return_value=READY_SHA),
+                mock.patch("base_release.engine.local_tag_ref_exists", return_value=False),
                 mock.patch("base_release.engine.verify_local_annotated_tag"),
                 mock.patch("base_release.engine.verify_remote_annotated_tag"),
                 mock.patch("base_release.engine.verify_github_release") as verify_github,
                 mock.patch(
                     "base_release.engine.run_release_step",
-                    side_effect=fake_run_release_step,
+                    side_effect=lambda command, cwd=None: commands.append((command, cwd)),
                     create=True,
                 ),
                 mock.patch(
                     "base_release.release_publish.run_release_step",
-                    side_effect=fake_run_release_step,
+                    side_effect=lambda command, cwd=None: commands.append((command, cwd)),
                 ),
+                mock.patch(
+                    "base_release.release_publish.github_release_state",
+                    side_effect=[("absent", None), ("draft", 123), ("draft", 123), ("published", 123)],
+                ),
+                mock.patch("base_release.release_publish.capture_release_step", return_value=""),
+                mock.patch("base_release.engine.upload_and_verify_release_assets") as upload_assets,
+                mock.patch("base_release.engine.verify_release_assets"),
             ):
                 status, stdout, stderr = run_engine(
                     [
@@ -671,28 +665,16 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 )
 
         self.assertEqual((status, stderr), (0, ""), stdout)
-        create_commands = [command for command, _cwd in commands if command[:3] == ["gh", "release", "create"]]
-        self.assertEqual(len(create_commands), 1)
-        create_command = create_commands[0]
-        self.assertEqual(create_command[0:4], ["gh", "release", "create", "v1.2.3"])
-        asset_paths = [Path(create_command[4]), Path(create_command[5])]
-        self.assertEqual({path.name for path in asset_paths}, {"release-bom.json", "release-bom.sha256"})
-        self.assertEqual(
-            attached_contents["release-bom.json"],
-            bom_bytes,
-        )
-        self.assertEqual(
-            attached_contents["release-bom.sha256"].decode(),
-            f"{hashlib.sha256(bom_bytes).hexdigest()}  release-bom.json\n",
-        )
-        verify_github.assert_called_once()
-        verify_context, verify_sha = verify_github.call_args.args
+        upload_assets.assert_called_once()
+        upload_context, upload_release_id, upload_paths = upload_assets.call_args.args
+        self.assertEqual(upload_context.manifest_path.parent, root.resolve())
+        self.assertEqual(upload_release_id, 123)
+        self.assertEqual({path.name for path in upload_paths}, {"release-bom.json", "release-bom.sha256"})
+        self.assertEqual(verify_github.call_count, 2)
+        verify_context, verify_sha = verify_github.call_args_list[-1].args
         self.assertEqual(verify_context.manifest_path.parent, root.resolve())
         self.assertEqual(verify_sha, READY_SHA)
-        self.assertEqual(
-            verify_github.call_args.kwargs["expected_assets"],
-            ("release-bom.json", "release-bom.sha256"),
-        )
+        self.assertEqual(verify_github.call_args_list[-1].kwargs["expected_assets"], ("release-bom.json", "release-bom.sha256"))
         self.assertIn("release-bom.json", stdout)
 
 
@@ -721,8 +703,9 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
 
             def fake_run_release_step(command: list[str], *, cwd: Path | None = None) -> None:
                 commands.append((command, cwd))
-                if command[:3] == ["gh", "release", "create"]:
-                    raise ReleaseError("Release command failed: gh release create v1.2.3: network unavailable")
+            def fail_draft_create(command: list[str], *, cwd: Path | None = None) -> str:
+                del cwd
+                raise ReleaseError("Release command failed: gh api repos/codeforester/demo/releases: network unavailable")
 
             with (
                 mock.patch("base_release.engine.release_findings", return_value=READY_FINDINGS),
@@ -734,10 +717,19 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 mock.patch("base_release.engine.require_release_provenance", return_value=READY_SHA),
                 mock.patch("base_release.engine.verify_local_annotated_tag"),
                 mock.patch("base_release.engine.verify_remote_annotated_tag"),
+                mock.patch("base_release.engine.inspect_remote_annotated_tag", return_value="absent"),
                 mock.patch(
                     "base_release.engine.run_release_step",
                     side_effect=fake_run_release_step,
                     create=True,
+                ),
+                mock.patch(
+                    "base_release.release_publish.github_release_state",
+                    side_effect=[("absent", None), ("absent", None)],
+                ),
+                mock.patch(
+                    "base_release.release_publish.capture_release_step",
+                    side_effect=fail_draft_create,
                 ),
             ):
                 status, stdout, stderr = run_engine(
@@ -755,12 +747,11 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
         stderr_lines = stderr.splitlines()
         self.assertEqual(
             stderr_lines[0],
-            "ERROR: Release command failed: gh release create v1.2.3: network unavailable",
+            "ERROR: Release command failed: gh api repos/codeforester/demo/releases: network unavailable",
         )
         self.assertIn("Recovery guidance:", stderr_lines)
-        self.assertIn("Release publish already created and pushed tag v1.2.3", stderr)
-        self.assertIn("basectl release notes --version 1.2.3", stderr)
-        self.assertIn("gh release create v1.2.3 --verify-tag --repo codeforester/demo", stderr)
+        self.assertIn("Re-run the same guarded publish command", stderr)
+        self.assertIn("basectl release publish --version 1.2.3", stderr)
         self.assertIn("git push origin :refs/tags/v1.2.3", stderr)
 
 
@@ -793,7 +784,8 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
 
         self.assertEqual(status, 1)
         self.assertEqual(stdout, "")
-        inspect.assert_called_once_with(root.resolve(), "v1.2.3", READY_SHA)
+        self.assertEqual(inspect.call_count, 2)
+        inspect.assert_called_with(root.resolve(), "v1.2.3", READY_SHA)
         self.assertIn("local annotated tag v1.2.3 remains", stderr)
         self.assertIn("remote tag is absent", stderr)
         self.assertIn("git push origin v1.2.3", stderr)
@@ -820,7 +812,8 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
                 ),
                 mock.patch("base_release.engine.require_release_provenance", return_value=READY_SHA),
                 mock.patch("base_release.engine.verify_local_annotated_tag"),
-                mock.patch("base_release.engine.inspect_remote_annotated_tag", return_value="intended") as inspect,
+                mock.patch("base_release.engine.verify_remote_annotated_tag"),
+                mock.patch("base_release.engine.inspect_remote_annotated_tag", side_effect=["absent", "intended"]) as inspect,
                 mock.patch("base_release.engine.run_release_step", side_effect=timeout_push, create=True),
             ):
                 status, stdout, stderr = run_engine(
@@ -830,9 +823,11 @@ class ReleaseEngineTests(unittest.TestCase):  # pylint: disable=too-many-public-
 
         self.assertEqual(status, 1)
         self.assertEqual(stdout, "")
-        inspect.assert_called_once_with(root.resolve(), "v1.2.3", READY_SHA)
+        self.assertEqual(inspect.call_count, 2)
+        inspect.assert_called_with(root.resolve(), "v1.2.3", READY_SHA)
         self.assertIn("remote tag v1.2.3 is present and resolves to the intended release commit", stderr)
-        self.assertIn("gh release create v1.2.3 --verify-tag --repo codeforester/demo", stderr)
+        self.assertIn("basectl release publish --version 1.2.3", stderr)
+        self.assertIn("resume an existing mutable draft", stderr)
 
 
     def test_publish_fails_when_readiness_has_errors(self) -> None:

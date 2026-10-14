@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import time
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator, Literal
@@ -17,25 +18,16 @@ from .release_model import ReleaseContext, ReleaseError
 from .release_readiness import last_non_empty_line
 
 RELEASE_STEP_TIMEOUT_SECONDS = 120
+RELEASE_API_RETRY_DELAYS_SECONDS = (1, 2)
 FULL_GIT_SHA_LENGTHS = frozenset((40, 64))
 RELEASE_BOM_ASSET_NAME = "release-bom.json"
 RELEASE_BOM_DIGEST_ASSET_NAME = "release-bom.sha256"
 RemoteTagState = Literal["absent", "intended", "conflict", "unavailable"]
+GithubReleaseState = Literal["absent", "draft", "published", "unavailable"]
 
 
 def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:
     display_command = base_cli.delegated_display_command("basectl release") or "basectl release"
-    notes_file = f"{ctx.tag_name}-notes.md"
-    notes_command = (
-        f"{display_command} notes --version {shlex.quote(ctx.version)} "
-        f"--manifest {shlex.quote(str(ctx.manifest_path))}"
-    )
-    create_release_command = (
-        f"gh release create {shlex.quote(ctx.tag_name)} --verify-tag "
-        f"--repo {shlex.quote(ctx.release.github.repository)} "
-        f"--title {shlex.quote(title)} "
-        f"--notes-file {shlex.quote(notes_file)}"
-    )
     bom_guidance = ""
     if ctx.bom_path is not None or (ctx.release.bom is not None and ctx.release.bom.required):
         bom_guidance = (
@@ -43,16 +35,19 @@ def release_publish_recovery_guidance(ctx: ReleaseContext, title: str) -> str:
             "Recover the original reviewed canonical BOM and matching digest sidecar; do not regenerate "
             "evidence from a different checkout. Validate the BOM against the intended repository, version, "
             "and commit, and verify its SHA-256 before uploading the pair under those stable asset names.\n"
-            "If the GitHub Release already exists, inspect it instead of rerunning create. Upload missing "
+            "If the GitHub draft already exists, resume it instead of creating another release. Upload missing "
             "assets without overwriting existing ones; stop if an existing asset conflicts. Download and "
             "verify both published assets against the reviewed pair before declaring success.\n"
         )
     return (
-        f"Release publish already created and pushed tag {ctx.tag_name}, "
-        "but GitHub Release creation, BOM asset upload, or verification did not complete cleanly.\n"
-        "After confirming the pushed annotated tag resolves to the intended commit, complete the GitHub Release:\n"
-        f"  {notes_command} > {shlex.quote(notes_file)}\n"
-        f"  {create_release_command}\n"
+        f"Release publication for {ctx.tag_name} did not complete cleanly after the tag was pushed.\n"
+        "Do not create a second release or delete the tag. Re-run the same guarded publish command; "
+        "it will inspect the tag, resume an existing mutable draft, upload only missing assets, "
+        "verify downloaded bytes, and publish only after the checks pass.\n"
+        f"  {display_command} publish --version {shlex.quote(ctx.version)} "
+        f"--manifest {shlex.quote(str(ctx.manifest_path))}"
+        + (f" --bom {shlex.quote(str(ctx.bom_path))}" if ctx.bom_path is not None else "")
+        + " --yes\n"
         f"{bom_guidance}"
         "To abandon this release attempt, remove the local and remote tag after confirming no one else is using it:\n"
         f"  git tag -d {shlex.quote(ctx.tag_name)}\n"
@@ -123,6 +118,230 @@ def capture_release_step(command: list[str], *, cwd: Path | None = None) -> str:
     return result.stdout.strip()
 
 
+def is_github_rate_limit_error(error: ReleaseError) -> bool:
+    detail = str(error).lower()
+    return any(
+        marker in detail
+        for marker in (
+            "rate limit",
+            "secondary limit",
+            "abuse detection",
+            "too many requests",
+            "http 429",
+        )
+    )
+
+
+def capture_github_step(command: list[str], *, cwd: Path | None = None) -> str:
+    """Run a read-only GitHub command with bounded rate-limit recovery."""
+    for attempt, delay in enumerate((0, *RELEASE_API_RETRY_DELAYS_SECONDS)):
+        if delay:
+            time.sleep(delay)
+        try:
+            return capture_release_step(command, cwd=cwd)
+        except ReleaseError as exc:
+            if attempt == len(RELEASE_API_RETRY_DELAYS_SECONDS) or not is_github_rate_limit_error(exc):
+                raise
+    raise ReleaseError("GitHub command retry state was exhausted unexpectedly.")
+
+
+def github_release_state(ctx: ReleaseContext) -> tuple[GithubReleaseState, int | None]:
+    """Read the REST release state without creating or mutating anything."""
+    encoded_tag = quote(ctx.tag_name, safe="")
+    command = [
+        "gh",
+        "api",
+        f"repos/{ctx.release.github.repository}/releases/tags/{encoded_tag}",
+        "--jq",
+        '(.id | tostring) + "\\t" + (.draft | tostring)',
+    ]
+    try:
+        output = capture_github_step(command, cwd=ctx.manifest_path.parent)
+    except ReleaseError as exc:
+        detail = str(exc).lower()
+        if "not found" in detail or "http 404" in detail or "404" in detail:
+            return "absent", None
+        return "unavailable", None
+
+    release_id_text, separator, draft_text = output.partition("\t")
+    if not separator or not release_id_text.isdigit() or draft_text not in {"true", "false"}:
+        raise ReleaseError("GitHub REST release readback did not return a valid release id and draft state.")
+    return ("draft" if draft_text == "true" else "published"), int(release_id_text)
+
+
+def github_release_asset_names(ctx: ReleaseContext, release_id: int) -> set[str]:
+    output = capture_github_step(
+        [
+            "gh",
+            "api",
+            f"repos/{ctx.release.github.repository}/releases/{release_id}/assets",
+            "--paginate",
+            "--jq",
+            ".[].name",
+        ],
+        cwd=ctx.manifest_path.parent,
+    )
+    return {line.strip() for line in output.splitlines() if line.strip()}
+
+
+def verify_downloaded_release_asset(ctx: ReleaseContext, asset: Path) -> None:
+    """Download one public asset and compare its bytes with the staged input."""
+    with tempfile.TemporaryDirectory(prefix="base-release-asset-readback-") as directory:
+        download_directory = Path(directory)
+        capture_github_step(
+            [
+                "gh",
+                "release",
+                "download",
+                ctx.tag_name,
+                "--repo",
+                ctx.release.github.repository,
+                "--pattern",
+                asset.name,
+                "--dir",
+                str(download_directory),
+                "--clobber",
+            ],
+            cwd=ctx.manifest_path.parent,
+        )
+        downloaded = download_directory / asset.name
+        try:
+            downloaded_bytes = downloaded.read_bytes()
+            expected_bytes = asset.read_bytes()
+        except OSError as exc:
+            raise ReleaseError(f"Unable to read downloaded release asset {asset.name}: {exc}") from exc
+        if downloaded_bytes != expected_bytes:
+            raise ReleaseError(
+                f"GitHub Release asset {asset.name} differs from the reviewed staged bytes."
+            )
+
+
+def verify_release_assets(ctx: ReleaseContext, release_id: int, assets: tuple[Path, ...]) -> None:
+    names = github_release_asset_names(ctx, release_id)
+    missing = sorted(asset.name for asset in assets if asset.name not in names)
+    if missing:
+        raise ReleaseError(f"GitHub Release is missing required assets: {', '.join(missing)}.")
+    for asset in assets:
+        verify_downloaded_release_asset(ctx, asset)
+
+
+def create_or_resume_draft_release(
+    ctx: ReleaseContext, title: str, notes_path: Path,
+) -> int:
+    """Create a mutable REST draft or safely resume the existing draft."""
+    state, release_id = github_release_state(ctx)
+    if state == "draft" and release_id is not None:
+        return release_id
+    if state == "published":
+        raise ReleaseError(
+            f"GitHub Release {ctx.tag_name} is already published and immutable; refusing to mutate it."
+        )
+    if state == "unavailable":
+        raise ReleaseError(f"Unable to inspect GitHub Release {ctx.tag_name} before draft creation.")
+
+    try:
+        body = notes_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise ReleaseError(f"Unable to read staged release notes: {exc}") from exc
+    create_command = [
+        "gh",
+        "api",
+        f"repos/{ctx.release.github.repository}/releases",
+        "--method",
+        "POST",
+        "--field",
+        f"tag_name={ctx.tag_name}",
+        "--field",
+        f"name={title}",
+        "--field",
+        f"body={body}",
+        "--field",
+        "draft=true",
+        "--field",
+        "prerelease=false",
+    ]
+    try:
+        capture_release_step(create_command, cwd=ctx.manifest_path.parent)
+    except ReleaseError as exc:
+        # A timed-out POST may have succeeded. Read first; never create a second
+        # release when the server already has the draft.
+        recovered_state, recovered_id = github_release_state(ctx)
+        if recovered_state == "draft" and recovered_id is not None:
+            return recovered_id
+        if not is_github_rate_limit_error(exc):
+            raise
+        time.sleep(RELEASE_API_RETRY_DELAYS_SECONDS[0])
+        capture_release_step(create_command, cwd=ctx.manifest_path.parent)
+
+    state, release_id = github_release_state(ctx)
+    if state != "draft" or release_id is None:
+        raise ReleaseError("GitHub draft release was not visible after creation.")
+    return release_id
+
+
+def upload_and_verify_release_assets(
+    ctx: ReleaseContext, release_id: int, assets: tuple[Path, ...],
+) -> None:
+    """Upload only missing assets, then verify their downloaded bytes."""
+    for asset in assets:
+        names = github_release_asset_names(ctx, release_id)
+        if asset.name not in names:
+            upload_command = [
+                "gh",
+                "release",
+                "upload",
+                ctx.tag_name,
+                str(asset),
+                "--repo",
+                ctx.release.github.repository,
+            ]
+            try:
+                capture_release_step(upload_command, cwd=ctx.manifest_path.parent)
+            except ReleaseError as exc:
+                # An upload can succeed while its response is lost. Treat a
+                # now-visible asset as success; retry only when it is absent.
+                names = github_release_asset_names(ctx, release_id)
+                if asset.name not in names:
+                    if not is_github_rate_limit_error(exc):
+                        raise
+                    time.sleep(RELEASE_API_RETRY_DELAYS_SECONDS[0])
+                    capture_release_step(upload_command, cwd=ctx.manifest_path.parent)
+        verify_release_assets(ctx, release_id, (asset,))
+
+
+def publish_draft_release(ctx: ReleaseContext, release_id: int) -> None:
+    """Publish only after the draft's assets have passed byte-level readback."""
+    state, current_id = github_release_state(ctx)
+    if state == "published":
+        return
+    if state != "draft" or current_id != release_id:
+        raise ReleaseError("The staged GitHub draft release is no longer available for publication.")
+
+    patch_command = [
+        "gh",
+        "api",
+        f"repos/{ctx.release.github.repository}/releases/{release_id}",
+        "--method",
+        "PATCH",
+        "--field",
+        "draft=false",
+    ]
+    try:
+        capture_release_step(patch_command, cwd=ctx.manifest_path.parent)
+    except ReleaseError as exc:
+        state, _ = github_release_state(ctx)
+        if state == "published":
+            return
+        if not is_github_rate_limit_error(exc):
+            raise
+        time.sleep(RELEASE_API_RETRY_DELAYS_SECONDS[0])
+        capture_release_step(patch_command, cwd=ctx.manifest_path.parent)
+
+    state, _ = github_release_state(ctx)
+    if state != "published":
+        raise ReleaseError("GitHub Release did not become published after draft publication.")
+
+
 def verify_local_annotated_tag(root: Path, tag_name: str, expected_sha: str) -> None:
     object_type = capture_release_step(["git", "cat-file", "-t", f"refs/tags/{tag_name}"], cwd=root)
     if object_type != "tag":
@@ -146,6 +365,17 @@ def verify_remote_annotated_tag(root: Path, tag_name: str, expected_sha: str) ->
             "or resolves to a conflicting commit."
         )
     raise ReleaseError(f"Remote tag {tag_name} is missing or is not an annotated tag on origin.")
+
+
+def local_tag_ref_exists(root: Path, tag_name: str) -> bool:
+    try:
+        capture_release_step(
+            ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag_name}"],
+            cwd=root,
+        )
+    except ReleaseError:
+        return False
+    return True
 
 
 def inspect_remote_annotated_tag(root: Path, tag_name: str, expected_sha: str) -> RemoteTagState:
