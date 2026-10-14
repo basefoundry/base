@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from base_release import engine
+from base_release import engine, release_publish
 from base_release.release_bom import canonical_bom_bytes, write_bom_digest_sidecar
 from base_release.release_model import ReleaseContext, ReleaseError, ReleaseFinding
 from base_release.release_parser import ReleaseArguments
@@ -40,9 +40,38 @@ def publication_fixture(tmp_path, monkeypatch):
     monkeypatch.setattr(engine, "extract_changelog_section", lambda *_: "Fixture release")
     monkeypatch.setattr(engine, "verify_local_annotated_tag", lambda *_: None)
     monkeypatch.setattr(engine, "verify_remote_annotated_tag", lambda *_: None)
+    monkeypatch.setattr(engine, "inspect_remote_annotated_tag", lambda *_: "absent")
     monkeypatch.setattr(engine, "verify_github_release", lambda *_, **__: None)
     monkeypatch.setattr(engine, "run_release_step", lambda command, **_: commands.append(command))
     monkeypatch.setattr("base_release.release_publish.run_release_step", lambda command, **_: commands.append(command))
+    monkeypatch.setattr("base_release.release_publish.local_tag_ref_exists", lambda *_: False)
+    monkeypatch.setattr(engine, "local_tag_ref_exists", lambda *_: False)
+    states = iter([("absent", None), ("draft", 123), ("draft", 123), ("published", 123)])
+    monkeypatch.setattr("base_release.release_publish.github_release_state", lambda _: next(states))
+    def capture(command, **_):
+        if command[:3] == ["gh", "api", "repos/basefoundry/base/releases"] and "--method" in command:
+            return "123"
+        return ""
+
+    monkeypatch.setattr("base_release.release_publish.capture_release_step", capture)
+    records = iter([
+        release_publish.GithubReleaseRecord(
+            123, "v1.9.0", "Base v1.9.0", "Fixture release\n", True, False, BASE_COMMIT, None
+        ),
+        release_publish.GithubReleaseRecord(
+            123, "v1.9.0", "Base v1.9.0", "Fixture release\n", True, False, BASE_COMMIT, None
+        ),
+        release_publish.GithubReleaseRecord(
+            123, "v1.9.0", "Base v1.9.0", "", False, False, BASE_COMMIT, None
+        ),
+    ])
+    monkeypatch.setattr(
+        "base_release.release_publish.github_release_record",
+        lambda _ctx, _release_id: next(records),
+    )
+    monkeypatch.setattr("base_release.release_publish.github_release_asset_names", lambda *_: set())
+    monkeypatch.setattr("base_release.release_publish.verify_release_assets", lambda *_, **__: None)
+    monkeypatch.setattr(engine, "verify_release_assets", lambda *_, **__: None)
     return ctx, commands
 
 
@@ -127,11 +156,6 @@ def test_valid_pair_and_legacy_bom_succeed(publication, mode, sidecar_present):
         assert not commands
     else:
         assert commands[0][:3] == ["git", "tag", "-a"]
-        create_command = next(command for command in commands if command[:3] == ["gh", "release", "create"])
-        assert {Path(path).name for path in create_command[4:6]} == {
-            "release-bom.json",
-            "release-bom.sha256",
-        }
 
 
 def test_publish_uses_prevalidated_snapshot_after_input_disappears(publication, monkeypatch):
@@ -144,11 +168,19 @@ def test_publish_uses_prevalidated_snapshot_after_input_disappears(publication, 
         if command[:3] == ["git", "tag", "-a"]:
             ctx.bom_path.unlink()
             ctx.bom_path.with_suffix(".sha256").unlink()
-        if command[:3] == ["gh", "release", "create"]:
-            attached.update({Path(path).name: Path(path).read_bytes() for path in command[4:6]})
+        if len(command) > 2 and command[:2] == ["gh", "api"] and command[2].startswith("https://uploads.github.com"):
+            input_path = Path(command[command.index("--input") + 1])
+            attached[input_path.name] = input_path.read_bytes()
+        if command[:3] == ["gh", "api", "repos/basefoundry/base/releases"] and "--method" in command:
+            return "123"
+        return ""
 
     monkeypatch.setattr(engine, "run_release_step", run_step)
     monkeypatch.setattr("base_release.release_publish.run_release_step", run_step)
+    monkeypatch.setattr("base_release.release_publish.github_release_asset_names", lambda *_: set())
+    monkeypatch.setattr("base_release.release_publish.verify_release_assets", lambda *_, **__: None)
+    monkeypatch.setattr(engine, "verify_release_assets", lambda *_, **__: None)
+    monkeypatch.setattr("base_release.release_publish.capture_release_step", run_step)
     assert invoke_mode(ctx, "publish") == 0
     assert attached["release-bom.json"] == expected
     assert attached["release-bom.sha256"] == (
@@ -191,16 +223,16 @@ def test_governed_release_recovery_requires_the_reviewed_asset_pair(publication,
     ctx, _ = publication
 
     def failed_create(command, **_):
-        if command[:3] == ["gh", "release", "create"]:
-            raise ReleaseError("fixture release creation failed")
+        raise ReleaseError("fixture release creation failed")
 
-    monkeypatch.setattr(engine, "run_release_step", failed_create)
+    monkeypatch.setattr("base_release.release_publish.github_release_state", lambda _: ("absent", None))
+    monkeypatch.setattr("base_release.release_publish.capture_release_step", failed_create)
     with pytest.raises(ReleaseError) as failure:
         invoke_mode(ctx, "publish")
     assert "release-bom.json" in failure.value.guidance
     assert "release-bom.sha256" in failure.value.guidance
     assert "reviewed" in failure.value.guidance
-    assert "verify" in failure.value.guidance.lower()
+    assert "guarded publish command" in failure.value.guidance
 
 
 @pytest.mark.parametrize("mode", ["check", "dry-run", "publish"])

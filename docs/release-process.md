@@ -122,18 +122,20 @@ basectl release publish --version X.Y.Z --bom path/to/release-bom.json --dry-run
 basectl release publish --version X.Y.Z --bom path/to/release-bom.json --yes
 ```
 
-`publish` reuses the release checks, refuses existing tags or GitHub Releases,
-and rechecks the repository, branch, and full commit SHA immediately before its
-first mutation. It creates an annotated tag, verifies the local peeled SHA,
-pushes the tag, verifies the remote peeled SHA, and creates the GitHub Release
-with `--verify-tag` in the configured repository. The successful command then
-verifies GitHub's annotated tag object resolves to the same commit SHA. When
-`--bom` is supplied, it passes `release-bom.json` and
-`release-bom.sha256` to GitHub during release creation and verifies them as
-release assets. This ordering is required for immutable releases: never create
-an empty immutable release and attempt to upload the BOM afterward. It does not
-update the Homebrew tap; it
-prints the tap handoff checklist when `release.homebrew` is declared.
+`publish` reuses the release checks and rechecks the repository, branch, and
+full commit SHA immediately before its first mutation. It creates an annotated
+tag, verifies the local peeled SHA, pushes the tag, verifies the remote peeled
+SHA, and creates a mutable GitHub draft through the REST API. It then verifies
+GitHub's annotated tag object, uploads only missing assets, downloads each
+required asset again, and compares its bytes with the reviewed staged input.
+Only after those checks pass does it publish the draft, making the release
+immutable. A rerun safely resumes an existing draft and never overwrites an
+existing asset. Bounded rate-limit retries and REST readback make interrupted
+creation, upload, and publication recoverable without creating a second
+release. This ordering is required for immutable releases: never create an
+empty immutable release and attempt to upload the BOM afterward. It does not
+update the Homebrew tap; it prints the tap handoff checklist when
+`release.homebrew` is declared.
 
 ## Downstream Version-Bump Automation
 

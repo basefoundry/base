@@ -17,11 +17,22 @@ from .release_parser import ReleaseUsageError
 from .release_parser import parse_release_args
 from .release_parser import print_usage
 from .release_parser import selected_release_check_format
-from .release_publish import inspect_remote_annotated_tag, release_publish_recovery_guidance
+from .release_publish import (
+    create_or_resume_draft_release,
+    github_release_state,
+    inspect_remote_annotated_tag,
+    local_tag_ref_exists,
+    release_publish_recovery_guidance,
+)
 from .release_publish import release_tag_push_recovery_guidance, require_interactive_publish_confirmation
 from .release_publish import run_release_step, verify_github_release
 from .release_publish import verify_local_annotated_tag, verify_remote_annotated_tag
-from .release_publish import stage_release_files
+from .release_publish import (
+    publish_draft_release,
+    stage_release_files,
+    upload_and_verify_release_assets,
+    verify_release_assets,
+)
 from .release_readiness import extract_changelog_section, gh_cli_finding, github_release_finding
 from .release_readiness import require_release_provenance
 
@@ -201,23 +212,20 @@ def publish_and_verify_github_release(
     expected_sha: str,
     bom_assets: tuple[Path, Path] | None,
 ) -> None:
-    """Publish only pre-staged files; never reread the original BOM after tagging."""
-    project_root = ctx.manifest_path.parent
-    asset_arguments = [str(asset) for asset in bom_assets] if bom_assets is not None else []
-    run_release_step(
-        [
-            "gh", "release", "create", ctx.tag_name, *asset_arguments, "--verify-tag",
-            "--repo", ctx.release.github.repository, "--title", title,
-            "--notes-file", str(notes_path),
-        ],
-        cwd=project_root,
-    )
+    """Create/resume a draft, verify assets, then make the release immutable."""
+    release_id = create_or_resume_draft_release(ctx, title, notes_path, expected_sha)
+    verify_github_release(ctx, expected_sha, release_id=release_id)
+    if bom_assets is not None:
+        upload_and_verify_release_assets(ctx, release_id, tuple(bom_assets))
+    publish_draft_release(ctx, release_id)
     verify_github_release(
         ctx,
         expected_sha,
+        release_id=release_id,
         expected_assets=("release-bom.json", "release-bom.sha256") if bom_assets else (),
     )
     if bom_assets is not None:
+        verify_release_assets(ctx, release_id, tuple(bom_assets))
         print("Release BOM assets uploaded and verified: release-bom.json, release-bom.sha256")
 
 
@@ -228,6 +236,12 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     if not blockers:
         findings = findings + (github_release_finding(ctx),)
         blockers = tuple(finding for finding in findings if finding.status != "ok")
+    elif release_publication_recovery_available(ctx, blockers):
+        print(
+            f"Resuming the existing GitHub draft release for {ctx.manifest.project_name} v{ctx.version}.",
+            file=sys.stderr,
+        )
+        blockers = ()
     if blockers:
         print(f"\nRelease publish blocked by readiness findings for {ctx.manifest.project_name} v{ctx.version}\n")
         print_findings(blockers)
@@ -268,24 +282,47 @@ def release_publish_command(ctx: ReleaseContext, args: ReleaseArguments) -> int:
     return base_cli.ExitCode.SUCCESS
 
 
+def release_publication_recovery_available(
+    ctx: ReleaseContext, blockers: tuple[ReleaseFinding, ...],
+) -> bool:
+    """Allow only a known draft/tag interruption to resume publication."""
+    if not blockers or {finding.name for finding in blockers} - {"local_tag", "remote_tag"}:
+        return False
+    state, _ = github_release_state(ctx)
+    if state == "draft":
+        return True
+    if state != "absent":
+        return False
+    try:
+        expected_sha = require_release_provenance(ctx)
+        verify_local_annotated_tag(ctx.manifest_path.parent, ctx.tag_name, expected_sha)
+        verify_remote_annotated_tag(ctx.manifest_path.parent, ctx.tag_name, expected_sha)
+    except ReleaseError:
+        return False
+    return True
+
+
 def publish_release_from_staged_files(
     ctx: ReleaseContext, title: str, notes_path: Path, expected_sha: str,
     bom_assets: tuple[Path, Path] | None,
 ) -> None:
     project_root = ctx.manifest_path.parent
-    run_release_step(
-        ["git", "tag", "-a", ctx.tag_name, expected_sha, "-m", f"Release {ctx.tag_name}"],
-        cwd=project_root,
-    )
+    if not local_tag_ref_exists(project_root, ctx.tag_name):
+        run_release_step(
+            ["git", "tag", "-a", ctx.tag_name, expected_sha, "-m", f"Release {ctx.tag_name}"],
+            cwd=project_root,
+        )
     verify_local_annotated_tag(project_root, ctx.tag_name, expected_sha)
-    try:
-        run_release_step(["git", "push", "origin", ctx.tag_name], cwd=project_root)
-    except ReleaseError as exc:
-        remote_tag_state = inspect_remote_annotated_tag(project_root, ctx.tag_name, expected_sha)
-        raise ReleaseError(
-            str(exc),
-            guidance=release_tag_push_recovery_guidance(ctx, title, remote_tag_state),
-        ) from exc
+    remote_tag_state = inspect_remote_annotated_tag(project_root, ctx.tag_name, expected_sha)
+    if remote_tag_state == "absent":
+        try:
+            run_release_step(["git", "push", "origin", ctx.tag_name], cwd=project_root)
+        except ReleaseError as exc:
+            remote_tag_state = inspect_remote_annotated_tag(project_root, ctx.tag_name, expected_sha)
+            raise ReleaseError(
+                str(exc),
+                guidance=release_tag_push_recovery_guidance(ctx, title, remote_tag_state),
+            ) from exc
 
     try:
         verify_remote_annotated_tag(project_root, ctx.tag_name, expected_sha)
