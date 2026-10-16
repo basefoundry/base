@@ -614,9 +614,11 @@ not part of the coordinated Base release matrix. See the [ecosystem platform,
 license, and release policy](docs/ecosystem-policy.md) for the boundary between
 Base and the standalone component repositories.
 
-The macOS CI floor runs on GitHub's `macos-14` runner. Newer macOS runners may
-be added for coverage, but the floor job should stay until Base intentionally
-raises the support floor.
+The macOS support floor is macOS 14 Sonoma. The hosted CI floor runs on
+GitHub's pinned `macos-15` runner because the `macos-14` image is retired; this
+runner choice does not raise the product support floor. Newer macOS runners may
+be added for coverage, but the support floor remains macOS 14 until Base
+intentionally raises it.
 
 OS-specific behavior should stay isolated behind small helpers instead of being
 scattered through command code. For example, the Base runtime prompt can prefer

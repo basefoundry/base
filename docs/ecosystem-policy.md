@@ -39,11 +39,14 @@ The coordinated Base release matrix is intentionally small and current:
 | `base-bash-libs` alone | Bash 4.2+ on supported Unix-like environments; WSL2 follows the Linux-shell boundary | A native Windows Bash runtime contract |
 | `base-demo` | Full interactive demo on macOS; Ubuntu 24.04 read-only CI validation | Full demo setup, activation, or service parity on Ubuntu, WSL2, or native Windows |
 
-The required Base release-stack combinations are `ubuntu-24.04` and
-`macos-14`. Adding WSL2, native Windows, another Linux family, or another
-macOS runner requires an explicit support-matrix update and corresponding
-immutable hosted evidence. Component-level support must not be presented as
-support for the coordinated Base stack.
+The required Base release-stack combinations are `ubuntu-24.04` and the
+logical macOS 14 support platform. The macOS 14 support evidence currently
+runs on GitHub's pinned `macos-15` hosted image because the `macos-14` image is
+retired; the BOM evidence records both values. Adding WSL2, native Windows,
+another Linux family, or another macOS runner requires an explicit
+support-matrix update and corresponding immutable hosted evidence.
+Component-level support must not be presented as support for the coordinated
+Base stack.
 
 ## License history
 

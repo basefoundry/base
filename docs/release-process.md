@@ -19,8 +19,10 @@ Base also owns the cross-repository release BOM. Releases of `base-cli`,
 `base-bash-libs`, or `base-demo` remain independently versioned and do not
 force a Base release. A Base release chooses the exact compatible component
 tags it will support and records those tags, commits, contract versions, and
-Ubuntu 24.04/macOS 14 validation evidence in its BOM. A later component release
-is eligible for a later Base BOM after the required compatibility checks pass.
+Ubuntu 24.04/macOS 14 support-platform validation evidence in its BOM. The
+macOS 14 evidence is executed on GitHub's pinned macOS 15 runner because the
+macOS 14 hosted image is retired. A later component release is eligible for a
+later Base BOM after the required compatibility checks pass.
 See the [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md)
 for the shared platform boundaries, license history, provider precedence, and
 published-artifact immutability rule.
@@ -40,8 +42,9 @@ validated. Supported macOS installs should use Homebrew bottles; source builds
 remain a fallback for unsupported hosts or explicit source-build validation.
 Base's current supported macOS floor is macOS 14 Sonoma. Keep Homebrew bottle
 workflows, formula validation, and Base's macOS CI floor aligned with that
-support contract until the Compatibility section in the top-level README is
-changed intentionally.
+support contract; hosted CI currently exercises it on the pinned macOS 15
+runner. Do not treat the runner image as a support-floor change until the
+Compatibility section in the top-level README is changed intentionally.
 
 ## Version Policy
 

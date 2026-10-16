@@ -25,6 +25,7 @@ def test_ecosystem_policy_is_canonical_and_covers_required_boundaries() -> None:
         "Release and artifact immutability",
         "`ubuntu-24.04`",
         "`macos-14`",
+        "`macos-15`",
         "Base is Apache-2.0 starting with `v1.9.0`",
         "base-demo` remains MIT",
         "must fail closed",

@@ -255,8 +255,9 @@ non-interactive demo commands. The job provisions Go and OpenJDK 17, sets
 `BASE_DEMO_FULL_VALIDATION=1`, and requires the Go, Python, Gradle, and Maven
 live HTTP markers from the demo test log. Use the workflow input to validate a
 specific `base-demo` branch, tag, or commit; the log records the exact Base,
-demo, `base-cli`, and `base-bash-libs` commits used on the supported macOS 14
-runner.
+demo, `base-cli`, and `base-bash-libs` commits used on the macOS 14 support
+platform. The hosted job currently runs on the pinned macOS 15 runner because
+the macOS 14 image is retired.
 
 This job is intentionally separate from Base's own test matrix because it
 validates an external manifest and project contract. Its grouped CI output

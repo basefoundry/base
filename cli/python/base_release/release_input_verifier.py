@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+PLATFORM_RUNNERS = {"ubuntu-24.04": "ubuntu-24.04", "macos-14": "macos-15"}
 STABLE_VERSION_RE = re.compile(r"^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$")
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -126,6 +127,11 @@ def verify_platform_evidence(path: Path, platform: str, inputs: tuple[ReleaseInp
         raise ReleaseInputError(f"could not read platform evidence {path}: {exc}") from exc
     if not isinstance(document, dict) or document.get("result") != "passed" or document.get("platform") != platform:
         raise ReleaseInputError(f"platform evidence {path} is not a passed {platform} result")
+    expected_runner = PLATFORM_RUNNERS.get(platform)
+    if expected_runner is not None and document.get("runner") != expected_runner:
+        raise ReleaseInputError(
+            f"platform evidence {path} must record runner {expected_runner} for logical platform {platform}"
+        )
     components = document.get("components")
     if not isinstance(components, dict):
         raise ReleaseInputError(f"platform evidence {path} has no components object")

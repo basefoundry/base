@@ -38,7 +38,8 @@ A release train is not ready when any of these are true:
    release as `legacy_mutable` for one train only; that produces a warning, not
    a pass, and repository-level immutable-release enforcement must still be on.
 5. The release BOM is missing, does not use full 40-character SHAs, omits a
-   required platform, or does not validate on Ubuntu 24.04 and macOS 14.
+   required platform, or does not validate on Ubuntu 24.04 and the macOS 14
+   support platform using the pinned macOS 15 hosted runner.
 6. Public release assets, checksums, package metadata, or hosted readback have
    not been verified after publication.
 
@@ -131,7 +132,9 @@ contract and workflow invocation:
 5. Run the local and hosted preflight. Treat every error as a blocker and
    record warnings in the release issue.
 6. Dispatch the BOM workflow at the exact reviewed Base commit. Require both
-   Ubuntu 24.04 and macOS 14 jobs to pass and preserve the downloaded BOM.
+   Ubuntu 24.04 and macOS 14 support-platform jobs to pass on their declared
+   runners, including the pinned macOS 15 runner, and preserve the downloaded
+   BOM.
 7. Run the existing `basectl release check` and guarded publish flow with the
    same BOM. Do not publish merely because ordinary component CI is green.
 8. Read back the tag, GitHub Release, assets, checksums, package registries,

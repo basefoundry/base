@@ -94,6 +94,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     compatibility = workflow["jobs"]["compatibility"]
     assemble = workflow["jobs"]["assemble"]
     platforms = {item["platform"] for item in compatibility["strategy"]["matrix"]["include"]}
+    runners = {item["platform"]: item["runner"] for item in compatibility["strategy"]["matrix"]["include"]}
     compatibility_commands = "\n".join(
         step.get("run", "")
         for step in compatibility.get("steps", [])
@@ -120,6 +121,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     assert workflow["name"] == "Ecosystem Release BOM"
     assert workflow["permissions"] == {"contents": "read"}
     assert platforms == {"ubuntu-24.04", "macos-14"}
+    assert runners == {"ubuntu-24.04": "ubuntu-24.04", "macos-14": "macos-15"}
     assert set(inputs) == {
         "base_version",
         "base_ref",
@@ -143,6 +145,7 @@ def test_ecosystem_release_bom_workflow_owns_base_and_required_platform_matrix()
     )
     assert "base-release-bom assemble" in run_commands
     assert "base-release-inputs-verify" in run_commands
+    assert '"runner": $runner' in compatibility_commands
     assert any(
         step.get("name") == "Verify release inputs and bind platform evidence"
         for step in assemble["steps"]
@@ -423,10 +426,11 @@ def test_base_demo_e2e_workflow_covers_the_external_project_loop() -> None:
     assert "workflow_dispatch" in triggers
     assert workflow["permissions"] == {"contents": "read"}
     assert "concurrency" in workflow
-    assert job["runs-on"] == "macos-14"
+    assert job["runs-on"] == "macos-15"
     assert job["timeout-minutes"] == 45
     assert job["env"]["BASE_DEMO_ENV"] == "baseline"
     assert job["env"]["BASE_DEMO_FULL_VALIDATION"] == "1"
+    assert "runner_image=macos-15" in run_commands
     assert job["env"]["BASE_CLI_SOURCE_DIR"].endswith(".dependencies/base-cli/lib/python")
 
     install_mise_step_index = next(

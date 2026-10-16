@@ -91,7 +91,8 @@ bin/base-release-bom digest path/to/release-bom.json
 
 For Base 1.10.5, the release coordinator assembles rows for Base, base-cli,
 base-bash-libs, and base-demo. The required release-stack combinations are
-tested on Ubuntu 24.04 and macOS 14; both must report `passed`. Each combination
+tested on Ubuntu 24.04 and the macOS 14 support platform; the latter currently
+runs on the pinned macOS 15 hosted image. Both must report `passed`. Each combination
 is a JSON object. Assembly writes canonical deterministic bytes and a matching
 digest sidecar, so the sidecar can be verified directly with `sha256sum` and
 the printed digest matches the attached BOM artifact:

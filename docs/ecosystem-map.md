@@ -60,7 +60,7 @@ behavior, and future work:
 
 | Environment or surface | Base shipped support | CI or evidence | Boundary |
 | --- | --- | --- | --- |
-| macOS 14+ | Full coordinated Base runtime, setup, shell integration, diagnostics, and project workflow | macOS 14 hosted smoke path and release BOM | Older macOS versions are outside the tested floor |
+| macOS 14+ | Full coordinated Base runtime, setup, shell integration, diagnostics, and project workflow | macOS 14 support-platform smoke path and release BOM, executed on the pinned macOS 15 hosted runner | Older macOS versions are outside the tested floor |
 | Ubuntu/Debian | Runtime checks, diagnostics, source-checkout validation, and apt-backed setup | Ubuntu 24.04 source-checkout path and release BOM | Interactive macOS-style setup and demo parity are not implied |
 | Ubuntu/Debian under WSL2 | Linux development/read-only guidance | Linux behavior may be exercised in a user environment | This is not native Windows support or a coordinated WSL2 release tier |
 | Native Windows | Not shipped; Phase 1 is planned for the v1.12.0 Windows milestone | Phase 0 contract workflow only; no native launcher claim | Git Bash and WSL2 are not substitutes for the native contract |
