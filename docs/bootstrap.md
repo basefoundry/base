@@ -285,6 +285,25 @@ basectl update-profile
 exec "$SHELL" -l
 ```
 
+For upgrades, prefer `basectl update`, which runs the Homebrew upgrade and then
+reconciles the managed Base environment. If Homebrew is run directly, follow
+it with setup through the newly linked executable; `brew upgrade` alone does
+not update an existing managed environment when the release changes an exact
+dependency pin:
+
+```bash
+brew upgrade basefoundry/base/base
+env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
+  "$(brew --prefix base)/libexec/bin/basectl" setup
+```
+
+Verify the result before running project tests:
+
+```bash
+basectl check base --verify-project-runtime
+basectl test base
+```
+
 ### Stable Source Install Recipe
 
 Use this path when you want the published release without Homebrew. Keep both

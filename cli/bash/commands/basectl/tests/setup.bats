@@ -569,6 +569,99 @@ EOF
     grep -Fxq -- "--disable-pip-version-check" "$TEST_STATE_DIR/pip-install-args"
 }
 
+@test "setup reconciles an installed Base Python package when its declared version changes" {
+    local bash_libs_dir
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    mkdir -p "$venv_dir/bin"
+    : > "$venv_dir/pyvenv.cfg"
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+source "${BASH_ENV:?}"
+if [[ -n "${PYTHONPATH:-}" ]]; then
+    printf 'pip subprocess inherited PYTHONPATH: %s\n' "$PYTHONPATH" >&2
+    exit 1
+fi
+if [[ "${1:-}" == "-I" ]]; then
+    shift
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    printf 'Name: %s\nVersion: 0.4.3\n' "$4"
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/pip-install-args"
+    exit 0
+fi
+printf 'unexpected venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PYTHONPATH="$TEST_TMPDIR/stale-source-provider" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE=darwin24 \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_SETUP_VENV_DIR="$venv_dir" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        bash -c 'source "$BASE_HOME/base_init.sh"; source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"; setup_install_base_python_package base-cli base-cli==0.5.1'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Python package 'base-cli' is installed at version '0.4.3' but does not satisfy declared requirement 'base-cli==0.5.1'; reconciling the Base virtual environment."* ]]
+    grep -Fxq -- "base-cli==0.5.1" "$TEST_STATE_DIR/pip-install-args"
+}
+
+@test "setup_install_base_cli reconciles the pinned Base release requirement" {
+    local bash_libs_dir
+    local venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    mkdir -p "$venv_dir/bin"
+    : > "$venv_dir/pyvenv.cfg"
+    cat > "$venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+source "${BASH_ENV:?}"
+if [[ "${1:-}" == "-I" ]]; then
+    shift
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "show" ]]; then
+    printf 'Name: base-cli\nVersion: 0.4.3\n'
+    exit 0
+fi
+if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then
+    printf '%s\n' "$@" > "${BASE_SETUP_TEST_STATE_DIR:?}/pip-install-args"
+    exit 0
+fi
+printf 'unexpected venv python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        PYTHONPATH="$TEST_TMPDIR/stale-source-provider" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        OSTYPE=darwin24 \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        BASE_SETUP_VENV_DIR="$venv_dir" \
+        BASE_SETUP_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"
+            base_cli_runtime_source_kind() { printf "pip\n"; }
+            setup_install_base_cli
+        '
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"installed at version '0.4.3' but does not satisfy declared requirement 'base-cli==0.5.1'"* ]]
+    grep -Fxq -- "base-cli==0.5.1" "$TEST_STATE_DIR/pip-install-args"
+}
+
 @test "basectl setup installs missing dependencies and creates the Base virtual environment" {
     local installer
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
