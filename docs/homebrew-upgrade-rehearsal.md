@@ -80,6 +80,18 @@ For an unreleased candidate, use the candidate formula or tap branch that
 will become the published formula. Record the exact command, tap ref, formula
 path, and archive checksum used for the rehearsal.
 
+The direct Homebrew path is complete only after setup reconciles the newly
+installed release. Use the newly linked executable and clear any inherited
+source-checkout environment:
+
+```bash
+BASE_HOME="$(brew --prefix base)/libexec"
+env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
+  -u BASE_PROJECT_MANIFEST -u BASE_PROJECT_VENV_DIR \
+  HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$BASE_HOME/bin/basectl" setup
+```
+
 Verify the upgraded install:
 
 ```bash
@@ -97,6 +109,11 @@ env HOME="$TEST_ROOT/home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl check
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  /usr/local/bin/basectl check base --verify-project-runtime
+expected_base_cli="$(sed -n 's/^base-cli==//p' "$BASE_HOME/requirements-dev.txt")"
+installed_base_cli="$(HOME="$TEST_ROOT/home" "$TEST_ROOT/home/.base.d/base/.venv/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("base-cli"))')"
+test "$installed_base_cli" = "$expected_base_cli"
+env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl doctor
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl setup base-demo
@@ -106,6 +123,8 @@ env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl doctor base-demo
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl test base-demo
+env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  /usr/local/bin/basectl test base
 shasum -a 256 "$TEST_ROOT/home/.base.d/config.yaml"
 ```
 
@@ -121,6 +140,10 @@ Accept the rehearsal only when:
   the rehearsal.
 - The `~/.base.d/config.yaml` checksum is unchanged.
 - The Base virtual environment still exists and `basectl check` accepts it.
+- `basectl check base --verify-project-runtime` passes after setup.
+- The installed `base-cli` version exactly matches the `base-cli==...` line in
+  the upgraded release's `requirements-dev.txt`.
+- `basectl test base` reaches the declared `./bin/base-test` command.
 - Fresh Bash and Zsh login shells resolve `basectl` to the Homebrew install.
 - Fresh Bash and Zsh login shells report `BASE_HOME` on the stable Homebrew
   `opt` path, not on a versioned `Cellar/base/<version>` path.
