@@ -422,25 +422,56 @@ setup_install_click() {
     setup_install_base_python_package "$(setup_click_package)"
 }
 
+setup_base_cli_requirement_from_file() {
+    local package="$1"
+    local requirements_file="$2"
+    local requirement_line expected_version
+
+    while IFS= read -r requirement_line || [[ -n "$requirement_line" ]]; do
+        requirement_line="${requirement_line%%#*}"
+        requirement_line="${requirement_line#"${requirement_line%%[![:space:]]*}"}"
+        requirement_line="${requirement_line%"${requirement_line##*[![:space:]]}"}"
+        [[ -n "$requirement_line" ]] || continue
+
+        case "$requirement_line" in
+            "$package"===*|"$package"==*)
+                if [[ "$requirement_line" == "$package"===* ]]; then
+                    expected_version="${requirement_line#"$package"===}"
+                else
+                    expected_version="${requirement_line#"$package"==}"
+                fi
+                if [[ ! "$expected_version" =~ ^[0-9A-Za-z.+!_-]+$ ]]; then
+                    base_std_log_error "Base CLI requirement '$requirement_line' must contain only an exact version after == or ===."
+                    return 2
+                fi
+                printf '%s\n' "$requirement_line"
+                return 0
+                ;;
+            "$package"|"$package"[=\<\>\!\;\[]*)
+                base_std_log_error "Base CLI requirement '$requirement_line' must use an exact == or === version pin."
+                return 2
+                ;;
+        esac
+    done < "$requirements_file"
+
+    return 1
+}
+
 setup_install_base_cli() {
-    local requirement requirement_line
+    local package requirement requirement_status
 
     setup_base_cli_package_required || return 0
-    requirement="$(setup_base_cli_package)"
+    package="$(setup_base_cli_package)"
+    requirement="$package"
     if [[ -f "$BASE_HOME/requirements-dev.txt" ]]; then
-        while IFS= read -r requirement_line || [[ -n "$requirement_line" ]]; do
-            requirement_line="${requirement_line%%#*}"
-            requirement_line="${requirement_line#"${requirement_line%%[![:space:]]*}"}"
-            requirement_line="${requirement_line%"${requirement_line##*[![:space:]]}"}"
-            case "$requirement_line" in
-                base-cli===*|base-cli==*)
-                    requirement="$requirement_line"
-                    break
-                    ;;
-            esac
-        done < "$BASE_HOME/requirements-dev.txt"
+        requirement="$(setup_base_cli_requirement_from_file "$package" "$BASE_HOME/requirements-dev.txt")"
+        requirement_status=$?
+        if ((requirement_status > 1)); then
+            return "$requirement_status"
+        fi
+        requirement="${requirement:-$package}"
     fi
-    setup_install_base_python_package "$(setup_base_cli_package)" "$requirement"
+    setup_install_base_python_package "$package" "$requirement"
 }
 
 setup_base_python_package_check_message() {

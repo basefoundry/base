@@ -33,7 +33,7 @@ Options:
 Purpose:
   Update a Base-managed project from Git, or update Base through Homebrew for
   Homebrew installs. Git updates run setup when the selected project changes;
-  Homebrew updates run setup when Base's installed version changes.
+  Homebrew updates always run setup after the upgrade to reconcile requirements.
 
 Notes:
   - When project is omitted, Base updates project 'base'.
@@ -353,7 +353,7 @@ base_update_homebrew_install() {
 
     if ((dry_run)); then
         base_std_log_info "[DRY-RUN] Would run: brew upgrade $package"
-        base_std_log_info "[DRY-RUN] Would run 'basectl setup' if the Homebrew upgrade changes Base's installed version, with inherited Base environment cleared."
+        base_std_log_info "[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade, with inherited Base environment cleared."
         return 0
     fi
 
@@ -387,12 +387,12 @@ base_update_homebrew_install() {
 
     if [[ "$before_version" == "$after_version" ]]; then
         base_std_log_info "Homebrew Base version is unchanged at '$after_version' after upgrade."
-        base_std_log_info "Skipping basectl setup because the Homebrew Base version did not change."
     else
         base_std_log_info "Homebrew Base version changed from '$before_version' to '$after_version'."
-        base_std_log_info "Running basectl setup after Homebrew upgrade."
-        base_update_run_homebrew_setup "$base_home" "$package" || return $?
     fi
+
+    base_std_log_info "Running basectl setup after Homebrew upgrade to reconcile the installed Base requirements."
+    base_update_run_homebrew_setup "$base_home" "$package" || return $?
 
     base_std_log_info "Base update is complete."
 }

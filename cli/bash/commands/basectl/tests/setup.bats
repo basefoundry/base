@@ -618,8 +618,10 @@ EOF
 @test "setup_install_base_cli reconciles the pinned Base release requirement" {
     local bash_libs_dir
     local venv_dir="$TEST_HOME/.base.d/base/.venv"
+    local expected_requirement
 
     bash_libs_dir="$(base_bash_libs_fixture_dir)"
+    expected_requirement="$(sed -n -E 's/^[[:space:]]*(base-cli(===|==)[^[:space:]#]+).*/\1/p' "$BASE_REPO_ROOT/requirements-dev.txt" | head -n 1)"
     mkdir -p "$venv_dir/bin"
     : > "$venv_dir/pyvenv.cfg"
     cat > "$venv_dir/bin/python" <<'EOF'
@@ -658,8 +660,38 @@ EOF
         '
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"installed at version '0.4.3' but does not satisfy declared requirement 'base-cli==0.5.1'"* ]]
-    grep -Fxq -- "base-cli==0.5.1" "$TEST_STATE_DIR/pip-install-args"
+    [[ "$output" == *"installed at version '0.4.3' but does not satisfy declared requirement '$expected_requirement'"* ]]
+    grep -Fxq -- "$expected_requirement" "$TEST_STATE_DIR/pip-install-args"
+}
+
+@test "Base CLI requirement parser accepts exact equality pins and rejects malformed pins" {
+    local requirements_file="$TEST_TMPDIR/requirements-dev.txt"
+
+    printf '# comment\n  base-cli===0.5.1  # exact release pin\n' > "$requirements_file"
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"
+            setup_base_cli_requirement_from_file base-cli "$1"
+        ' _ "$requirements_file"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "base-cli===0.5.1" ]
+
+    printf 'base-cli==0.5.*\n' > "$requirements_file"
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/setup_common.sh"
+            setup_base_cli_requirement_from_file base-cli "$1"
+        ' _ "$requirements_file"
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"must contain only an exact version"* ]]
 }
 
 @test "basectl setup installs missing dependencies and creates the Base virtual environment" {

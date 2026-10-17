@@ -288,12 +288,17 @@ exec "$SHELL" -l
 For upgrades, prefer `basectl update`, which runs the Homebrew upgrade and then
 reconciles the managed Base environment. If Homebrew is run directly, follow
 it with setup through the newly linked executable; `brew upgrade` alone does
-not update an existing managed environment when the release changes an exact
-dependency pin:
+not reconcile an existing managed environment:
 
 ```bash
 brew upgrade basefoundry/base/base
-env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
+env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
   "$(brew --prefix base)/libexec/bin/basectl" setup
 ```
 

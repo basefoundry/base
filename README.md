@@ -482,14 +482,10 @@ Base upgrades to Homebrew and then reconciles the managed runtime. This is the
 preferred one-command upgrade path.
 
 If you run Homebrew directly, a formula upgrade alone does not reconcile the
-managed runtime. Immediately run setup with the newly linked Homebrew
-executable, clearing any inherited source-checkout environment:
-
-```bash
-brew upgrade basefoundry/base/base
-env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
-  "$(brew --prefix base)/libexec/bin/basectl" setup
-```
+managed runtime. Immediately run the canonical post-upgrade setup sequence in
+the [Homebrew install recipe](docs/bootstrap.md#homebrew-install-recipe),
+which clears the complete inherited source-checkout environment before using
+the newly linked executable.
 
 Do not treat a successful `brew upgrade` without the follow-up `basectl setup`
 as a complete Base upgrade; the new release may declare a different exact

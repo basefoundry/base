@@ -41,7 +41,7 @@ def valid_manifest() -> dict[str, object]:
             "release_bom": {
                 "workflow": "ecosystem-release-bom.yml",
                 "platforms": ["ubuntu-24.04", "macos-14"],
-                "inputs": {"base_version": "1.10.1"},
+                "inputs": {"base_version": "1.10.1", "base_cli_version": "0.5.1"},
             },
         },
     }
@@ -58,6 +58,7 @@ def create_fixture(tmp_path: Path) -> Path:
     (tmp_path / ".ai-context" / "PROJECT.md").write_text("Current release: `1.10.0`\n", encoding="utf-8")
     (tmp_path / ".ai-context" / "STATUS.md").write_text("Base `1.10.0` is the current release.\n", encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text("## [Unreleased]\n\n## [1.10.0]\n", encoding="utf-8")
+    (tmp_path / "requirements-dev.txt").write_text("base-cli==0.5.1\n", encoding="utf-8")
     (tmp_path / ".release").mkdir()
     (tmp_path / ".release" / "version-consistency.json").write_text(
         json.dumps(
@@ -89,7 +90,7 @@ def create_fixture(tmp_path: Path) -> Path:
     )
     (tmp_path / ".github" / "workflows").mkdir(parents=True)
     (tmp_path / ".github" / "workflows" / "ecosystem-release-bom.yml").write_text(
-        "on:\n  workflow_dispatch:\n    inputs:\n      base_version:\n        default: \"1.10.1\"\n",
+        "on:\n  workflow_dispatch:\n    inputs:\n      base_version:\n        default: \"1.10.1\"\n      base_cli_version:\n        default: \"0.5.1\"\n",
         encoding="utf-8",
     )
     manifest = tmp_path / "train.json"
@@ -178,6 +179,16 @@ def test_release_prep_requires_target_version_surfaces(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert json.loads(result.stdout)["status"] == "ok"
+
+
+def test_release_train_rejects_base_cli_requirement_drift(tmp_path: Path) -> None:
+    manifest = create_fixture(tmp_path)
+    (tmp_path / "requirements-dev.txt").write_text("base-cli==0.5.0\n", encoding="utf-8")
+
+    result = run_checker(tmp_path, manifest)
+
+    assert result.returncode == 1
+    assert "release-train BOM expects 0.5.1" in result.stdout
 
 
 def remote_api(*, immutable: bool = True, tag_sha: str = "a" * 40):
