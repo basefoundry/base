@@ -25,6 +25,231 @@ assert_status() {
     [[ "$output" == *"When project is omitted, Base updates project 'base'."* ]]
     [[ "$output" == *"Tracked project files must be clean"* ]]
     [[ "$output" == *"brew upgrade basefoundry/base/base"* ]]
+    [[ "$output" == *"--release <tag>"* ]]
+}
+
+@test "basectl update release mode rejects a mutable source branch" {
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    printf '1.10.5\n' > "$repo/VERSION"
+    commit_all "$repo" "Release 1.10.5"
+    git -C "$repo" tag v1.10.5
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_run_setup() { printf "setup should not run\n"; return 99; }
+            base_update_subcommand_main --release v1.11.0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"require a clean detached checkout at an exact vMAJOR.MINOR.PATCH release tag"* ]]
+    [[ "$output" != *"setup should not run"* ]]
+}
+
+@test "basectl update release mode refuses dirty tagged source checkouts before Git mutation" {
+    local repo="$TEST_TMPDIR/repo"
+
+    init_git_repo "$repo"
+    printf '1.10.5\n' > "$repo/VERSION"
+    commit_all "$repo" "Release 1.10.5"
+    git -C "$repo" tag v1.10.5
+    git -C "$repo" checkout --detach v1.10.5 >/dev/null
+    printf 'locally modified\n' >> "$repo/VERSION"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_release_remote_commit() { printf "remote lookup should not run\n"; return 99; }
+            base_update_subcommand_main --release v1.11.0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"requires a clean checkout; no Git or environment changes were made"* ]]
+    [[ "$output" != *"remote lookup should not run"* ]]
+    [ "$(git -C "$repo" rev-parse --short HEAD)" = "$(git -C "$repo" rev-parse --short v1.10.5)" ]
+}
+
+@test "basectl update upgrades a clean tagged source checkout to a verified later release" {
+    local repo="$TEST_TMPDIR/repo"
+    local remote="$TEST_TMPDIR/remote.git"
+    local setup_log="$TEST_TMPDIR/setup.log"
+
+    init_git_repo "$repo"
+    printf '1.10.5\n' > "$repo/VERSION"
+    printf 'schema_version: 1\n' > "$repo/base_manifest.yaml"
+    commit_all "$repo" "Release 1.10.5"
+    git -C "$repo" tag v1.10.5
+    printf '1.11.0\n' > "$repo/VERSION"
+    printf 'schema_version: 2\n' > "$repo/base_manifest.yaml"
+    commit_all "$repo" "Release 1.11.0"
+    git -C "$repo" tag v1.11.0
+    git init --bare "$remote" >/dev/null
+    git -C "$repo" remote add origin "$remote"
+    git -C "$repo" push origin master --tags >/dev/null
+    git -C "$repo" checkout --detach v1.10.5 >/dev/null
+    printf 'local notes\n' > "$repo/local-notes.md"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        BASE_TEST_SETUP_LOG="$setup_log" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_run_setup() { printf "setup project=%s\n" "$2" > "$BASE_TEST_SETUP_LOG"; }
+            base_update_subcommand_main --release v1.11.0
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.11.0" ]
+    [ -f "$repo/local-notes.md" ]
+    [ "$(cat "$setup_log")" = "setup project=base" ]
+    [[ "$output" == *"Verified Base release tag 'v1.11.0'"* ]]
+    [[ "$output" == *"Release 'v1.11.0' changes Base manifest or declared test requirements"* ]]
+    [[ "$output" == *"Base source checkout moved from 'v1.10.5' to 'v1.11.0'"* ]]
+    [[ "$output" == *"Base source upgrade completed from 'v1.10.5' to 'v1.11.0'"* ]]
+}
+
+@test "basectl update release mode reports recovery when setup fails after the ref change" {
+    local repo="$TEST_TMPDIR/repo"
+    local remote="$TEST_TMPDIR/remote.git"
+
+    init_git_repo "$repo"
+    printf '1.10.5\n' > "$repo/VERSION"
+    commit_all "$repo" "Release 1.10.5"
+    git -C "$repo" tag v1.10.5
+    printf '1.11.0\n' > "$repo/VERSION"
+    commit_all "$repo" "Release 1.11.0"
+    git -C "$repo" tag v1.11.0
+    git init --bare "$remote" >/dev/null
+    git -C "$repo" remote add origin "$remote"
+    git -C "$repo" push origin master --tags >/dev/null
+    git -C "$repo" checkout --detach v1.10.5 >/dev/null
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_run_setup() { return 23; }
+            base_update_subcommand_main --release v1.11.0
+        '
+
+    [ "$status" -eq 23 ]
+    [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.11.0" ]
+    [[ "$output" == *"checkout remains recoverable at 'v1.11.0'"* ]]
+    [[ "$output" == *"basectl update --release v1.10.5"* ]]
+}
+
+@test "basectl update release mode refuses an unavailable published target" {
+    local repo="$TEST_TMPDIR/repo"
+    local remote="$TEST_TMPDIR/remote.git"
+
+    init_git_repo "$repo"
+    printf '1.10.5\n' > "$repo/VERSION"
+    commit_all "$repo" "Release 1.10.5"
+    git -C "$repo" tag v1.10.5
+    git init --bare "$remote" >/dev/null
+    git -C "$repo" remote add origin "$remote"
+    git -C "$repo" push origin master --tags >/dev/null
+    git -C "$repo" checkout --detach v1.10.5 >/dev/null
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_run_setup() { printf "setup should not run\n"; return 99; }
+            base_update_subcommand_main --release v1.11.0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Published Base release tag 'v1.11.0' was not found"* ]]
+    [[ "$output" != *"setup should not run"* ]]
+    [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.10.5" ]
+}
+
+@test "basectl update release mode runs setup for an already-current stable release" {
+    local repo="$TEST_TMPDIR/repo"
+    local remote="$TEST_TMPDIR/remote.git"
+    local setup_log="$TEST_TMPDIR/setup.log"
+
+    init_git_repo "$repo"
+    printf '1.10.5\n' > "$repo/VERSION"
+    commit_all "$repo" "Release 1.10.5"
+    git -C "$repo" tag v1.10.5
+    git init --bare "$remote" >/dev/null
+    git -C "$repo" remote add origin "$remote"
+    git -C "$repo" push origin master --tags >/dev/null
+    git -C "$repo" checkout --detach v1.10.5 >/dev/null
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        BASE_TEST_SETUP_LOG="$setup_log" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_run_setup() { printf "setup project=%s\n" "$2" > "$BASE_TEST_SETUP_LOG"; }
+            base_update_subcommand_main --release v1.10.5
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$setup_log")" = "setup project=base" ]
+    [[ "$output" == *"already at stable release 'v1.10.5'"* ]]
+    [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.10.5" ]
 }
 
 @test "basectl update dry-run reports planned update and setup" {
