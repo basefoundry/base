@@ -21,7 +21,7 @@ concurrency:
 jobs:
   base-demo-e2e:
     name: Base demo end-to-end loop
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     env:
       BASE_CACHE_DIR: ${{ github.workspace }}/.base-cache
@@ -90,6 +90,7 @@ jobs:
           BASE_DEMO_REF: ${{ inputs.base_demo_ref || 'main' }}
         run: |
           printf 'supported_os=macos-14\n'
+          printf 'runner_image=macos-15\n'
           printf 'base_ref=%s\n' "$GITHUB_SHA"
           printf 'base_commit=%s\n' "$(git rev-parse HEAD)"
           printf 'base_demo_ref=%s\n' "$BASE_DEMO_REF"

@@ -62,7 +62,7 @@ jobs:
           - platform: ubuntu-24.04
             runner: ubuntu-24.04
           - platform: macos-14
-            runner: macos-14
+            runner: macos-15
     env:
       BASE_CACHE_DIR: ${{ github.workspace }}/.base-cache
       BASE_BASH_LIBS_DIR: ${{ github.workspace }}/.dependencies/base-bash-libs/lib/bash
@@ -268,6 +268,7 @@ jobs:
           evidence_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           jq -n \
             --arg platform "${{ matrix.platform }}" \
+            --arg runner "${{ matrix.runner }}" \
             --arg evidence "$evidence_url" \
             --arg base_version "${{ inputs.base_version }}" \
             --arg base_commit "$base_commit" \
@@ -280,6 +281,7 @@ jobs:
             '{
               "result": "passed",
               "platform": $platform,
+              "runner": $runner,
               "evidence": $evidence,
               "components": {
                 "base": {"version": $base_version, "commit": $base_commit},

@@ -159,7 +159,11 @@ def validate_manifest(data: dict[str, Any]) -> list[Finding]:
         findings.append(finding("error", "bom_workflow", "gates.release_bom.workflow is required."))
     if not isinstance(bom, dict) or bom.get("platforms") != ["ubuntu-24.04", "macos-14"]:
         findings.append(
-            finding("error", "bom_platforms", "gates.release_bom.platforms must require Ubuntu 24.04 and macOS 14.")
+            finding(
+                "error",
+                "bom_platforms",
+                "gates.release_bom.platforms must require Ubuntu 24.04 and the macOS 14 support platform.",
+            )
         )
     return findings
 

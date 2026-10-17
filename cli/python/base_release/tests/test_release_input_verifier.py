@@ -243,6 +243,7 @@ def test_platform_evidence_must_bind_versions_and_commits(tmp_path: Path) -> Non
             {
                 "result": "passed",
                 "platform": "ubuntu-24.04",
+                "runner": "ubuntu-24.04",
                 "components": {
                     "base": {"version": "1.9.0", "commit": "a" * 40},
                     "base-cli": {"version": "0.4.3", "commit": "b" * 40},
@@ -256,3 +257,31 @@ def test_platform_evidence_must_bind_versions_and_commits(tmp_path: Path) -> Non
     evidence.write_text(evidence.read_text(encoding="utf-8").replace("b" * 40, "c" * 40), encoding="utf-8")
     with pytest.raises(ReleaseInputError, match="does not match basefoundry/base-cli"):
         verify_platform_evidence(evidence, "ubuntu-24.04", (candidate, component))
+
+
+def test_macos_platform_evidence_binds_the_replacement_runner(tmp_path: Path) -> None:
+    candidate = ReleaseInput("basefoundry/base", "1.9.0", "a" * 40, tmp_path)
+    component = ReleaseInput("basefoundry/base-cli", "0.4.3", "b" * 40, tmp_path)
+    evidence = tmp_path / "macos.json"
+    evidence.write_text(
+        json.dumps(
+            {
+                "result": "passed",
+                "platform": "macos-14",
+                "runner": "macos-15",
+                "components": {
+                    "base": {"version": "1.9.0", "commit": "a" * 40},
+                    "base-cli": {"version": "0.4.3", "commit": "b" * 40},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verify_platform_evidence(evidence, "macos-14", (candidate, component))
+    evidence.write_text(
+        evidence.read_text(encoding="utf-8").replace('"runner": "macos-15"', '"runner": "macos-14"'),
+        encoding="utf-8",
+    )
+    with pytest.raises(ReleaseInputError, match="must record runner macos-15"):
+        verify_platform_evidence(evidence, "macos-14", (candidate, component))
