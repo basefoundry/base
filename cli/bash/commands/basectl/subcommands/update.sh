@@ -522,12 +522,27 @@ base_update_release_current_tag() {
 base_update_release_remote_commit() {
     local repo="$1"
     local tag="$2"
-    local remote_output remote_line
+    local remote_output remote_line remote_status
 
-    remote_output="$(git -C "$repo" ls-remote --exit-code origin "refs/tags/$tag^{}" 2>/dev/null || true)"
-    if [[ -z "$remote_output" ]]; then
-        remote_output="$(git -C "$repo" ls-remote --exit-code origin "refs/tags/$tag" 2>/dev/null || true)"
+    remote_output="$(git -C "$repo" ls-remote --exit-code origin "refs/tags/$tag^{}" 2>&1)"
+    remote_status=$?
+    if ((remote_status == 0)); then
+        :
+    elif ((remote_status == 2)); then
+        remote_output="$(git -C "$repo" ls-remote --exit-code origin "refs/tags/$tag" 2>&1)"
+        remote_status=$?
+        if ((remote_status != 0)); then
+            if ((remote_status == 2)); then
+                return 2
+            fi
+            base_std_log_error "Unable to reach 'origin' while verifying published Base release tag '$tag': $remote_output"
+            return 1
+        fi
+    else
+        base_std_log_error "Unable to reach 'origin' while verifying published Base release tag '$tag': $remote_output"
+        return 1
     fi
+
     remote_line="${remote_output%%$'\n'*}"
     [[ "$remote_line" == *$'\t'* ]] || return 1
     printf '%s\n' "${remote_line%%$'\t'*}"
@@ -536,12 +551,16 @@ base_update_release_remote_commit() {
 base_update_release_fetch_tag() {
     local repo="$1"
     local tag="$2"
-    local remote_commit local_commit resolved_commit
+    local remote_commit local_commit resolved_commit remote_status
 
-    remote_commit="$(base_update_release_remote_commit "$repo" "$tag")" || {
-        base_std_log_error "Published Base release tag '$tag' was not found on the 'origin' remote."
+    remote_commit="$(base_update_release_remote_commit "$repo" "$tag")"
+    remote_status=$?
+    if ((remote_status != 0)); then
+        if ((remote_status == 2)); then
+            base_std_log_error "Published Base release tag '$tag' was not found on the 'origin' remote."
+        fi
         return 1
-    }
+    fi
 
     local_commit="$(git -C "$repo" rev-parse "refs/tags/$tag^{commit}" 2>/dev/null || true)"
     if [[ -n "$local_commit" && "$local_commit" != "$remote_commit" ]]; then
@@ -575,16 +594,16 @@ base_update_release_untracked_files_safe() {
     local previous_commit="$2"
     local target_commit="$3"
     local target_tag="$4"
-    local path changed
+    local path
 
     while IFS= read -r path; do
         [[ -n "$path" ]] || continue
-        changed="$(git -C "$repo" diff --name-only "$previous_commit" "$target_commit" -- "$path")"
-        if [[ -n "$changed" ]]; then
-            base_std_log_error "Untracked local path '$path' overlaps files changed by target release '$target_tag'; no checkout or environment changes were made. Move or save it before retrying."
+        if [[ -e "$repo/$path" || -L "$repo/$path" ]] &&
+            ! git -C "$repo" ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+            base_std_log_error "Untracked or ignored local path '$path' overlaps files changed by target release '$target_tag'; no checkout or environment changes were made. Move or save it before retrying."
             return 1
         fi
-    done < <(git -C "$repo" ls-files --others --exclude-standard --directory --no-empty-directory)
+    done < <(git -C "$repo" diff --name-only --no-renames "$previous_commit" "$target_commit" --)
     return 0
 }
 
@@ -607,6 +626,7 @@ base_update_release_dry_run() {
     local target_tag="$2"
     local current_tag
     local remote_commit
+    local remote_status
 
     current_tag="$(base_update_release_current_tag "$repo" || true)"
     if [[ -z "$current_tag" ]]; then
@@ -621,16 +641,21 @@ base_update_release_dry_run() {
         base_std_log_error "Target release '$target_tag' must be later than the current stable release '$current_tag'; no changes would be made."
         return 1
     fi
-    remote_commit="$(base_update_release_remote_commit "$repo" "$target_tag")" || {
-        base_std_log_error "Published Base release tag '$target_tag' was not found on the 'origin' remote."
+    remote_commit="$(base_update_release_remote_commit "$repo" "$target_tag")"
+    remote_status=$?
+    if ((remote_status != 0)); then
+        if ((remote_status == 2)); then
+            base_std_log_error "Published Base release tag '$target_tag' was not found on the 'origin' remote."
+        fi
         return 1
-    }
+    fi
     if [[ "$target_tag" == "$current_tag" ]]; then
         base_std_log_info "[DRY-RUN] Base source checkout is already at verified stable release '$current_tag' ('$remote_commit')."
         base_std_log_info "[DRY-RUN] Would run 'basectl setup' to reconcile the current release environment."
     else
         base_std_log_info "[DRY-RUN] Verified published tag '$target_tag' at commit '$remote_commit'."
         base_std_log_info "[DRY-RUN] Would move the clean detached Base checkout from '$current_tag' to '$target_tag', then run 'basectl setup'."
+        base_std_log_info "[DRY-RUN] The real upgrade will also refuse an untracked or ignored local path that overlaps files changed by '$target_tag'."
     fi
 }
 
@@ -683,7 +708,7 @@ base_update_release_source_install() {
 
     base_std_log_info "Verified Base release tag '$target_tag' at commit '$target_commit'."
     base_std_log_info "Upgrading Base source checkout from '$current_tag' to '$target_tag'."
-    git -C "$repo" checkout --detach "$target_tag" || {
+    git -C "$repo" checkout --detach "$target_commit" || {
         base_std_log_error "Unable to switch the clean Base checkout to '$target_tag'; the previous release remains checked out."
         return 1
     }
@@ -695,7 +720,7 @@ base_update_release_source_install() {
         :
     else
         setup_status=$?
-        base_std_log_error "Base setup failed after moving to '$target_tag'. The checkout remains recoverable at '$target_tag'; resolve the reported issue and rerun 'basectl setup', or explicitly recover with 'basectl update --release $current_tag'."
+        base_std_log_error "Base setup failed after moving to '$target_tag'. The checkout remains at '$target_tag'; resolve the reported issue and rerun 'basectl setup'."
         return "$setup_status"
     fi
     base_std_log_info "Base source upgrade completed from '$current_tag' to '$target_tag'."

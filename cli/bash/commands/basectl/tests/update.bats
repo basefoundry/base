@@ -95,6 +95,7 @@ assert_status() {
     local repo="$TEST_TMPDIR/repo"
     local remote="$TEST_TMPDIR/remote.git"
     local setup_log="$TEST_TMPDIR/setup.log"
+    local target_commit
 
     init_git_repo "$repo"
     printf '1.10.5\n' > "$repo/VERSION"
@@ -110,6 +111,7 @@ assert_status() {
     git -C "$repo" push origin master --tags >/dev/null
     git -C "$repo" checkout --detach v1.10.5 >/dev/null
     printf 'local notes\n' > "$repo/local-notes.md"
+    target_commit="$(git -C "$repo" rev-parse v1.11.0)"
 
     run env \
         HOME="$TEST_HOME" \
@@ -130,7 +132,7 @@ assert_status() {
         '
 
     [ "$status" -eq 0 ]
-    [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.11.0" ]
+    [ "$(git -C "$repo" rev-parse HEAD)" = "$target_commit" ]
     [ -f "$repo/local-notes.md" ]
     [ "$(cat "$setup_log")" = "setup project=base" ]
     [[ "$output" == *"Verified Base release tag 'v1.11.0'"* ]]
@@ -174,8 +176,53 @@ assert_status() {
 
     [ "$status" -eq 23 ]
     [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.11.0" ]
-    [[ "$output" == *"checkout remains recoverable at 'v1.11.0'"* ]]
-    [[ "$output" == *"basectl update --release v1.10.5"* ]]
+    [[ "$output" == *"checkout remains at 'v1.11.0'"* ]]
+    [[ "$output" == *"rerun 'basectl setup'"* ]]
+    [[ "$output" != *"basectl update --release v1.10.5"* ]]
+}
+
+@test "basectl update release mode refuses ignored files that collide with the target release" {
+    local repo="$TEST_TMPDIR/repo"
+    local remote="$TEST_TMPDIR/remote.git"
+
+    init_git_repo "$repo"
+    printf 'ignored-local.txt\n' > "$repo/.gitignore"
+    printf '1.10.5\n' > "$repo/VERSION"
+    git -C "$repo" add .gitignore VERSION
+    git -C "$repo" commit -m "Release 1.10.5" >/dev/null
+    git -C "$repo" tag v1.10.5
+    printf '1.11.0\n' > "$repo/VERSION"
+    printf 'published content\n' > "$repo/ignored-local.txt"
+    git -C "$repo" add VERSION
+    git -C "$repo" add -f ignored-local.txt
+    git -C "$repo" commit -m "Release 1.11.0" >/dev/null
+    git -C "$repo" tag v1.11.0
+    git init --bare "$remote" >/dev/null
+    git -C "$repo" remote add origin "$remote"
+    git -C "$repo" push origin master --tags >/dev/null
+    git -C "$repo" checkout --detach v1.10.5 >/dev/null
+    printf 'local ignored content\n' > "$repo/ignored-local.txt"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_TEST_RELEASE_REPO="$repo" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update.sh"
+            base_update_resolve_project() {
+                printf -v "$3" "%s" base
+                printf -v "$4" "%s" "$BASE_TEST_RELEASE_REPO"
+                printf -v "$5" "%s" "$BASE_TEST_RELEASE_REPO/base_manifest.yaml"
+            }
+            base_update_source_git_library() { :; }
+            base_update_subcommand_main --release v1.11.0
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Untracked or ignored local path 'ignored-local.txt' overlaps files changed by target release 'v1.11.0'"* ]]
+    [ "$(git -C "$repo" describe --tags --exact-match HEAD)" = "v1.10.5" ]
+    [ "$(cat "$repo/ignored-local.txt")" = "local ignored content" ]
 }
 
 @test "basectl update release mode refuses an unavailable published target" {
