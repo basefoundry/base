@@ -257,7 +257,7 @@ live HTTP markers from the demo test log. Use the workflow input to validate a
 specific `base-demo` branch, tag, or commit; the log records the exact Base,
 demo, `base-cli`, and `base-bash-libs` commits used on the macOS 14 support
 platform. The hosted job currently runs on the pinned macOS 15 runner because
-the macOS 14 image is retired.
+the macOS 14 image is being retired.
 
 This job is intentionally separate from Base's own test matrix because it
 validates an external manifest and project contract. Its grouped CI output

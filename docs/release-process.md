@@ -21,7 +21,7 @@ force a Base release. A Base release chooses the exact compatible component
 tags it will support and records those tags, commits, contract versions, and
 Ubuntu 24.04/macOS 14 support-platform validation evidence in its BOM. The
 macOS 14 evidence is executed on GitHub's pinned macOS 15 runner because the
-macOS 14 hosted image is retired. A later component release is eligible for a
+macOS 14 hosted image is being retired. A later component release is eligible for a
 later Base BOM after the required compatibility checks pass.
 See the [Ecosystem Platform, License, and Release Policy](ecosystem-policy.md)
 for the shared platform boundaries, license history, provider precedence, and

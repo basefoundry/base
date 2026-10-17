@@ -42,7 +42,8 @@ The coordinated Base release matrix is intentionally small and current:
 The required Base release-stack combinations are `ubuntu-24.04` and the
 logical macOS 14 support platform. The macOS 14 support evidence currently
 runs on GitHub's pinned `macos-15` hosted image because the `macos-14` image is
-retired; the BOM evidence records both values. Adding WSL2, native Windows,
+being retired; the per-platform compatibility evidence records both values.
+Adding WSL2, native Windows,
 another Linux family, or another macOS runner requires an explicit
 support-matrix update and corresponding immutable hosted evidence.
 Component-level support must not be presented as support for the coordinated
