@@ -21,7 +21,7 @@ assert_status() {
     [[ "$output" == *"basectl update [project] [options]"* ]]
     [[ "$output" == *"Update a Base-managed project from Git, or update Base through Homebrew"* ]]
     [[ "$output" == *"Git updates run setup when the selected project changes;"* ]]
-    [[ "$output" == *"Homebrew updates run setup when Base's installed version changes."* ]]
+    [[ "$output" == *"Homebrew updates always run setup after the upgrade to reconcile requirements."* ]]
     [[ "$output" == *"When project is omitted, Base updates project 'base'."* ]]
     [[ "$output" == *"Tracked project files must be clean"* ]]
     [[ "$output" == *"brew upgrade basefoundry/base/base"* ]]
@@ -417,7 +417,7 @@ assert_status() {
     [ "$status" -eq 0 ]
     [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
     [[ "$output" == *"[DRY-RUN] Would run: brew upgrade basefoundry/base/base"* ]]
-    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' if the Homebrew upgrade changes Base's installed version, with inherited Base environment cleared."* ]]
+    [[ "$output" == *"[DRY-RUN] Would run 'basectl setup' after the Homebrew upgrade, with inherited Base environment cleared."* ]]
     [[ "$output" != *"brew should not run"* ]]
     [[ "$output" != *"setup should not run"* ]]
 }
@@ -629,14 +629,15 @@ EOF
     [[ "$output" == *"Detected Homebrew-managed Base install at '$fake_base'."* ]]
     [[ "$output" == *"Running Homebrew upgrade for basefoundry/base/base."* ]]
     [[ "$output" == *"Homebrew Base version changed from '1.7.0' to '1.8.0'."* ]]
-    [[ "$output" == *"Running basectl setup after Homebrew upgrade."* ]]
+    [[ "$output" == *"Running basectl setup after Homebrew upgrade to reconcile the installed Base requirements."* ]]
     [[ "$output" == *"Base update is complete."* ]]
 }
 
-@test "basectl update skips Homebrew setup when Base version is unchanged" {
+@test "basectl update runs Homebrew setup when Base version is unchanged" {
     local fake_bin="$TEST_TMPDIR/bin"
     local fake_base="$TEST_TMPDIR/homebrew/opt/base/libexec"
     local brew_log="$TEST_TMPDIR/brew.log"
+    local setup_log="$TEST_TMPDIR/setup.log"
 
     mkdir -p "$fake_bin" "$fake_base/bin"
     cat > "$fake_bin/brew" <<EOF
@@ -653,7 +654,11 @@ printf '%s\n' "\$*" >> "$brew_log"
 exit 0
 EOF
     chmod +x "$fake_bin/brew"
-    touch "$fake_base/bin/basectl"
+    cat > "$fake_base/bin/basectl" <<EOF
+#!/usr/bin/env bash
+printf 'args=%s\n' "\$*" >> "$setup_log"
+printf 'BASE_HOME=%s\n' "\${BASE_HOME-unset}" >> "$setup_log"
+EOF
     chmod +x "$fake_base/bin/basectl"
 
     run env \
@@ -676,15 +681,15 @@ EOF
             base_std_log_warn() { printf "WARN: %s\n" "$*"; }
             base_std_print_error() { printf "ERROR: %s\n" "$*"; }
             source "$BASE_REPO_ROOT/cli/bash/commands/basectl/subcommands/update.sh"
-            base_update_run_homebrew_setup() { printf "setup should not run\n"; return 99; }
             base_update_subcommand_main
         '
 
     [ "$status" -eq 0 ]
     [ "$(cat "$brew_log")" = $'info --json=v2 --installed basefoundry/base/base\nupgrade basefoundry/base/base\ninfo --json=v2 --installed basefoundry/base/base' ]
     [[ "$output" == *"Homebrew Base version is unchanged at '1.7.0' after upgrade."* ]]
-    [[ "$output" == *"Skipping basectl setup because the Homebrew Base version did not change."* ]]
-    [[ "$output" != *"setup should not run"* ]]
+    [[ "$(cat "$setup_log")" == *"args=setup"* ]]
+    [[ "$(cat "$setup_log")" == *"BASE_HOME=unset"* ]]
+    [[ "$output" == *"Running basectl setup after Homebrew upgrade to reconcile the installed Base requirements."* ]]
     [[ "$output" == *"Base update is complete."* ]]
 }
 

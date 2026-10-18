@@ -478,7 +478,18 @@ Use the full formula name `basefoundry/base/base` for Homebrew installs and
 upgrades. If Homebrew asks you to trust the tap, run `brew trust
 basefoundry/base` before retrying. Homebrew owns the installed files while
 Base's local runtime remains under `~/.base.d`; `basectl update` delegates
-Base upgrades to Homebrew.
+Base upgrades to Homebrew and then reconciles the managed runtime. This is the
+preferred one-command upgrade path.
+
+If you run Homebrew directly, a formula upgrade alone does not reconcile the
+managed runtime. Immediately run the canonical post-upgrade setup sequence in
+the [Homebrew install recipe](docs/bootstrap.md#homebrew-install-recipe),
+which clears the complete inherited source-checkout environment before using
+the newly linked executable.
+
+Do not treat a successful `brew upgrade` without the follow-up `basectl setup`
+as a complete Base upgrade; the new release may declare a different exact
+`base-cli` requirement.
 
 See the [Homebrew install recipe](docs/bootstrap.md#homebrew-install-recipe) and
 [Remote Installer Policy](docs/remote-installer-policy.md) for the complete

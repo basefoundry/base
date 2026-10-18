@@ -328,28 +328,90 @@ setup_base_python_package_installed() {
     env -u PYTHONPATH "$python_bin" -I -m pip show "$package" >/dev/null 2>&1
 }
 
+setup_base_python_package_version() {
+    local package="$1"
+    local venv_dir python_bin pip_output line
+
+    if setup_is_dry_run && setup_base_recreate_venv_enabled; then
+        return 1
+    fi
+
+    setup_ensure_cached_paths
+    venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
+    python_bin="$(setup_base_venv_python_bin "$venv_dir")" || return 1
+    pip_output="$(env -u PYTHONPATH "$python_bin" -I -m pip show "$package" 2>/dev/null)" || return 1
+    while IFS= read -r line; do
+        case "$line" in
+            "Version: "*)
+                printf '%s\n' "${line#Version: }"
+                return 0
+                ;;
+        esac
+    done <<< "$pip_output"
+    return 1
+}
+
+setup_base_python_package_satisfies_requirement() {
+    local package="$1"
+    local requirement="${2:-$package}"
+    local installed_version expected_version
+
+    if [[ "$requirement" == "$package" ]]; then
+        setup_base_python_package_installed "$package"
+        return $?
+    fi
+
+    case "$requirement" in
+        "$package"===*)
+            expected_version="${requirement#"$package"===}"
+            ;;
+        "$package"==*)
+            expected_version="${requirement#"$package"==}"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    installed_version="$(setup_base_python_package_version "$package" || true)"
+    [[ -n "$installed_version" && "$installed_version" == "$expected_version" ]]
+}
+
 setup_install_base_python_package() {
     local package="$1"
+    local requirement="${2:-$package}"
+    local installed_version
     local venv_dir python_bin
 
     setup_ensure_cached_paths
     venv_dir="$_BASE_SETUP_VENV_DIR_CACHE"
 
-    if setup_base_python_package_installed "$package"; then
-        base_std_log_info "Python package '$package' is already installed in the Base virtual environment."
+    if setup_base_python_package_satisfies_requirement "$package" "$requirement"; then
+        if [[ "$requirement" == "$package" ]]; then
+            base_std_log_info "Python package '$package' is already installed in the Base virtual environment."
+        else
+            base_std_log_info "Python package '$package' satisfies declared requirement '$requirement' in the Base virtual environment."
+        fi
         return 0
     fi
 
+    installed_version="$(setup_base_python_package_version "$package" || true)"
+    if [[ -n "$installed_version" ]]; then
+        base_std_log_info "Python package '$package' is installed at version '$installed_version' but does not satisfy declared requirement '$requirement'; reconciling the Base virtual environment."
+    elif setup_base_python_package_installed "$package"; then
+        base_std_log_info "Python package '$package' is installed but does not satisfy declared requirement '$requirement'; reconciling the Base virtual environment."
+    fi
+
     if setup_is_dry_run; then
-        base_std_log_info "[DRY-RUN] Would install Python package '$package' in the Base virtual environment."
+        base_std_log_info "[DRY-RUN] Would install Python package '$requirement' in the Base virtual environment."
         return 0
     fi
 
     python_bin="$(setup_base_venv_python_bin "$venv_dir")" || base_std_fatal_error "Base virtual environment Python was not found at '$venv_dir/bin/python'. $(setup_recovery_venv)"
 
-    base_std_log_info "Installing Python package '$package' in the Base virtual environment."
-    env -u PYTHONPATH "$python_bin" -m pip install --disable-pip-version-check "$package" ||
-        base_std_fatal_error "Unable to install Python package '$package' in the Base virtual environment."
+    base_std_log_info "Installing Python package '$requirement' in the Base virtual environment."
+    env -u PYTHONPATH "$python_bin" -m pip install --disable-pip-version-check "$requirement" ||
+        base_std_fatal_error "Unable to install Python package '$requirement' in the Base virtual environment."
 }
 
 setup_install_pyyaml() {
@@ -360,9 +422,56 @@ setup_install_click() {
     setup_install_base_python_package "$(setup_click_package)"
 }
 
+setup_base_cli_requirement_from_file() {
+    local package="$1"
+    local requirements_file="$2"
+    local requirement_line expected_version
+
+    while IFS= read -r requirement_line || [[ -n "$requirement_line" ]]; do
+        requirement_line="${requirement_line%%#*}"
+        requirement_line="${requirement_line#"${requirement_line%%[![:space:]]*}"}"
+        requirement_line="${requirement_line%"${requirement_line##*[![:space:]]}"}"
+        [[ -n "$requirement_line" ]] || continue
+
+        case "$requirement_line" in
+            "$package"===*|"$package"==*)
+                if [[ "$requirement_line" == "$package"===* ]]; then
+                    expected_version="${requirement_line#"$package"===}"
+                else
+                    expected_version="${requirement_line#"$package"==}"
+                fi
+                if [[ ! "$expected_version" =~ ^[0-9A-Za-z.+!_-]+$ ]]; then
+                    base_std_log_error "Base CLI requirement '$requirement_line' must contain only an exact version after == or ===."
+                    return 2
+                fi
+                printf '%s\n' "$requirement_line"
+                return 0
+                ;;
+            "$package"|"$package"[=\<\>\!\;\[]*)
+                base_std_log_error "Base CLI requirement '$requirement_line' must use an exact == or === version pin."
+                return 2
+                ;;
+        esac
+    done < "$requirements_file"
+
+    return 1
+}
+
 setup_install_base_cli() {
+    local package requirement requirement_status
+
     setup_base_cli_package_required || return 0
-    setup_install_base_python_package "$(setup_base_cli_package)"
+    package="$(setup_base_cli_package)"
+    requirement="$package"
+    if [[ -f "$BASE_HOME/requirements-dev.txt" ]]; then
+        requirement="$(setup_base_cli_requirement_from_file "$package" "$BASE_HOME/requirements-dev.txt")"
+        requirement_status=$?
+        if ((requirement_status > 1)); then
+            return "$requirement_status"
+        fi
+        requirement="${requirement:-$package}"
+    fi
+    setup_install_base_python_package "$package" "$requirement"
 }
 
 setup_base_python_package_check_message() {

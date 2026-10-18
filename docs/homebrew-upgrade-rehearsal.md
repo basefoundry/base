@@ -50,10 +50,22 @@ Install the current released formula and prepare local state:
 ```bash
 brew trust basefoundry/base
 brew install basefoundry/base/base
-env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
+env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
   HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl setup
-env -u BASE_HOME -u BASE_PROJECT -u BASE_PROJECT_ROOT \
+env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
   HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl update-profile
 ```
@@ -80,13 +92,32 @@ For an unreleased candidate, use the candidate formula or tap branch that
 will become the published formula. Record the exact command, tap ref, formula
 path, and archive checksum used for the rehearsal.
 
+The direct Homebrew path is complete only after setup reconciles the newly
+installed release. Use the newly linked executable and clear any inherited
+source-checkout environment:
+
+```bash
+brew_base_home="$(brew --prefix base)/libexec"
+env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
+  -u BASE_PROJECT_VENV_DIR \
+  HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  "$brew_base_home/bin/basectl" setup
+```
+
 Verify the upgraded install:
 
 ```bash
-env -u BASE_HOME \
-  -u BASE_PROJECT \
-  -u BASE_PROJECT_ROOT \
-  -u BASE_PROJECT_MANIFEST \
+env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
   -u BASE_PROJECT_VENV_DIR \
   HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl update-profile
@@ -97,6 +128,11 @@ env HOME="$TEST_ROOT/home" PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl check
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  /usr/local/bin/basectl check base --verify-project-runtime
+expected_base_cli="$(sed -n 's/^base-cli==//p' "$brew_base_home/requirements-dev.txt")"
+installed_base_cli="$(HOME="$TEST_ROOT/home" "$TEST_ROOT/home/.base.d/base/.venv/bin/python" -c 'import importlib.metadata; print(importlib.metadata.version("base-cli"))')"
+test "$installed_base_cli" = "$expected_base_cli"
+env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl doctor
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl setup base-demo
@@ -106,6 +142,8 @@ env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl doctor base-demo
 env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
   /usr/local/bin/basectl test base-demo
+env HOME="$TEST_ROOT/home" PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  /usr/local/bin/basectl test base
 shasum -a 256 "$TEST_ROOT/home/.base.d/config.yaml"
 ```
 
@@ -121,6 +159,10 @@ Accept the rehearsal only when:
   the rehearsal.
 - The `~/.base.d/config.yaml` checksum is unchanged.
 - The Base virtual environment still exists and `basectl check` accepts it.
+- `basectl check base --verify-project-runtime` passes after setup.
+- The installed `base-cli` version exactly matches the `base-cli==...` line in
+  the upgraded release's `requirements-dev.txt`.
+- `basectl test base` reaches the declared `./bin/base-test` command.
 - Fresh Bash and Zsh login shells resolve `basectl` to the Homebrew install.
 - Fresh Bash and Zsh login shells report `BASE_HOME` on the stable Homebrew
   `opt` path, not on a versioned `Cellar/base/<version>` path.
@@ -216,16 +258,20 @@ Immediate recovery:
 
 ```bash
 hash -r
-env -u BASE_HOME \
-  -u BASE_PROJECT \
-  -u BASE_PROJECT_ROOT \
-  -u BASE_PROJECT_MANIFEST \
+env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
   -u BASE_PROJECT_VENV_DIR \
   /usr/local/bin/basectl update-profile
-exec env -u BASE_HOME \
-  -u BASE_PROJECT \
-  -u BASE_PROJECT_ROOT \
-  -u BASE_PROJECT_MANIFEST \
+exec env \
+  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
+  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
+  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
+  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
+  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
   -u BASE_PROJECT_VENV_DIR \
   "$SHELL" -l
 ```

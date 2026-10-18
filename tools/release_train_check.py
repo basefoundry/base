@@ -33,6 +33,7 @@ except ImportError:  # pragma: no cover - the development contract installs PyYA
 
 SEMVER_RE = re.compile(r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+BASE_CLI_REQUIREMENT_RE = re.compile(r"^base-cli(===|==)([0-9A-Za-z.+!_-]+)$")
 
 
 @dataclass(frozen=True)
@@ -182,6 +183,56 @@ def check_local_identity(root: Path, data: dict[str, Any], release_prep: bool) -
         finding(item.status, item.name, item.message)
         for item in version_consistency_check.run_check(checker_args)
     ]
+
+
+def check_local_base_cli_requirement(root: Path, data: dict[str, Any]) -> Finding:
+    expected = data["gates"]["release_bom"].get("inputs", {}).get("base_cli_version")
+    if not isinstance(expected, str) or not SEMVER_RE.fullmatch(expected):
+        return finding(
+            "error",
+            "base_cli_requirement",
+            "The release-train BOM must declare a valid inputs.base_cli_version.",
+        )
+
+    requirements_path = root / "requirements-dev.txt"
+    try:
+        lines = requirements_path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        return finding("error", "base_cli_requirement", f"Unable to read {requirements_path}: {exc}")
+
+    candidates = [line.split("#", 1)[0].strip() for line in lines]
+    candidates = [line for line in candidates if re.match(r"^base-cli(?:$|[<>=!;\[])", line)]
+    if len(candidates) != 1:
+        return finding(
+            "error",
+            "base_cli_requirement",
+            (
+                f"{requirements_path} must contain exactly one base-cli exact-version requirement; "
+                f"found {len(candidates)}."
+            ),
+        )
+
+    match = BASE_CLI_REQUIREMENT_RE.fullmatch(candidates[0])
+    if match is None:
+        return finding(
+            "error",
+            "base_cli_requirement",
+            (
+                f"{requirements_path} contains unsupported base-cli requirement {candidates[0]!r}; "
+                "use base-cli==X.Y.Z or base-cli===X.Y.Z."
+            ),
+        )
+    if match.group(2) != expected:
+        return finding(
+            "error",
+            "base_cli_requirement",
+            f"{requirements_path} declares base-cli {match.group(2)}; release-train BOM expects {expected}.",
+        )
+    return finding(
+        "ok",
+        "base_cli_requirement",
+        f"{requirements_path} pins base-cli to the release-train version {expected}.",
+    )
 
 
 def check_worktree(root: Path) -> Finding:
@@ -375,6 +426,7 @@ def run_check(args: argparse.Namespace) -> list[Finding]:
     if any(item.status == "error" for item in findings):
         return findings
     findings.extend(check_local_identity(root, data, args.release_prep))
+    findings.append(check_local_base_cli_requirement(root, data))
     if not args.no_git:
         findings.append(check_worktree(root))
     if args.remote:
