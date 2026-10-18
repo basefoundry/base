@@ -389,6 +389,7 @@ run_zsh_positional_completion() {
     command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
 
     assert_zsh_completion_options_match_help activate activate
+    assert_zsh_completion_options_match_help update update
     assert_zsh_completion_options_match_help test test
     assert_zsh_completion_options_match_help build build
     assert_zsh_completion_options_match_help demo demo

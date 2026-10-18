@@ -1209,6 +1209,7 @@ _base_basectl_completion() {
             ;;
         update)
             _arguments '--project[Select a project explicitly, including one named help]:Base project:->projects' \
+                '--release[Upgrade to a later stable release tag]:tag:' \
                 '--dry-run[Log without pulling or running setup]' '-v[Enable DEBUG logging]' \
                 '(-h --help)'{-h,--help}'[Show help text]' \
                 '2:Base project:->projects'

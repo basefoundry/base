@@ -942,7 +942,7 @@ _base_basectl_completion() {
             _base_basectl_completion_compgen "--defaults --no-defaults --remove --dry-run -v -h --help" "$cur"
             ;;
         update)
-            _base_basectl_completion_project_or_options "--project --dry-run -v -h --help" "$cur" "--project"
+            _base_basectl_completion_project_or_options "--project --release --dry-run -v -h --help" "$cur" "--project --release"
             ;;
         version)
             _base_basectl_completion_compgen "--all --json -h --help" "$cur"

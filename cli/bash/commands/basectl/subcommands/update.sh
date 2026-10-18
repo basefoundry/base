@@ -26,6 +26,8 @@ Usage:
 
 Options:
   --project <name>  Select a project explicitly, including one named help.
+  --release <tag>   Upgrade a clean detached source checkout to a later stable
+                    published tag, for example v1.11.0.
   --dry-run   Show what would happen without pulling or running setup.
   -v          Enable DEBUG logging for this subcommand.
   -h, --help  Show this help text.
@@ -42,6 +44,8 @@ Notes:
     pull-time overwrite protection.
   - Homebrew installs update only project 'base' through the Base formula:
     brew upgrade basefoundry/base/base
+  - Stable tagged source installs use '--release <tag>'; they never follow
+    'main' or another moving branch.
   - If Homebrew requires tap trust, trust basefoundry/base before upgrading:
     brew trust basefoundry/base
 EOF
@@ -479,6 +483,249 @@ base_update_head_revision() {
     git -C "$repo" rev-parse --short HEAD 2>/dev/null
 }
 
+base_update_release_tag_is_stable() {
+    [[ "${1:-}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
+base_update_release_tag_version() {
+    local tag="${1#v}"
+    local major minor patch
+
+    IFS=. read -r major minor patch <<< "$tag"
+    printf '%s %s %s\n' "$major" "$minor" "$patch"
+}
+
+base_update_release_target_is_later() {
+    local current_tag="$1"
+    local target_tag="$2"
+    local current_major current_minor current_patch
+    local target_major target_minor target_patch
+
+    read -r current_major current_minor current_patch <<< "$(base_update_release_tag_version "$current_tag")"
+    read -r target_major target_minor target_patch <<< "$(base_update_release_tag_version "$target_tag")"
+
+    ((target_major > current_major)) ||
+        { ((target_major == current_major && target_minor > current_minor)); } ||
+        { ((target_major == current_major && target_minor == current_minor && target_patch > current_patch)); }
+}
+
+base_update_release_current_tag() {
+    local repo="$1"
+    local tag
+
+    git -C "$repo" symbolic-ref --quiet --short HEAD >/dev/null 2>&1 && return 1
+    tag="$(git -C "$repo" describe --tags --exact-match --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null)" || return 1
+    base_update_release_tag_is_stable "$tag" || return 1
+    printf '%s\n' "$tag"
+}
+
+base_update_release_remote_commit() {
+    local repo="$1"
+    local tag="$2"
+    local remote_output remote_line remote_status
+
+    remote_output="$(git -C "$repo" ls-remote --exit-code origin "refs/tags/$tag^{}" 2>&1)"
+    remote_status=$?
+    if ((remote_status == 0)); then
+        :
+    elif ((remote_status == 2)); then
+        remote_output="$(git -C "$repo" ls-remote --exit-code origin "refs/tags/$tag" 2>&1)"
+        remote_status=$?
+        if ((remote_status != 0)); then
+            if ((remote_status == 2)); then
+                return 2
+            fi
+            base_std_log_error "Unable to reach 'origin' while verifying published Base release tag '$tag': $remote_output"
+            return 1
+        fi
+    else
+        base_std_log_error "Unable to reach 'origin' while verifying published Base release tag '$tag': $remote_output"
+        return 1
+    fi
+
+    remote_line="${remote_output%%$'\n'*}"
+    [[ "$remote_line" == *$'\t'* ]] || return 1
+    printf '%s\n' "${remote_line%%$'\t'*}"
+}
+
+base_update_release_fetch_tag() {
+    local repo="$1"
+    local tag="$2"
+    local remote_commit local_commit resolved_commit remote_status
+
+    remote_commit="$(base_update_release_remote_commit "$repo" "$tag")"
+    remote_status=$?
+    if ((remote_status != 0)); then
+        if ((remote_status == 2)); then
+            base_std_log_error "Published Base release tag '$tag' was not found on the 'origin' remote."
+        fi
+        return 1
+    fi
+
+    local_commit="$(git -C "$repo" rev-parse "refs/tags/$tag^{commit}" 2>/dev/null || true)"
+    if [[ -n "$local_commit" && "$local_commit" != "$remote_commit" ]]; then
+        base_std_log_error "Local tag '$tag' resolves to '$local_commit', but 'origin' resolves it to '$remote_commit'. Refusing to replace a conflicting local tag."
+        return 1
+    fi
+
+    if [[ "$local_commit" != "$remote_commit" ]]; then
+        git -C "$repo" fetch --no-tags origin "refs/tags/$tag:refs/tags/$tag" || {
+            base_std_log_error "Unable to fetch verified published tag '$tag' from 'origin'."
+            return 1
+        }
+    fi
+
+    resolved_commit="$(git -C "$repo" rev-parse "refs/tags/$tag^{commit}" 2>/dev/null || true)"
+    if [[ "$resolved_commit" != "$remote_commit" ]]; then
+        base_std_log_error "Fetched tag '$tag' did not resolve to the verified remote commit '$remote_commit'."
+        return 1
+    fi
+    printf '%s\n' "$resolved_commit"
+}
+
+base_update_release_tracked_worktree_clean() {
+    local repo="$1"
+
+    [[ -z "$(git -C "$repo" status --porcelain --untracked-files=no --ignore-submodules=none)" ]]
+}
+
+base_update_release_untracked_files_safe() {
+    local repo="$1"
+    local previous_commit="$2"
+    local target_commit="$3"
+    local target_tag="$4"
+    local path
+
+    while IFS= read -r path; do
+        [[ -n "$path" ]] || continue
+        if [[ -e "$repo/$path" || -L "$repo/$path" ]] &&
+            ! git -C "$repo" ls-files --error-unmatch -- "$path" >/dev/null 2>&1; then
+            base_std_log_error "Untracked or ignored local path '$path' overlaps files changed by target release '$target_tag'; no checkout or environment changes were made. Move or save it before retrying."
+            return 1
+        fi
+    done < <(git -C "$repo" diff --name-only --no-renames "$previous_commit" "$target_commit" --)
+    return 0
+}
+
+base_update_release_report_trust_guidance() {
+    local repo="$1"
+    local previous_commit="$2"
+    local target_commit="$3"
+    local target_tag="$4"
+
+    if git -C "$repo" diff --quiet "$previous_commit" "$target_commit" -- \
+        base_manifest.yaml requirements-dev.txt; then
+        return 0
+    fi
+
+    base_std_log_warn "Release '$target_tag' changes Base manifest or declared test requirements. Review with 'basectl trust status' before running 'basectl test base'; Base will not approve that trust change implicitly."
+}
+
+base_update_release_dry_run() {
+    local repo="$1"
+    local target_tag="$2"
+    local current_tag
+    local remote_commit
+    local remote_status
+
+    current_tag="$(base_update_release_current_tag "$repo" || true)"
+    if [[ -z "$current_tag" ]]; then
+        base_std_log_error "Stable tagged source upgrades require a clean detached checkout at an exact vMAJOR.MINOR.PATCH release tag. Use ordinary 'basectl update' for a mutable branch checkout."
+        return 1
+    fi
+    if ! base_update_release_tracked_worktree_clean "$repo"; then
+        base_std_log_error "Stable tagged source upgrade requires a clean checkout; no Git or environment changes would be made. Commit or save tracked local changes before retrying."
+        return 1
+    fi
+    if [[ "$target_tag" != "$current_tag" ]] && ! base_update_release_target_is_later "$current_tag" "$target_tag"; then
+        base_std_log_error "Target release '$target_tag' must be later than the current stable release '$current_tag'; no changes would be made."
+        return 1
+    fi
+    remote_commit="$(base_update_release_remote_commit "$repo" "$target_tag")"
+    remote_status=$?
+    if ((remote_status != 0)); then
+        if ((remote_status == 2)); then
+            base_std_log_error "Published Base release tag '$target_tag' was not found on the 'origin' remote."
+        fi
+        return 1
+    fi
+    if [[ "$target_tag" == "$current_tag" ]]; then
+        base_std_log_info "[DRY-RUN] Base source checkout is already at verified stable release '$current_tag' ('$remote_commit')."
+        base_std_log_info "[DRY-RUN] Would run 'basectl setup' to reconcile the current release environment."
+    else
+        base_std_log_info "[DRY-RUN] Verified published tag '$target_tag' at commit '$remote_commit'."
+        base_std_log_info "[DRY-RUN] Would move the clean detached Base checkout from '$current_tag' to '$target_tag', then run 'basectl setup'."
+        base_std_log_info "[DRY-RUN] The real upgrade will also refuse an untracked or ignored local path that overlaps files changed by '$target_tag'."
+    fi
+}
+
+base_update_release_source_install() {
+    local base_home="$1"
+    local repo="$2"
+    local target_tag="$3"
+    local current_tag
+    local previous_commit
+    local setup_status
+    local target_commit
+
+    current_tag="$(base_update_release_current_tag "$repo" || true)"
+    if [[ -z "$current_tag" ]]; then
+        base_std_log_error "Stable tagged source upgrades require a clean detached checkout at an exact vMAJOR.MINOR.PATCH release tag. Use ordinary 'basectl update' for a mutable branch checkout."
+        return 1
+    fi
+    if ! base_update_release_tracked_worktree_clean "$repo"; then
+        base_std_log_error "Stable tagged source upgrade requires a clean checkout; no Git or environment changes were made. Commit or save tracked local changes before retrying."
+        return 1
+    fi
+    if [[ "$target_tag" == "$current_tag" ]]; then
+        base_std_log_info "Base source checkout is already at stable release '$current_tag'."
+        if base_update_run_setup "$base_home" base; then
+            :
+        else
+            setup_status=$?
+            base_std_log_error "Base setup failed at '$current_tag'. Rerun 'basectl setup' after resolving the reported issue."
+            return "$setup_status"
+        fi
+        base_std_log_info "Base release '$current_tag' is ready."
+        return 0
+    fi
+    if ! base_update_release_target_is_later "$current_tag" "$target_tag"; then
+        base_std_log_error "Target release '$target_tag' must be later than the current stable release '$current_tag'; no Git or environment changes were made."
+        return 1
+    fi
+
+    previous_commit="$(git -C "$repo" rev-parse HEAD)" || {
+        base_std_log_error "Unable to read the current Base release revision; no changes were made."
+        return 1
+    }
+    target_commit="$(base_update_release_fetch_tag "$repo" "$target_tag")" || return 1
+    if ! base_update_release_untracked_files_safe "$repo" "$previous_commit" "$target_commit" "$target_tag"; then
+        return 1
+    fi
+    if [[ -n "$(git -C "$repo" ls-files --others --exclude-standard --directory --no-empty-directory)" ]]; then
+        base_std_log_info "Preserving unrelated untracked files while moving the Base checkout to '$target_tag'."
+    fi
+
+    base_std_log_info "Verified Base release tag '$target_tag' at commit '$target_commit'."
+    base_std_log_info "Upgrading Base source checkout from '$current_tag' to '$target_tag'."
+    git -C "$repo" checkout --detach "$target_commit" || {
+        base_std_log_error "Unable to switch the clean Base checkout to '$target_tag'; the previous release remains checked out."
+        return 1
+    }
+
+    base_update_release_report_trust_guidance "$repo" "$previous_commit" "$target_commit" "$target_tag"
+    base_std_log_info "Base source checkout moved from '$current_tag' to '$target_tag' at '$(git -C "$repo" rev-parse --short HEAD)'."
+    base_std_log_info "Running basectl setup after the stable source upgrade. Base-managed state and existing shell integration remain outside the Git checkout."
+    if base_update_run_setup "$base_home" base; then
+        :
+    else
+        setup_status=$?
+        base_std_log_error "Base setup failed after moving to '$target_tag'. The checkout remains at '$target_tag'; resolve the reported issue and rerun 'basectl setup'."
+        return "$setup_status"
+    fi
+    base_std_log_info "Base source upgrade completed from '$current_tag' to '$target_tag'."
+}
+
 base_update_subcommand_main() {
     local after_revision
     local base_home="${BASE_HOME:?}"
@@ -491,6 +738,7 @@ base_update_subcommand_main() {
     local resolved_project
     local update_branch
     local dry_run=0
+    local release_tag=""
 
     while (($#)); do
         case "$1" in
@@ -506,6 +754,18 @@ base_update_subcommand_main() {
                 fi
                 project_arg="$1"
                 project="$1"
+                ;;
+            --release)
+                shift
+                if [[ -z "${1:-}" ]]; then
+                    base_update_usage_error "Option '--release' requires an argument."
+                    return $?
+                fi
+                if [[ -n "$release_tag" ]]; then
+                    base_update_usage_error "The 'update' command accepts only one release selection."
+                    return $?
+                fi
+                release_tag="$1"
                 ;;
             --dry-run)
                 dry_run=1
@@ -542,7 +802,30 @@ base_update_subcommand_main() {
     base_std_log_debug "Running 'basectl update' for project '$resolved_project'."
 
     if [[ "$resolved_project" == base ]] && base_update_is_homebrew_install "$base_home"; then
+        if [[ -n "$release_tag" ]]; then
+            base_update_usage_error "Option '--release' is supported only for stable tagged source checkouts, not Homebrew installs."
+            return $?
+        fi
         base_update_homebrew_install "$base_home" "$dry_run"
+        return $?
+    fi
+
+    if [[ -n "$release_tag" ]]; then
+        if [[ "$resolved_project" != base ]]; then
+            base_update_usage_error "Option '--release' is supported only when updating the Base checkout itself."
+            return $?
+        fi
+        if ! base_update_release_tag_is_stable "$release_tag"; then
+            base_update_usage_error "Option '--release' requires a stable vMAJOR.MINOR.PATCH tag, for example 'v1.11.0'."
+            return $?
+        fi
+        if ((dry_run)); then
+            base_update_source_git_library || return 1
+            base_update_release_dry_run "$repo" "$release_tag"
+            return $?
+        fi
+        base_update_source_git_library || return 1
+        base_update_release_source_install "$base_home" "$repo" "$release_tag"
         return $?
     fi
 
