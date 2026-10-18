@@ -94,7 +94,8 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
+    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
     base_test_protocol_begin activation-source 0
     base_test_protocol_end
     exit 0
@@ -103,6 +104,8 @@ printf 'unexpected base_projects args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$venv_dir/bin/python"
+    mkdir -p "$TEST_HOME/.base.d/base/.venv/bin"
+    cp "$venv_dir/bin/python" "$TEST_HOME/.base.d/base/.venv/bin/python"
 
     run env \
         HOME="$TEST_HOME" \
@@ -139,7 +142,8 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
+    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
     base_test_protocol_begin activation-source 1
     base_test_protocol_activation_source_record 0 "${BASE_TEST_ACTIVATION_SOURCE:?}"
     base_test_protocol_end
@@ -156,6 +160,8 @@ project_activation_function() {
 }
 EOF
     chmod +x "$venv_dir/bin/python"
+    mkdir -p "$TEST_HOME/.base.d/base/.venv/bin"
+    cp "$venv_dir/bin/python" "$TEST_HOME/.base.d/base/.venv/bin/python"
 
     run env \
         HOME="$TEST_HOME" \
@@ -197,7 +203,8 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
+    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
     printf 'startup-run-root=%s\n' "${BASE_CLI_RUN_ROOT:-unset}" >&2
     printf 'startup-primary-log=%s\n' "${BASE_BASH_LIBS_PRIMARY_LOG:-unset}" >&2
     printf 'startup-history-scope=%s\n' "${BASE_CLI_HISTORY_SCOPE:-unset}" >&2
@@ -338,7 +345,8 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo" ]]; then
+if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
+    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
     printf 'ERROR: %s: activate.source[1] script %q does not exist.\n' "$BASE_PROJECT_MANIFEST" ".base/missing.sh" >&2
     exit 1
 fi
@@ -346,6 +354,8 @@ printf 'unexpected base_projects args: %s\n' "$*" >&2
 exit 1
 EOF
     chmod +x "$venv_dir/bin/python"
+    mkdir -p "$TEST_HOME/.base.d/base/.venv/bin"
+    cp "$venv_dir/bin/python" "$TEST_HOME/.base.d/base/.venv/bin/python"
 
     run env \
         HOME="$TEST_HOME" \
@@ -374,6 +384,51 @@ EOF
     [[ "$output" == *"shell-continued"* ]]
     [[ "$output" == *"body-run-root=unset"* ]]
     [[ "$output" == *"body-history-scope=unset"* ]]
+}
+
+@test "Base runtime shell resolves activation sources with the Base virtual environment" {
+    local project_root="$TEST_TMPDIR/demo"
+    local project_venv_dir="$TEST_TMPDIR/demo-venv"
+    local base_venv_dir="$TEST_HOME/.base.d/base/.venv"
+
+    mkdir -p "$project_root" "$project_venv_dir/bin" "$base_venv_dir/bin"
+    touch "$project_root/base_manifest.yaml"
+    cat > "$project_venv_dir/bin/activate" <<'EOF'
+VIRTUAL_ENV="$BASE_PROJECT_VENV_DIR"
+export VIRTUAL_ENV
+EOF
+    cat > "$project_venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+printf 'project virtual environment Python was used unexpectedly\n' >&2
+exit 1
+EOF
+    cat > "$base_venv_dir/bin/python" <<'EOF'
+#!/usr/bin/env bash
+source "${BASH_ENV:?}"
+if [[ "${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo" ]]; then
+    base_test_protocol_begin activation-source 0
+    base_test_protocol_end
+    exit 0
+fi
+printf 'unexpected Base Python args: %s\n' "$*" >&2
+exit 1
+EOF
+    chmod +x "$project_venv_dir/bin/python" "$base_venv_dir/bin/python"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_PROJECT=demo \
+        BASE_PROJECT_ROOT="$project_root" \
+        BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_PROJECT_VENV_DIR="$project_venv_dir" \
+        PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
+            printf "VIRTUAL_ENV=%s\n" "$VIRTUAL_ENV"'
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"VIRTUAL_ENV=$project_venv_dir"* ]]
+    [[ "$output" != *"project virtual environment Python was used unexpectedly"* ]]
 }
 
 @test "Base runtime shell loads base_init before user bashrc and owns final prompt" {
