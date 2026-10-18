@@ -394,18 +394,48 @@ class WorkspaceTestCommandTests(unittest.TestCase):
                     home,
                     trusted_projects=("trusted",),
                 )
+                payload = json.loads(stdout)
+                self.assertEqual(status, 1)
+                self.assertEqual(stderr, "")
+                self.assertEqual(run.call_count, 0)
+                self.assertEqual(payload["preflight"], "blocked")
+                self.assertFalse(payload["execution_started"])
+                self.assertEqual(
+                    payload["counts"],
+                    {"passed": 0, "failed": 0, "blocked": 1, "not_run": 1, "skipped": 0},
+                )
+                self.assertEqual(
+                    [project["status"] for project in payload["projects"]], ["not_run", "blocked"]
+                )
 
-        payload = json.loads(stdout)
-        self.assertEqual(status, 1)
-        self.assertEqual(stderr, "")
-        self.assertEqual(run.call_count, 0)
-        self.assertEqual(payload["preflight"], "blocked")
-        self.assertFalse(payload["execution_started"])
-        self.assertEqual(
-            payload["counts"],
-            {"passed": 0, "failed": 0, "blocked": 1, "not_run": 1, "skipped": 0},
-        )
-        self.assertEqual([project["status"] for project in payload["projects"]], ["not_run", "blocked"])
+                manifest.write_text(
+                    "\n".join(
+                        [
+                            "schema_version: 1",
+                            "workspace:",
+                            "  name: test-workspace",
+                            "repos:",
+                            "  - name: blocked",
+                            "  - name: trusted",
+                            "",
+                        ]
+                    ),
+                    encoding="utf-8",
+                )
+                run.reset_mock()
+                status, stdout, stderr = invoke_workspace_test(
+                    ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
+                    base_home,
+                    home,
+                    trusted_projects=("trusted",),
+                )
+                payload = json.loads(stdout)
+                self.assertEqual(status, 1)
+                self.assertEqual(stderr, "")
+                self.assertEqual(run.call_count, 0)
+                self.assertEqual(
+                    [project["status"] for project in payload["projects"]], ["blocked", "not_run"]
+                )
 
     def test_workspace_test_dry_run_reports_plan_without_running_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
