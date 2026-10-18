@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -16,12 +17,17 @@ from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_process import run_workspace_subprocess
+from base_projects.project_commands import test_command as project_test_command
 from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
+from base_setup.manifest import read_manifest
+from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_trust import ManifestCommandTrustStore
+from base_setup.manifest_trust import compute_trust_identity
 
 
 WorkspaceTestAction = Literal["test", "skip"]
-WorkspaceTestStatus = Literal["passed", "failed", "skipped"]
+WorkspaceTestStatus = Literal["passed", "failed", "blocked", "not_run", "skipped"]
 WORKSPACE_TEST_TIMEOUT_SECONDS = 1800
 
 
@@ -44,12 +50,26 @@ class WorkspaceTestResult:
     exit_code: int | None = None
     stdout: str = ""
     stderr: str = ""
+    command: str | None = None
+    trust_status: Literal["allowed", "blocked"] | None = None
+    executed: bool = False
+    duration_seconds: float | None = None
+
+
+@dataclass(frozen=True)
+class WorkspaceTestPreflight:
+    status: Literal["allowed", "blocked", "failed", "skipped"]
+    command: str | None = None
+    trust_status: Literal["allowed", "blocked"] | None = None
+    detail: str | None = None
 
 
 @dataclass(frozen=True)
 class WorkspaceTestCounts:
     passed: int = 0
     failed: int = 0
+    blocked: int = 0
+    not_run: int = 0
     skipped: int = 0
 
 
@@ -62,10 +82,6 @@ def workspace_test_from_options(ctx: base_cli.Context, options: Any) -> int:
     if output_format not in {"text", "json"}:
         ctx.log.error("Unsupported output format '%s'. Expected: text or json.", options.output_format)
         return base_cli.ExitCode.USAGE_ERROR
-    if getattr(options, "dry_run", False):
-        ctx.log.error("Workspace test does not support --dry-run.")
-        return base_cli.ExitCode.USAGE_ERROR
-
     try:
         workspace_root = workspace_context.resolve_workspace_root(ctx, options.workspace)
         manifest = resolve_workspace_manifest(
@@ -96,6 +112,7 @@ def workspace_test_from_options(ctx: base_cli.Context, options: Any) -> int:
         targets,
         fail_fast=bool(getattr(options, "fail_fast", False)),
         output_format=output_format,
+        dry_run=bool(getattr(options, "dry_run", False)),
     )
 
 
@@ -245,7 +262,7 @@ def validate_distinct_test_manifests(targets: tuple[WorkspaceTestTarget, ...]) -
     return targets
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-branches
 def workspace_test_command(
     ctx: base_cli.Context,
     workspace_root: Path,
@@ -254,36 +271,77 @@ def workspace_test_command(
     *,
     fail_fast: bool,
     output_format: str,
+    dry_run: bool,
 ) -> int:
-    if ctx.application_home is None:
+    if ctx.application_home is None and not dry_run:
         ctx.log.error("BASE_HOME is required to execute workspace tests.")
         return base_cli.ExitCode.FAILURE
 
-    basectl = ctx.application_home / "bin" / "basectl"
-    if not basectl.is_file() or not os.access(basectl, os.X_OK):
+    basectl = ctx.application_home / "bin" / "basectl" if ctx.application_home else None
+    if not dry_run and (basectl is None or not basectl.is_file() or not os.access(basectl, os.X_OK)):
         ctx.log.error("Base CLI '%s' is missing or is not executable.", basectl)
         return base_cli.ExitCode.FAILURE
 
+    preflights = workspace_test_preflight(targets)
+    preflight_blocked = any(item.status == "blocked" for item in preflights.values())
+    preflight_failed = any(item.status == "failed" for item in preflights.values())
     if output_format == "text":
-        print_workspace_test_header(workspace_root, workspace_manifest, targets)
+        print_workspace_test_header(workspace_root, workspace_manifest, targets, dry_run=dry_run)
+        print_workspace_test_preflight(targets, preflights)
+
+    if dry_run or preflight_blocked or preflight_failed:
+        results = (
+            blocked_workspace_test_results(targets, preflights)
+            if (preflight_blocked or preflight_failed)
+            else dry_run_workspace_test_results(targets, preflights)
+        )
+        counts = WorkspaceTestCounts()
+        for _, result in results:
+            counts = update_workspace_test_counts(counts, result)
+        if output_format == "text":
+            if preflight_blocked or preflight_failed:
+                print_workspace_test_blocked_summary(targets, preflight_blocked, preflight_failed)
+            else:
+                print("Workspace test plan complete: no project test commands were executed.")
+            for target, result in results:
+                print_workspace_test_result(target, result, show_output=False)
+            print_workspace_test_summary(counts, execution_started=False)
+        else:
+            render_workspace_test_json(
+                workspace_root,
+                workspace_manifest,
+                targets,
+                results,
+                counts,
+                fail_fast=fail_fast,
+                preflight_status="blocked" if (preflight_blocked or preflight_failed) else "passed",
+                execution_started=False,
+                dry_run=dry_run,
+            )
+        return base_cli.ExitCode.FAILURE if (preflight_blocked or preflight_failed) else base_cli.ExitCode.SUCCESS
 
     counts = WorkspaceTestCounts()
     results: list[tuple[WorkspaceTestTarget, WorkspaceTestResult]] = []
     stopped = False
-    for target in targets:
+    execution_started = False
+    for index, target in enumerate(targets, start=1):
         if stopped:
-            result = WorkspaceTestResult("skipped", "not run because --fail-fast stopped after a failure")
+            result = WorkspaceTestResult("not_run", "not run because execution was stopped")
         elif target.action == "skip":
             status: WorkspaceTestStatus = "failed" if target.fatal else "skipped"
             result = WorkspaceTestResult(status, target.reason)
         else:
-            result = execute_workspace_test_target(ctx, basectl, workspace_root, target)
+            preflight = preflights[target.name]
+            if output_format == "text":
+                print_workspace_test_start(index, len(targets), target, preflight)
+            execution_started = True
+            result = execute_workspace_test_target(ctx, basectl, workspace_root, target, preflight)
 
         results.append((target, result))
         counts = update_workspace_test_counts(counts, result)
         if output_format == "text":
             print_workspace_test_result(target, result)
-        if result.status == "failed" and fail_fast:
+        if result.status == "blocked" or (result.status == "failed" and fail_fast):
             stopped = True
 
     if output_format == "json":
@@ -294,10 +352,117 @@ def workspace_test_command(
             results,
             counts,
             fail_fast=fail_fast,
+            preflight_status="passed",
+            execution_started=execution_started,
+            dry_run=False,
         )
     else:
-        print_workspace_test_summary(counts)
-    return base_cli.ExitCode.FAILURE if counts.failed else base_cli.ExitCode.SUCCESS
+        print_workspace_test_summary(counts, execution_started=execution_started)
+    return base_cli.ExitCode.FAILURE if counts.failed or counts.blocked else base_cli.ExitCode.SUCCESS
+
+
+def workspace_test_preflight(
+    targets: tuple[WorkspaceTestTarget, ...],
+) -> dict[str, WorkspaceTestPreflight]:
+    preflights: dict[str, WorkspaceTestPreflight] = {}
+    trust_store = ManifestCommandTrustStore()
+    for target in targets:
+        if target.action != "test":
+            preflights[target.name] = WorkspaceTestPreflight("skipped", detail=target.reason)
+            continue
+        if target.manifest_path is None:
+            preflights[target.name] = WorkspaceTestPreflight(
+                "failed", detail="test target is missing its manifest path"
+            )
+            continue
+        try:
+            manifest = read_manifest(target.manifest_path)
+            command_config = project_test_command(manifest.test) if manifest.test is not None else None
+            if command_config is None:
+                preflights[target.name] = WorkspaceTestPreflight(
+                    "failed", detail="project does not declare a test command"
+                )
+                continue
+            identity = compute_trust_identity(manifest)
+            trust_status = trust_store.status(identity)
+        except (ManifestError, OSError, ValueError) as exc:
+            preflights[target.name] = WorkspaceTestPreflight(
+                "failed", detail=f"could not preflight project test: {exc}"
+            )
+            continue
+
+        command = workspace_test_command_text(command_config.command, command_config.runner)
+        if trust_status.is_allowed:
+            preflights[target.name] = WorkspaceTestPreflight(
+                "allowed", command=command, trust_status="allowed"
+            )
+        else:
+            preflights[target.name] = WorkspaceTestPreflight(
+                "blocked",
+                command=command,
+                trust_status="blocked",
+                detail=(
+                    "manifest command trust is blocked "
+                    f"({trust_status.reason})"
+                ),
+            )
+    return preflights
+
+
+def workspace_test_command_text(command: str, runner: str | None) -> str:
+    if runner is None:
+        return command
+    return f"{runner}: {command}"
+
+
+def blocked_workspace_test_results(
+    targets: tuple[WorkspaceTestTarget, ...],
+    preflights: dict[str, WorkspaceTestPreflight],
+) -> list[tuple[WorkspaceTestTarget, WorkspaceTestResult]]:
+    results: list[tuple[WorkspaceTestTarget, WorkspaceTestResult]] = []
+    for target in targets:
+        preflight = preflights[target.name]
+        if target.action == "skip":
+            status: WorkspaceTestStatus = "failed" if target.fatal else "skipped"
+            result = WorkspaceTestResult(status, target.reason)
+        elif preflight.status == "blocked":
+            result = WorkspaceTestResult(
+                "blocked",
+                preflight.detail,
+                command=preflight.command,
+                trust_status="blocked",
+            )
+        elif preflight.status == "allowed":
+            result = WorkspaceTestResult(
+                "not_run",
+                "not run because another selected project's trust preflight blocked execution",
+                command=preflight.command,
+                trust_status="allowed",
+            )
+        else:
+            result = WorkspaceTestResult("failed", preflight.detail)
+        results.append((target, result))
+    return results
+
+
+def dry_run_workspace_test_results(
+    targets: tuple[WorkspaceTestTarget, ...],
+    preflights: dict[str, WorkspaceTestPreflight],
+) -> list[tuple[WorkspaceTestTarget, WorkspaceTestResult]]:
+    results: list[tuple[WorkspaceTestTarget, WorkspaceTestResult]] = []
+    for target in targets:
+        preflight = preflights[target.name]
+        if target.action == "skip":
+            result = WorkspaceTestResult("skipped", target.reason)
+        else:
+            result = WorkspaceTestResult(
+                "not_run",
+                "not run because --dry-run only plans execution",
+                command=preflight.command,
+                trust_status=preflight.trust_status,
+            )
+        results.append((target, result))
+    return results
 
 
 def execute_workspace_test_target(
@@ -305,6 +470,7 @@ def execute_workspace_test_target(
     basectl: Path,
     workspace_root: Path,
     target: WorkspaceTestTarget,
+    preflight: WorkspaceTestPreflight,
 ) -> WorkspaceTestResult:
     if target.project_name is None:
         return WorkspaceTestResult("failed", "test target is missing project routing metadata")
@@ -322,6 +488,7 @@ def execute_workspace_test_target(
     for variable in ("BASE_PROJECT", "BASE_PROJECT_ROOT", "BASE_PROJECT_MANIFEST", "BASE_PROJECT_VENV_DIR"):
         env.pop(variable, None)
 
+    started_at = time.monotonic()
     try:
         result = run_workspace_subprocess(
             command,
@@ -333,20 +500,55 @@ def execute_workspace_test_target(
         return WorkspaceTestResult(
             "failed",
             f"timed out after {WORKSPACE_TEST_TIMEOUT_SECONDS} seconds",
+            command=preflight.command,
+            trust_status=preflight.trust_status,
+            executed=True,
+            duration_seconds=round(time.monotonic() - started_at, 3),
         )
     except OSError as exc:
-        return WorkspaceTestResult("failed", f"could not run test command: {exc}")
+        return WorkspaceTestResult(
+            "failed",
+            f"could not run test command: {exc}",
+            command=preflight.command,
+            trust_status=preflight.trust_status,
+            executed=True,
+            duration_seconds=round(time.monotonic() - started_at, 3),
+        )
 
     stdout = redact_command_output(decode_subprocess_output(result.stdout))
     stderr = redact_command_output(decode_subprocess_output(result.stderr))
+    duration_seconds = round(time.monotonic() - started_at, 3)
     if result.returncode == 0:
-        return WorkspaceTestResult("passed", stdout=stdout, stderr=stderr)
+        return WorkspaceTestResult(
+            "passed",
+            stdout=stdout,
+            stderr=stderr,
+            command=preflight.command,
+            trust_status=preflight.trust_status,
+            executed=True,
+            duration_seconds=duration_seconds,
+        )
+    if "Manifest command trust is blocked" in stderr or "Manifest-declared commands are not allowed" in stderr:
+        return WorkspaceTestResult(
+            "blocked",
+            "manifest command trust became blocked before the project test command ran",
+            exit_code=result.returncode,
+            stdout=stdout,
+            stderr=stderr,
+            command=preflight.command,
+            trust_status="blocked",
+            duration_seconds=duration_seconds,
+        )
     return WorkspaceTestResult(
         "failed",
         f"test command exited with status {result.returncode}",
         exit_code=result.returncode,
         stdout=stdout,
         stderr=stderr,
+        command=preflight.command,
+        trust_status=preflight.trust_status,
+        executed=True,
+        duration_seconds=duration_seconds,
     )
 
 
@@ -355,39 +557,107 @@ def update_workspace_test_counts(
     result: WorkspaceTestResult,
 ) -> WorkspaceTestCounts:
     if result.status == "passed":
-        return WorkspaceTestCounts(counts.passed + 1, counts.failed, counts.skipped)
+        return WorkspaceTestCounts(counts.passed + 1, counts.failed, counts.blocked, counts.not_run, counts.skipped)
     if result.status == "failed":
-        return WorkspaceTestCounts(counts.passed, counts.failed + 1, counts.skipped)
-    return WorkspaceTestCounts(counts.passed, counts.failed, counts.skipped + 1)
+        return WorkspaceTestCounts(counts.passed, counts.failed + 1, counts.blocked, counts.not_run, counts.skipped)
+    if result.status == "blocked":
+        return WorkspaceTestCounts(counts.passed, counts.failed, counts.blocked + 1, counts.not_run, counts.skipped)
+    if result.status == "not_run":
+        return WorkspaceTestCounts(counts.passed, counts.failed, counts.blocked, counts.not_run + 1, counts.skipped)
+    return WorkspaceTestCounts(counts.passed, counts.failed, counts.blocked, counts.not_run, counts.skipped + 1)
 
 
 def print_workspace_test_header(
     workspace_root: Path,
     workspace_manifest: WorkspaceManifest,
     targets: tuple[WorkspaceTestTarget, ...],
+    *,
+    dry_run: bool,
 ) -> None:
     print(f"Workspace test: {workspace_root} ({len(targets)} projects)")
     print(f"Workspace manifest: {workspace_manifest.path} ({workspace_manifest.name})")
+    print("Execution policy: trust preflight must pass for every selected project before any test starts.")
+    if dry_run:
+        print("Mode: dry-run (planning only; no project test commands will execute).")
 
 
-def print_workspace_test_result(target: WorkspaceTestTarget, result: WorkspaceTestResult) -> None:
+def print_workspace_test_preflight(
+    targets: tuple[WorkspaceTestTarget, ...],
+    preflights: dict[str, WorkspaceTestPreflight],
+) -> None:
+    print(f"Workspace test preflight: {len(targets)} selected projects.")
+    for index, target in enumerate(targets, start=1):
+        project = target.project_name or target.name
+        preflight = preflights[target.name]
+        if preflight.status == "allowed":
+            print(f"  [{index}/{len(targets)}] ALLOW project '{project}' (trust=allowed)")
+            print(f"      command: {preflight.command}")
+        elif preflight.status == "blocked":
+            print(f"  [{index}/{len(targets)}] BLOCK project '{project}' (trust=blocked)")
+            print(f"      command: {preflight.command}")
+            print(f"      reason: {preflight.detail}")
+        elif preflight.status == "failed":
+            print(f"  [{index}/{len(targets)}] ERROR project '{project}' (preflight failed)")
+            print(f"      reason: {preflight.detail}")
+        else:
+            print(f"  [{index}/{len(targets)}] SKIP project '{project}': {preflight.detail}")
+
+
+def print_workspace_test_start(
+    index: int,
+    total: int,
+    target: WorkspaceTestTarget,
+    preflight: WorkspaceTestPreflight,
+) -> None:
+    project = target.project_name or target.name
+    print(f"[{index}/{total}] START project '{project}' (trust={preflight.trust_status})", flush=True)
+    print(f"      command: {preflight.command}", flush=True)
+
+
+def print_workspace_test_result(
+    target: WorkspaceTestTarget,
+    result: WorkspaceTestResult,
+    *,
+    show_output: bool = True,
+) -> None:
     project = target.project_name or target.name
     if result.status == "passed":
-        print(f"PASS project '{project}' at '{target.root}'.")
+        print(f"PASS project '{project}' at '{target.root}' ({result.duration_seconds or 0:.3f}s).")
     elif result.status == "failed":
         print(f"FAIL project '{project}' at '{target.root}': {result.detail}.")
+    elif result.status == "blocked":
+        print(f"BLOCKED project '{project}' at '{target.root}': {result.detail}.")
+        print("  No project test command was executed.")
+    elif result.status == "not_run":
+        print(f"NOT RUN project '{project}' at '{target.root}': {result.detail}.")
     else:
         print(f"SKIP project '{project}' at '{target.root}': {result.detail}.")
-    if result.stdout:
+    if show_output and result.stdout:
         print(result.stdout, end="")
-    if result.stderr:
+    if show_output and result.stderr:
         print(result.stderr, end="", file=sys.stderr)
 
 
-def print_workspace_test_summary(counts: WorkspaceTestCounts) -> None:
+def print_workspace_test_blocked_summary(
+    targets: tuple[WorkspaceTestTarget, ...],
+    preflight_blocked: bool,
+    preflight_failed: bool,
+) -> None:
+    test_count = sum(target.action == "test" for target in targets)
+    reason = "trust is blocked" if preflight_blocked else "trust preflight failed"
+    print("EXECUTION BLOCKED: No project test command was executed.")
+    print(f"Workspace test execution blocked: {reason}; 0/{test_count} project test commands started.")
+    if preflight_failed:
+        print("Review the preflight errors before retrying.")
+
+
+def print_workspace_test_summary(counts: WorkspaceTestCounts, *, execution_started: bool) -> None:
+    label = "Workspace test completed" if execution_started else "Workspace test not executed"
     print(
-        "Workspace test completed: "
-        f"passed={counts.passed} failed={counts.failed} skipped={counts.skipped}."
+        f"{label}: "
+        f"passed={counts.passed} failed={counts.failed} blocked={counts.blocked} "
+        f"not_run={counts.not_run} skipped={counts.skipped}; "
+        f"execution_started={'yes' if execution_started else 'no'}."
     )
 
 
@@ -400,9 +670,12 @@ def render_workspace_test_json(
     counts: WorkspaceTestCounts,
     *,
     fail_fast: bool,
+    preflight_status: Literal["passed", "blocked"],
+    execution_started: bool,
+    dry_run: bool,
 ) -> None:
     payload: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "workspace": str(workspace_root),
         "workspace_manifest": {
             "path": str(workspace_manifest.path),
@@ -410,12 +683,17 @@ def render_workspace_test_json(
             "schema_version": workspace_manifest.schema_version,
         },
         "fail_fast": fail_fast,
+        "preflight": preflight_status,
+        "execution_started": execution_started,
+        "dry_run": dry_run,
         "selected_projects": [target.project_name or target.name for target in targets],
         "project_count": len(targets),
         "projects": [workspace_test_project_to_json(target, result) for target, result in results],
         "counts": {
             "passed": counts.passed,
             "failed": counts.failed,
+            "blocked": counts.blocked,
+            "not_run": counts.not_run,
             "skipped": counts.skipped,
         },
     }
@@ -441,4 +719,11 @@ def workspace_test_project_to_json(
         payload["stdout"] = result.stdout
     if result.stderr:
         payload["stderr"] = result.stderr
+    if result.command is not None:
+        payload["command"] = result.command
+    if result.trust_status is not None:
+        payload["trust_status"] = result.trust_status
+    payload["executed"] = result.executed
+    if result.duration_seconds is not None:
+        payload["duration_seconds"] = result.duration_seconds
     return payload

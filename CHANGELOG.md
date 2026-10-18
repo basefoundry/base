@@ -8,6 +8,15 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Make `basectl workspace test` preflight manifest-command trust across the
+  entire selected set before running any project test, and report explicit
+  blocked, not-run, start, completion, and dry-run states.
+- Stability compatibility: publish workspace-test JSON schema version 2 so
+  automation can distinguish trust-blocked and not-run projects from tests
+  that actually executed.
+
 ## [1.10.5] - 2026-10-14
 
 ### Added
