@@ -206,7 +206,10 @@ def check_local_base_cli_requirement(root: Path, data: dict[str, Any]) -> Findin
         return finding(
             "error",
             "base_cli_requirement",
-            f"{requirements_path} must contain exactly one base-cli exact-version requirement; found {len(candidates)}.",
+            (
+                f"{requirements_path} must contain exactly one base-cli exact-version requirement; "
+                f"found {len(candidates)}."
+            ),
         )
 
     match = BASE_CLI_REQUIREMENT_RE.fullmatch(candidates[0])
@@ -214,7 +217,10 @@ def check_local_base_cli_requirement(root: Path, data: dict[str, Any]) -> Findin
         return finding(
             "error",
             "base_cli_requirement",
-            f"{requirements_path} contains unsupported base-cli requirement {candidates[0]!r}; use base-cli==X.Y.Z or base-cli===X.Y.Z.",
+            (
+                f"{requirements_path} contains unsupported base-cli requirement {candidates[0]!r}; "
+                "use base-cli==X.Y.Z or base-cli===X.Y.Z."
+            ),
         )
     if match.group(2) != expected:
         return finding(

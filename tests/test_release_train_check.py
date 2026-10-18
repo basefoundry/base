@@ -90,7 +90,15 @@ def create_fixture(tmp_path: Path) -> Path:
     )
     (tmp_path / ".github" / "workflows").mkdir(parents=True)
     (tmp_path / ".github" / "workflows" / "ecosystem-release-bom.yml").write_text(
-        "on:\n  workflow_dispatch:\n    inputs:\n      base_version:\n        default: \"1.10.1\"\n      base_cli_version:\n        default: \"0.5.1\"\n",
+        (
+            "on:\n"
+            "  workflow_dispatch:\n"
+            "    inputs:\n"
+            "      base_version:\n"
+            "        default: \"1.10.1\"\n"
+            "      base_cli_version:\n"
+            "        default: \"0.5.1\"\n"
+        ),
         encoding="utf-8",
     )
     manifest = tmp_path / "train.json"
