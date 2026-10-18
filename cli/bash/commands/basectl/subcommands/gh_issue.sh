@@ -53,8 +53,9 @@ Usage:
   basectl gh issue start <number> [options]
 
 Purpose:
-  Print the canonical issue-backed branch and worktree commands after verifying
-  the issue's standard category label.
+  Move the linked Project item to In Progress, then print the canonical
+  issue-backed branch and worktree commands after verifying the issue's
+  standard category label.
 
 Options:
   --repo, -R <owner/name>  Repository containing the issue. Selection order is
@@ -487,8 +488,11 @@ base_gh_issue_start() {
     default_branch="$(base_gh_default_branch)"
     worktree_path="$(base_gh_issue_worktree_path "$issue" "$slug")" || return 1
 
+    base_gh_set_issue_in_progress "$issue" "$github_repo" || return $?
+
     printf '%s\n' "$branch"
     printf '\n'
     printf 'To create a worktree:\n'
     printf '  git worktree add -b %s %s origin/%s\n' "$branch" "$worktree_path" "$default_branch"
+    printf 'Project status: In Progress (verified for issue #%s).\n' "$issue"
 }

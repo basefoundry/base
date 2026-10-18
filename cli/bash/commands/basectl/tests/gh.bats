@@ -127,6 +127,17 @@ printf 'unexpected gh args: %s\n' "$*" >&2
 exit 99
 EOF
     chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+if [[ "${BASE_GH_TEST_PROJECT_STATUS_MODE:-success}" == "failure" ]]; then
+    printf 'simulated Project status update failure\n' >&2
+    exit 42
+fi
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+    export BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper"
 }
 
 create_branch_pr_repo() {
@@ -1356,6 +1367,42 @@ EOF
     [ "$(printf '%s\n' "$output" | sed -n '3p')" = "To create a worktree:" ]
     [[ "$(printf '%s\n' "$output" | sed -n '4p')" == "  git worktree add -b enhancement/117-"*"-add-basectl-gh-workflow-for-issues "*"/repo-worktrees/117-add-basectl-gh-workflow-for-issues origin/master" ]]
     [ "$(git -C "$repo" branch --show-current)" = "master" ]
+    [[ "$output" == *"Project status: In Progress (verified for issue #117)."* ]]
+}
+
+@test "basectl gh issue start moves the Project item to In Progress before handoff" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    BASE_GH_TEST_CWD="$repo" run_gh_subcommand issue start 117
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Project status: In Progress (verified for issue #117)."* ]]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress" ]
+}
+
+@test "basectl gh issue start blocks the worktree handoff when Project status fails" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_PROJECT_STATUS_MODE=failure run_gh_subcommand issue start 117
+
+    [ "$status" -eq 42 ]
+    [[ "$output" == *"Unable to move issue #117 to Project Status=In Progress."* ]]
+    [[ "$output" == *"Worktree handoff was not printed"* ]]
+    [[ "$output" != *"To create a worktree:"* ]]
 }
 
 @test "basectl gh issue start parses the selected leaf through the shared helper" {

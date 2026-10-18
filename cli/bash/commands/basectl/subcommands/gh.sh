@@ -908,6 +908,37 @@ base_gh_apply_project_issue_fields() {
     return "$status"
 }
 
+base_gh_set_issue_in_progress() {
+    local issue_number="$1" github_repo="$2"
+    local project_title project_owner output status line
+    local -a field_args
+
+    project_title="$(base_gh_default_project_title "$github_repo")"
+    project_owner="$(base_gh_project_owner_from_repo "$github_repo")"
+    field_args=(
+        "$issue_number"
+        --project "$project_title"
+        --owner "$project_owner"
+        --repo "$github_repo"
+        --status "In Progress"
+    )
+    output="$(base_gh_project_issue_set_fields "${field_args[@]}" 2>&1)"
+    status=$?
+    if ((status == 0)); then
+        return 0
+    fi
+
+    if [[ -n "$output" ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            [[ -n "$line" ]] && base_std_log_warn "$line"
+        done <<<"$output"
+    fi
+    base_std_log_warn "Unable to move issue #$issue_number to Project Status=In Progress."
+    base_std_log_warn "Worktree handoff was not printed because the lifecycle transition was not verified."
+    base_std_log_warn "Fix: run '$(base_gh_project_issue_set_fields_command "${field_args[@]}")'."
+    return "$status"
+}
+
 base_gh_pr_policy_body() {
     local issue="$1"
     local github_repo="$2"
