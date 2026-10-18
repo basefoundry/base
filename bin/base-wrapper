@@ -45,6 +45,8 @@ Usage:
 
 Options:
   --project <name>  Run using ~/.base.d/<name>/.venv.
+  --preserve-project-context
+                    Keep the inherited BASE_PROJECT while selecting a venv.
   -h, --help        Show this help text.
 
 Purpose:
@@ -61,6 +63,7 @@ EOF
 
 main() {
     local base_cli_path base_cli_source base_home project package python_bin old_pythonpath base_pythonpath
+    local preserve_project_context=0
 
     base_home="$(base_wrapper_base_home)" || base_wrapper_die "Unable to resolve Base home."
     project="${BASE_PROJECT:-base}"
@@ -77,6 +80,9 @@ main() {
                 shift
                 [[ -n "${1:-}" ]] || base_wrapper_die "Option '--project' requires an argument."
                 project="$1"
+                ;;
+            --preserve-project-context)
+                preserve_project_context=1
                 ;;
             --)
                 shift
@@ -111,7 +117,9 @@ main() {
     esac
 
     BASE_HOME="$base_home"
-    BASE_PROJECT="$project"
+    if [[ "$preserve_project_context" != 1 || -z "${BASE_PROJECT:-}" ]]; then
+        BASE_PROJECT="$project"
+    fi
     # This wrapper always launches Base's control-plane Python packages. The
     # selected project only chooses the virtual environment; it must not move
     # Base-owned runtime artifacts into a project's namespace.
