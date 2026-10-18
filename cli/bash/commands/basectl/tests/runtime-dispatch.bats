@@ -843,6 +843,29 @@ EOF
     [[ "$output" == *"ARGS=-m base_setup --dry-run demo"* ]]
 }
 
+@test "base-wrapper can select the Base venv without replacing active project context" {
+    local python_bin="$TEST_HOME/.base.d/base/.venv/bin/python"
+
+    mkdir -p "$(dirname "$python_bin")"
+    cat > "$python_bin" <<'EOF'
+#!/usr/bin/env bash
+printf 'BASE_PROJECT=%s\n' "$BASE_PROJECT"
+printf 'ARGS=%s\n' "$*"
+EOF
+    chmod +x "$python_bin"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_PROJECT=demo \
+        BASE_TEST_PRESERVE_PYTHON_ENTRYPOINT=1 \
+        "$BASE_REPO_ROOT/bin/base-wrapper" --project base --preserve-project-context \
+        base_projects activation-sources demo --format command-protocol
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"BASE_PROJECT=demo"* ]]
+    [[ "$output" == *"ARGS=-I $BASE_REPO_ROOT/cli/python/base_cli_adapters/module_entrypoint.py base_projects activation-sources demo --format command-protocol"* ]]
+}
+
 @test "basectl propagates supported wrapper diagnostics to explicit Base scripts" {
     local script_path="$TEST_TMPDIR/wrapper-diagnostics-script"
 

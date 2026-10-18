@@ -94,8 +94,9 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
-    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
+if [[ "${1:-}" == "-I" &&
+    "${2:-}" == "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" &&
+    "${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo" ]]; then
     base_test_protocol_begin activation-source 0
     base_test_protocol_end
     exit 0
@@ -114,6 +115,7 @@ EOF
         BASE_PROJECT_ROOT="$project_root" \
         BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
         BASE_PROJECT_VENV_DIR="$venv_dir" \
+        BASE_TEST_PRESERVE_PYTHON_ENTRYPOINT=1 \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             declare -p BASE_PROJECT; \
@@ -142,8 +144,9 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
-    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
+if [[ "${1:-}" == "-I" &&
+    "${2:-}" == "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" &&
+    "${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo" ]]; then
     base_test_protocol_begin activation-source 1
     base_test_protocol_activation_source_record 0 "${BASE_TEST_ACTIVATION_SOURCE:?}"
     base_test_protocol_end
@@ -171,6 +174,7 @@ EOF
         BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
         BASE_PROJECT_VENV_DIR="$venv_dir" \
         BASE_TEST_ACTIVATION_SOURCE="$activation_script" \
+        BASE_TEST_PRESERVE_PYTHON_ENTRYPOINT=1 \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             printf "PROJECT_ACTIVATION_PROJECT=%s\n" "${PROJECT_ACTIVATION_PROJECT:-}"; \
@@ -203,8 +207,9 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
-    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
+if [[ "${1:-}" == "-I" &&
+    "${2:-}" == "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" &&
+    "${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo" ]]; then
     printf 'startup-run-root=%s\n' "${BASE_CLI_RUN_ROOT:-unset}" >&2
     printf 'startup-primary-log=%s\n' "${BASE_BASH_LIBS_PRIMARY_LOG:-unset}" >&2
     printf 'startup-history-scope=%s\n' "${BASE_CLI_HISTORY_SCOPE:-unset}" >&2
@@ -212,12 +217,20 @@ if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activatio
     base_test_protocol_end
     exit 0
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list" ]]; then
+if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "list") ||
+    ("${1:-}" == "-I" && "${2:-}" == "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" &&
+    "${3:-}" == "base_projects" && "${4:-}" == "list") ]]; then
     printf 'demo\t%s/demo\n' "${BASE_TEST_WORKSPACE:?}"
     exit 0
 fi
-if [[ "${1:-}" == "-m" && "${2:-}" == "base_history.record" ]]; then
-    printf '%s\n' "$*" >> "${BASE_TEST_RUNTIME_HISTORY_STATE:?}"
+if [[ ("${1:-}" == "-m" && "${2:-}" == "base_history.record") ||
+    ("${1:-}" == "-I" && "${2:-}" == "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" &&
+    "${3:-}" == "base_history.record") ]]; then
+    if [[ "${1:-}" == "-I" ]]; then
+        printf '%s\n' "-m ${*:3}" >> "${BASE_TEST_RUNTIME_HISTORY_STATE:?}"
+    else
+        printf '%s\n' "$*" >> "${BASE_TEST_RUNTIME_HISTORY_STATE:?}"
+    fi
     exit 0
 fi
 printf 'unexpected base_projects args: %s\n' "$*" >&2
@@ -252,6 +265,7 @@ EOF
         BASE_CLI_PROJECT_NAME=demo \
         BASE_CLI_PROJECT_ROOT="$project_root" \
         BASE_CLI_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
+        BASE_TEST_PRESERVE_PYTHON_ENTRYPOINT=1 \
         PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
         "$BASH" --rcfile "$BASE_REPO_ROOT/lib/bash/runtime/bashrc" -i -c '\
             for variable in \
@@ -345,8 +359,9 @@ EOF
 #!/usr/bin/env bash
 # Bash 3 reads BASH_ENV before assigning script arguments.
 source "${BASH_ENV:?}"
-if [[ ("${1:-}" == "-m" && "${2:-}" == "base_projects" && "${3:-}" == "activation-sources" && "${4:-}" == "demo") ||
-    ("${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo") ]]; then
+if [[ "${1:-}" == "-I" &&
+    "${2:-}" == "$BASE_HOME/cli/python/base_cli_adapters/module_entrypoint.py" &&
+    "${3:-}" == "base_projects" && "${4:-}" == "activation-sources" && "${5:-}" == "demo" ]]; then
     printf 'ERROR: %s: activate.source[1] script %q does not exist.\n' "$BASE_PROJECT_MANIFEST" ".base/missing.sh" >&2
     exit 1
 fi
@@ -364,6 +379,7 @@ EOF
         BASE_PROJECT_ROOT="$project_root" \
         BASE_PROJECT_MANIFEST="$project_root/base_manifest.yaml" \
         BASE_PROJECT_VENV_DIR="$venv_dir" \
+        BASE_TEST_PRESERVE_PYTHON_ENTRYPOINT=1 \
         BASE_CLI_RUNTIME_OWNER=base \
         BASE_CLI_RUN_ID=failed-activation-run-id \
         BASE_CLI_RUN_ROOT="$activation_run_root" \
