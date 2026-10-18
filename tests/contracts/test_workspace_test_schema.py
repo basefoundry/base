@@ -5,11 +5,11 @@ import os
 from pathlib import Path
 from unittest import mock
 
-from tests.contracts.workspace_contract_helpers import run_workspace_command
-from tests.contracts.workspace_contract_helpers import validate_workspace_payload
 from base_setup.manifest import read_manifest
 from base_setup.manifest_trust import ManifestCommandTrustStore
 from base_setup.manifest_trust import compute_trust_identity
+from tests.contracts.workspace_contract_helpers import run_workspace_command
+from tests.contracts.workspace_contract_helpers import validate_workspace_payload
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
