@@ -47,7 +47,10 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
 - `basectl demo [project]` - run a declared interactive demo script.
 - `basectl run [project] <command>` - run a declared command for the positional, explicit, or nearest project.
 - `basectl export-context [project]` - export `.ai-context/` as a Markdown or
-  Zip bundle for manual upload or copy/paste into AI tools.
+  Zip bundle for manual upload or copy/paste into AI tools. Defaults to
+  `$BASE_CACHE_DIR/base/exports/<project>-ai-context.md` (or `.zip`);
+  `--output` explicitly selects another destination, including project directories.
+  `--print` and `--list-files` do not write a bundle.
 - `basectl trust status [project]` - inspect one project's manifest command
   trust or all discovered command-bearing projects.
 - Generated onboarding trust commands include the canonical workspace and

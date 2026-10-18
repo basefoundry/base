@@ -5,7 +5,7 @@ import os
 import tempfile
 import unittest
 import zipfile
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -17,6 +17,16 @@ def write_context_file(project_root: Path, relative_path: str, content: str) -> 
     path = project_root / ".ai-context" / relative_path
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+@contextmanager
+def chdir(path: Path):
+    previous = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(previous)
 
 
 def invoke_engine(args: list[str], project_root: Path) -> tuple[int, str, str]:
@@ -33,6 +43,82 @@ def invoke_engine(args: list[str], project_root: Path) -> tuple[int, str, str]:
 
 
 class ExportContextTests(unittest.TestCase):
+    def test_default_exports_use_base_cache_from_current_or_other_project(self) -> None:
+        for output_format, extension in (("markdown", "md"), ("zip", "zip")):
+            for caller_name in ("demo", "other"):
+                with self.subTest(output_format=output_format, caller=caller_name):
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        root = Path(tmpdir).resolve()
+                        project_root = root / "demo"
+                        other_project = root / "other"
+                        for project in (project_root, other_project):
+                            project.mkdir()
+                            (project / "base_manifest.yaml").write_text(
+                                f"project:\n  name: {project.name}\nartifacts: []\n",
+                                encoding="utf-8",
+                            )
+                        write_context_file(project_root, "PROJECT.md", "Project\n")
+                        cache_root = root / "cache"
+                        filename = f"demo-ai-context.{extension}"
+                        destination = cache_root / "base" / "exports" / filename
+
+                        with chdir(root / caller_name), mock.patch.dict(
+                            os.environ, {"BASE_CACHE_DIR": str(cache_root)}
+                        ):
+                            status, stdout, stderr = invoke_engine(
+                                ["--project-name", "demo", "--project-root", str(project_root),
+                                 "--format", output_format],
+                                project_root,
+                            )
+
+                        self.assertEqual((status, stderr), (0, ""))
+                        self.assertIn(f" to {destination}\n", stdout)
+                        self.assertTrue(destination.is_file())
+                        self.assertFalse((project_root / filename).exists())
+                        self.assertFalse((other_project / filename).exists())
+                        if output_format == "markdown":
+                            self.assertIn("Project\n", destination.read_text(encoding="utf-8"))
+                        else:
+                            with zipfile.ZipFile(destination) as archive:
+                                self.assertEqual(archive.read("PROJECT.md"), b"Project\n")
+
+    def test_explicit_relative_output_can_write_inside_project(self) -> None:
+        for output_format, extension in (("markdown", "md"), ("zip", "zip")):
+            with self.subTest(output_format=output_format):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    project_root = Path(tmpdir).resolve() / "demo"
+                    write_context_file(project_root, "PROJECT.md", "Project\n")
+                    cache_root = Path(tmpdir) / "cache"
+                    output_path = Path("exports") / f"chosen.{extension}"
+                    with chdir(project_root), mock.patch.dict(
+                        os.environ, {"BASE_CACHE_DIR": str(cache_root)}
+                    ):
+                        status, stdout, stderr = invoke_engine(
+                            ["--project-name", "demo", "--project-root", str(project_root),
+                             "--format", output_format, "--output", str(output_path)],
+                            project_root,
+                        )
+                    self.assertEqual((status, stderr), (0, ""))
+                    self.assertIn(f" to {output_path}\n", stdout)
+                    self.assertTrue((project_root / output_path).is_file())
+                    self.assertFalse((cache_root / "base" / "exports").exists())
+
+    def test_stdout_modes_do_not_create_export_directory(self) -> None:
+        for mode in ("--print", "--list-files"):
+            with self.subTest(mode=mode):
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    project_root = Path(tmpdir) / "demo"
+                    write_context_file(project_root, "PROJECT.md", "Project\n")
+                    cache_root = Path(tmpdir) / "cache"
+                    with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
+                        status, stdout, stderr = invoke_engine(
+                            ["--project-name", "demo", "--project-root", str(project_root), mode],
+                            project_root,
+                        )
+                    self.assertEqual((status, stderr), (0, ""))
+                    self.assertIn(".ai-context/PROJECT.md", stdout)
+                    self.assertFalse((cache_root / "base" / "exports").exists())
+
     def test_explicit_project_root_populates_history_project_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

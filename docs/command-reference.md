@@ -1004,6 +1004,14 @@ Base-managed project. Markdown exports combine context Markdown files with
 stable source headings, using `.ai-context/INDEX.md` order when available and
 falling back to deterministic filename order for unlisted files. Zip exports
 contain only files from `.ai-context/` so they can be uploaded manually.
+Without `--output`, bundles are written to
+`$BASE_CACHE_DIR/base/exports/<project>-ai-context.md` (or `.zip`). Base's normal
+cache root defaults to `~/Library/Caches/base` on macOS and `~/.cache/base` on
+Linux, so running from a project directory does not put the bundle there.
+An explicit `--output` file or existing directory overrides this default;
+relative paths are relative to the current directory, and project-directory
+destinations are allowed when explicitly requested. `--print` and `--list-files`
+do not write an export bundle.
 Exports fail closed on a symlinked context root, symlinked descendants, and
 special files; only regular files stored inside the real context directory are
 eligible.

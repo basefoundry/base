@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 import base_cli
+from base_cli_adapters.paths import base_cache_root
 from base_cli_profile import base_cli_app
 
 
@@ -55,7 +56,10 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--project-name", required=True, help="Resolved Base project name.")
 @base_cli.option("--project-root", required=True, help="Resolved Base project root.")
 @base_cli.option("--format", "output_format", default=MARKDOWN_FORMAT, help="Output format: markdown or zip.")
-@base_cli.option("--output", "output_path", help="Output path for the export bundle.")
+@base_cli.option(
+    "--output", "output_path",
+    help="Output path for the export bundle. Defaults to base/exports/ under the Base cache root.",
+)
 @base_cli.option("--print", "print_bundle", is_flag=True, help="Print the Markdown bundle to stdout.")
 @base_cli.option("--list-files", is_flag=True, help="Print the files in export order without writing a bundle.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -146,7 +150,7 @@ def resolve_output_path(project_name: str, output_path: str | None, extension: s
         if path.is_dir():
             return path / default_filename
         return path
-    return Path.cwd() / default_filename
+    return base_cache_root() / "base" / "exports" / default_filename
 
 
 def ordered_context_files(project_name: str, project_root: Path, include_all: bool) -> tuple[ContextFile, ...]:
