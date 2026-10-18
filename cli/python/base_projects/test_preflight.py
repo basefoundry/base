@@ -9,14 +9,26 @@ import base_cli
 from base_setup.manifest_model import BaseManifest
 from base_setup.test_requirements import check_test_requirements
 from base_setup.manifest_trust import (
-    ManifestCommandTrustStore, compute_trust_identity, manifest_command_surfaces_from_manifest,
+    ManifestCommandTrustStore,
+    TrustStatus,
+    compute_trust_identity,
+    manifest_command_surfaces_from_manifest,
 )
 from base_setup.manifest_trust_guidance import print_blocked_command_text
 
 
-def project_test_preflight(ctx: base_cli.Context, manifest: BaseManifest) -> bool:
+def project_test_trust_status(
+    manifest: BaseManifest,
+    *,
+    trust_store: ManifestCommandTrustStore | None = None,
+) -> TrustStatus:
+    """Return the trust status used by project and workspace test preflight."""
     identity = compute_trust_identity(manifest)
-    trust_status = ManifestCommandTrustStore().status(identity)
+    return (trust_store or ManifestCommandTrustStore()).status(identity)
+
+
+def project_test_preflight(ctx: base_cli.Context, manifest: BaseManifest) -> bool:
+    trust_status = project_test_trust_status(manifest)
     if not trust_status.is_allowed:
         print_blocked_command_text(
             trust_status, manifest_command_surfaces_from_manifest(manifest), stream=sys.stderr,

@@ -474,6 +474,41 @@ class WorkspaceTestCommandTests(unittest.TestCase):
         self.assertFalse(payload["execution_started"])
         self.assertEqual(payload["projects"][0]["status"], "not_run")
 
+    def test_workspace_test_dry_run_fails_for_required_missing_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            write_workspace_manifest(manifest, ("missing",))
+
+            status, stdout, stderr = invoke_workspace_test(
+                [
+                    "test",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(manifest),
+                    "--dry-run",
+                    "--format",
+                    "json",
+                ],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["counts"], {"passed": 0, "failed": 1, "blocked": 0, "not_run": 0, "skipped": 0})
+        self.assertEqual(payload["projects"][0]["status"], "failed")
+        self.assertIn("repository is missing", payload["projects"][0]["detail"])
+        self.assertFalse(payload["execution_started"])
+
     def test_workspace_test_text_reports_start_and_completion_progress(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)

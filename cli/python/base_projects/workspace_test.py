@@ -18,12 +18,11 @@ from base_projects.workspace_repo_inspection import inspect_workspace_repo
 from base_projects.workspace_scanner import ProjectDiscoveryError
 from base_projects.workspace_process import run_workspace_subprocess
 from base_projects.project_commands import test_command as project_test_command
+from base_projects.test_preflight import project_test_trust_status
 from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
-from base_setup.manifest import read_manifest
-from base_setup.manifest_loader import ManifestError
+from base_setup.manifest_model import BaseManifest
 from base_setup.manifest_trust import ManifestCommandTrustStore
-from base_setup.manifest_trust import compute_trust_identity
 
 
 WorkspaceTestAction = Literal["test", "skip"]
@@ -38,6 +37,7 @@ class WorkspaceTestTarget:
     manifest_path: Path | None
     project_name: str | None
     action: WorkspaceTestAction
+    manifest: BaseManifest | None = None
     reason: str | None = None
     required: bool = True
     fatal: bool = False
@@ -194,6 +194,7 @@ def workspace_test_manifest_target(
         name=repo.name,
         root=inspection.root,
         manifest_path=inspection.manifest_path,
+        manifest=manifest,
         project_name=manifest.project_name,
         action="test",
         required=repo.required,
@@ -290,35 +291,17 @@ def workspace_test_command(
         print_workspace_test_preflight(targets, preflights)
 
     if dry_run or preflight_blocked or preflight_failed:
-        results = (
-            blocked_workspace_test_results(targets, preflights)
-            if (preflight_blocked or preflight_failed)
-            else dry_run_workspace_test_results(targets, preflights)
+        return render_workspace_test_plan(
+            workspace_root,
+            workspace_manifest,
+            targets,
+            preflights,
+            fail_fast=fail_fast,
+            output_format=output_format,
+            dry_run=dry_run,
+            preflight_blocked=preflight_blocked,
+            preflight_failed=preflight_failed,
         )
-        counts = WorkspaceTestCounts()
-        for _, result in results:
-            counts = update_workspace_test_counts(counts, result)
-        if output_format == "text":
-            if preflight_blocked or preflight_failed:
-                print_workspace_test_blocked_summary(targets, preflight_blocked, preflight_failed)
-            else:
-                print("Workspace test plan complete: no project test commands were executed.")
-            for target, result in results:
-                print_workspace_test_result(target, result, show_output=False)
-            print_workspace_test_summary(counts, execution_started=False)
-        else:
-            render_workspace_test_json(
-                workspace_root,
-                workspace_manifest,
-                targets,
-                results,
-                counts,
-                fail_fast=fail_fast,
-                preflight_status="blocked" if (preflight_blocked or preflight_failed) else "passed",
-                execution_started=False,
-                dry_run=dry_run,
-            )
-        return base_cli.ExitCode.FAILURE if (preflight_blocked or preflight_failed) else base_cli.ExitCode.SUCCESS
 
     counts = WorkspaceTestCounts()
     results: list[tuple[WorkspaceTestTarget, WorkspaceTestResult]] = []
@@ -361,6 +344,52 @@ def workspace_test_command(
     return base_cli.ExitCode.FAILURE if counts.failed or counts.blocked else base_cli.ExitCode.SUCCESS
 
 
+# pylint: disable=too-many-arguments
+def render_workspace_test_plan(
+    workspace_root: Path,
+    workspace_manifest: WorkspaceManifest,
+    targets: tuple[WorkspaceTestTarget, ...],
+    preflights: dict[str, WorkspaceTestPreflight],
+    *,
+    fail_fast: bool,
+    output_format: str,
+    dry_run: bool,
+    preflight_blocked: bool,
+    preflight_failed: bool,
+) -> int:
+    results = (
+        blocked_workspace_test_results(targets, preflights)
+        if (preflight_blocked or preflight_failed)
+        else dry_run_workspace_test_results(targets, preflights)
+    )
+    counts = WorkspaceTestCounts()
+    for _, result in results:
+        counts = update_workspace_test_counts(counts, result)
+    if output_format == "text":
+        if preflight_blocked or preflight_failed:
+            print_workspace_test_blocked_summary(targets, preflight_blocked, preflight_failed)
+        elif counts.failed or counts.blocked:
+            print("Workspace test plan failed: a required project selection cannot run.")
+        else:
+            print("Workspace test plan complete: no project test commands were executed.")
+        for target, result in results:
+            print_workspace_test_result(target, result, show_output=False)
+        print_workspace_test_summary(counts, execution_started=False)
+    else:
+        render_workspace_test_json(
+            workspace_root,
+            workspace_manifest,
+            targets,
+            results,
+            counts,
+            fail_fast=fail_fast,
+            preflight_status="blocked" if (preflight_blocked or preflight_failed) else "passed",
+            execution_started=False,
+            dry_run=dry_run,
+        )
+    return base_cli.ExitCode.FAILURE if counts.failed or counts.blocked else base_cli.ExitCode.SUCCESS
+
+
 def workspace_test_preflight(
     targets: tuple[WorkspaceTestTarget, ...],
 ) -> dict[str, WorkspaceTestPreflight]:
@@ -375,21 +404,13 @@ def workspace_test_preflight(
                 "failed", detail="test target is missing its manifest path"
             )
             continue
-        try:
-            manifest = read_manifest(target.manifest_path)
-            command_config = project_test_command(manifest.test) if manifest.test is not None else None
-            if command_config is None:
-                preflights[target.name] = WorkspaceTestPreflight(
-                    "failed", detail="project does not declare a test command"
-                )
-                continue
-            identity = compute_trust_identity(manifest)
-            trust_status = trust_store.status(identity)
-        except (ManifestError, OSError, ValueError) as exc:
+        if target.manifest is None:
             preflights[target.name] = WorkspaceTestPreflight(
-                "failed", detail=f"could not preflight project test: {exc}"
+                "failed", detail="test target is missing its parsed manifest"
             )
             continue
+        command_config = project_test_command(target.manifest.test)
+        trust_status = project_test_trust_status(target.manifest, trust_store=trust_store)
 
         command = workspace_test_command_text(command_config.command, command_config.runner)
         if trust_status.is_allowed:
@@ -453,7 +474,8 @@ def dry_run_workspace_test_results(
     for target in targets:
         preflight = preflights[target.name]
         if target.action == "skip":
-            result = WorkspaceTestResult("skipped", target.reason)
+            status: WorkspaceTestStatus = "failed" if target.fatal else "skipped"
+            result = WorkspaceTestResult(status, target.reason)
         else:
             result = WorkspaceTestResult(
                 "not_run",
