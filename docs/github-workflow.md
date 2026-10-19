@@ -489,6 +489,16 @@ worktree and local branch; the remote branch remains for
 GitHub verification failures and rerun the preview before applying it with
 `--yes`.
 
+Worktree pruning only handles branch-attached worktrees with valid linked
+worktree metadata. If a branch-attached path still exists but is no longer a
+valid Git worktree, Base retains the path and local branch, reports a failure,
+and does not delete the directory contents. Inspect or preserve anything needed
+from that path, then use `git worktree prune --dry-run -v` followed by
+`git worktree prune -v` to remove stale Git administrative records. Git's prune
+only removes stale worktree metadata; it does not delete an orphaned directory.
+Detached worktrees are intentionally outside Base's branch/PR cleanup boundary
+and should be handled through the explicit Git command after review.
+
 If a worktree is removed but its local branch cannot be deleted, the command
 retains the branch, reports the incomplete cleanup, and exits nonzero. Resolve
 the branch condition before treating the cleanup as complete.
