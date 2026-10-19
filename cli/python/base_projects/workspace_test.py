@@ -23,6 +23,7 @@ from base_setup.process import decode_subprocess_output
 from base_setup.process import redact_command_output
 from base_setup.manifest_model import BaseManifest
 from base_setup.manifest_trust import ManifestCommandTrustStore
+from base_setup.manifest_trust_guidance import blocked_command_summary
 
 
 WorkspaceTestAction = Literal["test", "skip"]
@@ -422,10 +423,7 @@ def workspace_test_preflight(
                 "blocked",
                 command=command,
                 trust_status="blocked",
-                detail=(
-                    "manifest command trust is blocked "
-                    f"({trust_status.reason})"
-                ),
+                detail=blocked_command_summary(trust_status),
             )
     return preflights
 
