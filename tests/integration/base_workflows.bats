@@ -526,7 +526,7 @@ YAML
     run_basectl workspace test --workspace "$TEST_WORKSPACE" --manifest "$workspace_manifest" --fail-fast --format json
     [ "$status" -eq 1 ]
     [[ "$output" == *'"failed": 1'* ]]
-    [[ "$output" == *'"skipped": 1'* ]]
+    [[ "$output" == *'"not_run": 1'* ]]
     [ ! -e "$TEST_STATE_DIR/fake-test.out" ]
 }
 

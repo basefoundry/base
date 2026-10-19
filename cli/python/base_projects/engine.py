@@ -121,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
     "--dry-run",
     is_flag=True,
     dry_run=True,
-    help="Show planned clone, pull, or configure work without writing.",
+    help="Show a workspace test plan or planned clone, pull, or configure work without execution or writing.",
 )
 @base_cli.option("--apply", is_flag=True, help="Apply workspace configure changes after the plan is shown.")
 @base_cli.option("--yes", is_flag=True, help="Approve workspace setup or configure changes that require confirmation.")

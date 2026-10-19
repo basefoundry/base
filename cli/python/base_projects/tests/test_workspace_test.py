@@ -15,6 +15,9 @@ from base_projects import engine
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import WorkspaceRepoInspection
 from base_projects.workspace_test import workspace_test_manifest_target
+from base_setup.manifest import read_manifest
+from base_setup.manifest_trust import ManifestCommandTrustStore
+from base_setup.manifest_trust import compute_trust_identity
 
 
 def write_workspace_manifest(path: Path, repositories: tuple[str, ...]) -> None:
@@ -57,6 +60,15 @@ def write_fake_basectl(base_home: Path) -> Path:
     return basectl
 
 
+def allow_workspace_test_manifests(workspace: Path, trusted_projects: tuple[str, ...] | None) -> None:
+    trust_store = ManifestCommandTrustStore()
+    for manifest_path in workspace.rglob("base_manifest.yaml"):
+        manifest = read_manifest(manifest_path)
+        if trusted_projects is not None and manifest.project_name not in trusted_projects:
+            continue
+        trust_store.allow(compute_trust_identity(manifest), base_version="test")
+
+
 def write_binary_output_basectl(base_home: Path) -> Path:
     basectl = base_home / "bin" / "basectl"
     basectl.parent.mkdir(parents=True, exist_ok=True)
@@ -75,6 +87,8 @@ def invoke_workspace_test(
     args: list[str],
     base_home: Path,
     home: Path,
+    *,
+    trusted_projects: tuple[str, ...] | None = None,
 ) -> tuple[int, str, str]:
     stdout = StringIO()
     stderr = StringIO()
@@ -85,6 +99,8 @@ def invoke_workspace_test(
         "BASE_PROJECT_MANIFEST": "",
     }
     with mock.patch.dict(os.environ, env):
+        workspace = Path(args[args.index("--workspace") + 1])
+        allow_workspace_test_manifests(workspace, trusted_projects)
         with redirect_stdout(stdout), redirect_stderr(stderr):
             status = engine.main(args)
     return status, stdout.getvalue(), stderr.getvalue()
@@ -137,7 +153,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
         payload = json.loads(stdout)
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertEqual(payload["counts"], {"passed": 2, "failed": 0, "skipped": 0})
+        self.assertEqual(payload["counts"], {"passed": 2, "failed": 0, "blocked": 0, "not_run": 0, "skipped": 0})
         self.assertEqual(payload["selected_projects"], ["alpha", "beta"])
         self.assertEqual([project["status"] for project in payload["projects"]], ["passed", "passed"])
         self.assertEqual(run.call_count, 2)
@@ -235,7 +251,7 @@ class WorkspaceTestCommandTests(unittest.TestCase):
 
         payload = json.loads(stdout)
         self.assertEqual(status, 1)
-        self.assertEqual(payload["counts"], {"passed": 2, "failed": 1, "skipped": 0})
+        self.assertEqual(payload["counts"], {"passed": 2, "failed": 1, "blocked": 0, "not_run": 0, "skipped": 0})
         self.assertEqual(payload["projects"][1]["exit_code"], 7)
         self.assertEqual(payload["projects"][1]["stderr"], "beta failed\n")
         self.assertEqual(stderr, "")
@@ -276,9 +292,9 @@ class WorkspaceTestCommandTests(unittest.TestCase):
         payload = json.loads(stdout)
         self.assertEqual(status, 1)
         self.assertEqual(run.call_count, 1)
-        self.assertEqual(payload["counts"], {"passed": 0, "failed": 1, "skipped": 2})
-        self.assertEqual(payload["projects"][1]["status"], "skipped")
-        self.assertIn("--fail-fast", payload["projects"][1]["detail"])
+        self.assertEqual(payload["counts"], {"passed": 0, "failed": 1, "blocked": 0, "not_run": 2, "skipped": 0})
+        self.assertEqual(payload["projects"][1]["status"], "not_run")
+        self.assertIn("execution was stopped", payload["projects"][1]["detail"])
         self.assertEqual(stderr, "")
 
     def test_workspace_test_projects_filter_runs_only_selected_project(self) -> None:
@@ -350,6 +366,182 @@ class WorkspaceTestCommandTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
         self.assertEqual(run.call_count, 1)
-        self.assertEqual(payload["counts"], {"passed": 1, "failed": 0, "skipped": 1})
+        self.assertEqual(payload["counts"], {"passed": 1, "failed": 0, "blocked": 0, "not_run": 0, "skipped": 1})
         self.assertEqual(payload["projects"][1]["status"], "skipped")
         self.assertIn("does not declare a test command", payload["projects"][1]["detail"])
+
+    def test_workspace_test_preflights_all_projects_before_running_any_test(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_fake_basectl(base_home)
+            write_workspace_manifest(manifest, ("trusted", "blocked"))
+            write_test_manifest(workspace / "trusted", "trusted")
+            write_test_manifest(workspace / "blocked", "blocked")
+
+            with mock.patch(
+                "base_projects.workspace_test.run_workspace_subprocess",
+                return_value=subprocess.CompletedProcess([], 0, "should not run\n", ""),
+            ) as run:
+                status, stdout, stderr = invoke_workspace_test(
+                    ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
+                    base_home,
+                    home,
+                    trusted_projects=("trusted",),
+                )
+                payload = json.loads(stdout)
+                self.assertEqual(status, 1)
+                self.assertEqual(stderr, "")
+                self.assertEqual(run.call_count, 0)
+                self.assertEqual(payload["preflight"], "blocked")
+                self.assertFalse(payload["execution_started"])
+                self.assertEqual(
+                    payload["counts"],
+                    {"passed": 0, "failed": 0, "blocked": 1, "not_run": 1, "skipped": 0},
+                )
+                self.assertEqual(
+                    [project["status"] for project in payload["projects"]], ["not_run", "blocked"]
+                )
+
+                manifest.write_text(
+                    "\n".join(
+                        [
+                            "schema_version: 1",
+                            "workspace:",
+                            "  name: test-workspace",
+                            "repos:",
+                            "  - name: blocked",
+                            "  - name: trusted",
+                            "",
+                        ]
+                    ),
+                    encoding="utf-8",
+                )
+                run.reset_mock()
+                status, stdout, stderr = invoke_workspace_test(
+                    ["test", "--workspace", str(workspace), "--manifest", str(manifest), "--format", "json"],
+                    base_home,
+                    home,
+                    trusted_projects=("trusted",),
+                )
+                payload = json.loads(stdout)
+                self.assertEqual(status, 1)
+                self.assertEqual(stderr, "")
+                self.assertEqual(run.call_count, 0)
+                self.assertEqual(
+                    [project["status"] for project in payload["projects"]], ["blocked", "not_run"]
+                )
+
+    def test_workspace_test_dry_run_reports_plan_without_running_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_fake_basectl(base_home)
+            write_workspace_manifest(manifest, ("alpha",))
+            write_test_manifest(workspace / "alpha", "alpha")
+
+            with mock.patch("base_projects.workspace_test.run_workspace_subprocess") as run:
+                status, stdout, stderr = invoke_workspace_test(
+                    [
+                        "test",
+                        "--workspace",
+                        str(workspace),
+                        "--manifest",
+                        str(manifest),
+                        "--dry-run",
+                        "--format",
+                        "json",
+                    ],
+                    base_home,
+                    home,
+                )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertFalse(run.called)
+        self.assertTrue(payload["dry_run"])
+        self.assertFalse(payload["execution_started"])
+        self.assertEqual(payload["projects"][0]["status"], "not_run")
+
+    def test_workspace_test_dry_run_fails_for_required_missing_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            workspace.mkdir()
+            write_workspace_manifest(manifest, ("missing",))
+
+            status, stdout, stderr = invoke_workspace_test(
+                [
+                    "test",
+                    "--workspace",
+                    str(workspace),
+                    "--manifest",
+                    str(manifest),
+                    "--dry-run",
+                    "--format",
+                    "json",
+                ],
+                base_home,
+                home,
+            )
+
+        payload = json.loads(stdout)
+        self.assertEqual(status, 1)
+        self.assertEqual(stderr, "")
+        self.assertEqual(payload["counts"], {"passed": 0, "failed": 1, "blocked": 0, "not_run": 0, "skipped": 0})
+        self.assertEqual(payload["projects"][0]["status"], "failed")
+        self.assertIn("repository is missing", payload["projects"][0]["detail"])
+        self.assertFalse(payload["execution_started"])
+
+    def test_workspace_test_text_reports_start_and_completion_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            home = root / "home"
+            base_home = root / "base"
+            workspace = root / "workspace"
+            manifest = root / "workspace.yaml"
+            home.mkdir()
+            base_home.mkdir()
+            write_fake_basectl(base_home)
+            write_workspace_manifest(manifest, ("alpha", "beta"))
+            write_test_manifest(workspace / "alpha", "alpha")
+            write_test_manifest(workspace / "beta", "beta")
+
+            with mock.patch(
+                "base_projects.workspace_test.run_workspace_subprocess",
+                side_effect=[
+                    subprocess.CompletedProcess([], 0, "alpha tests\n", ""),
+                    subprocess.CompletedProcess([], 0, "beta tests\n", ""),
+                ],
+            ):
+                status, stdout, stderr = invoke_workspace_test(
+                    ["test", "--workspace", str(workspace), "--manifest", str(manifest)],
+                    base_home,
+                    home,
+                )
+
+        self.assertEqual(status, 0)
+        self.assertEqual(stderr, "")
+        self.assertIn("Workspace test preflight: 2 selected projects.", stdout)
+        self.assertIn("[1/2] START project 'alpha' (trust=allowed)", stdout)
+        self.assertIn("[2/2] START project 'beta' (trust=allowed)", stdout)
+        self.assertIn("PASS project 'alpha'", stdout)
+        self.assertIn("PASS project 'beta'", stdout)
+        self.assertIn("Workspace test completed:", stdout)
+        self.assertIn("execution_started=yes", stdout)

@@ -1667,6 +1667,9 @@
         "--project": {
           "takes_value": true
         },
+        "--release": {
+          "takes_value": true
+        },
         "-h": {
           "takes_value": false
         },
@@ -2514,11 +2517,177 @@
       ],
       "type": "object"
     },
+    "workspace-status.json": {
+      "$defs": {
+        "project": {
+          "properties": {
+            "default_branch": {
+              "type": "string"
+            },
+            "expected": {
+              "type": "boolean"
+            },
+            "issues": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "last_check": {
+              "properties": {
+                "checked_at": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "error",
+                    "ok",
+                    "warn"
+                  ]
+                }
+              },
+              "required": [
+                "checked_at",
+                "status"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "manifest": {
+              "type": "string"
+            },
+            "manifest_path": {
+              "type": [
+                "null",
+                "string"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            },
+            "python_runtime": {
+              "$ref": "#/$defs/python_runtime"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "repository": {
+              "type": "string"
+            },
+            "required": {
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "error",
+                "ok",
+                "warn"
+              ]
+            },
+            "url": {
+              "type": "string"
+            },
+            "venv": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "issues",
+            "last_check",
+            "manifest",
+            "manifest_path",
+            "name",
+            "path",
+            "status",
+            "venv"
+          ],
+          "type": "object"
+        },
+        "python_runtime": {
+          "properties": {
+            "manager": {
+              "type": "string"
+            },
+            "pyproject_requires_python": {
+              "type": "string"
+            },
+            "python": {
+              "type": "string"
+            },
+            "requires_python": {
+              "type": "string"
+            },
+            "venv": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "manager",
+            "python",
+            "venv",
+            "version"
+          ],
+          "type": "object"
+        }
+      },
+      "properties": {
+        "project_count": {
+          "type": "integer"
+        },
+        "projects": {
+          "items": {
+            "$ref": "#/$defs/project"
+          },
+          "type": "array"
+        },
+        "repository_count": {
+          "type": "integer"
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "status": {
+          "enum": [
+            "error",
+            "ok",
+            "warn"
+          ]
+        },
+        "workspace": {
+          "type": "string"
+        },
+        "workspace_manifest": {
+          "$ref": "workspace-manifest.json"
+        }
+      },
+      "required": [
+        "project_count",
+        "projects",
+        "schema_version",
+        "status",
+        "workspace"
+      ],
+      "type": "object"
+    },
     "workspace-test.json": {
       "$defs": {
         "counts": {
           "properties": {
+            "blocked": {
+              "type": "integer"
+            },
             "failed": {
+              "type": "integer"
+            },
+            "not_run": {
               "type": "integer"
             },
             "passed": {
@@ -2529,7 +2698,9 @@
             }
           },
           "required": [
+            "blocked",
             "failed",
+            "not_run",
             "passed",
             "skipped"
           ],
@@ -2537,8 +2708,17 @@
         },
         "project": {
           "properties": {
+            "command": {
+              "type": "string"
+            },
             "detail": {
               "type": "string"
+            },
+            "duration_seconds": {
+              "type": "number"
+            },
+            "executed": {
+              "type": "boolean"
             },
             "exit_code": {
               "type": "integer"
@@ -2560,7 +2740,9 @@
             },
             "status": {
               "enum": [
+                "blocked",
                 "failed",
+                "not_run",
                 "passed",
                 "skipped"
               ]
@@ -2570,6 +2752,12 @@
             },
             "stdout": {
               "type": "string"
+            },
+            "trust_status": {
+              "enum": [
+                "allowed",
+                "blocked"
+              ]
             }
           },
           "required": [
@@ -2586,8 +2774,20 @@
         "counts": {
           "$ref": "#/$defs/counts"
         },
+        "dry_run": {
+          "type": "boolean"
+        },
+        "execution_started": {
+          "type": "boolean"
+        },
         "fail_fast": {
           "type": "boolean"
+        },
+        "preflight": {
+          "enum": [
+            "blocked",
+            "passed"
+          ]
         },
         "project_count": {
           "type": "integer"
@@ -2599,7 +2799,7 @@
           "type": "array"
         },
         "schema_version": {
-          "const": 1
+          "const": 2
         },
         "selected_projects": {
           "items": {
@@ -2616,7 +2816,10 @@
       },
       "required": [
         "counts",
+        "dry_run",
+        "execution_started",
         "fail_fast",
+        "preflight",
         "project_count",
         "projects",
         "schema_version",
