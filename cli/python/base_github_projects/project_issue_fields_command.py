@@ -42,15 +42,24 @@ def issue_set_fields_command(args: ProjectArguments, ops: ProjectOperations) -> 
     if not updates:
         raise ops.ProjectUsageError("At least one field option must be provided.")
     issue_id = ops.fetch_issue_id(repo_owner, repo_name, args.issue_number or 0)
-    item_id = ops.find_project_item_id(project.project_id, issue_id)
+    item_state = ops.find_project_item_state(project.project_id, issue_id)
     if args.dry_run:
         print(f"[DRY-RUN] Would add issue #{args.issue_number} to Project '{args.project_title}' if needed.")
         for update in updates:
             print(f"[DRY-RUN] Would set {update.field_name} to {update.option_name}.")
         return base_cli.ExitCode.SUCCESS
-    if item_id is None:
+    if item_state is None:
         item_id = ops.add_project_item(project.project_id, issue_id)
-    for update in updates:
+        pending_updates = updates
+    else:
+        item_id = item_state.item_id
+        pending_updates = tuple(
+            update for update in updates if item_state.values.get(update.field_name) != update.option_name
+        )
+    for update in pending_updates:
         ops.update_item_field(project.project_id, item_id, update)
-    print(f"✓ Updated Project metadata for issue #{args.issue_number}")
+    if pending_updates:
+        print(f"✓ Updated Project metadata for issue #{args.issue_number}")
+    else:
+        print(f"✓ Project metadata already current for issue #{args.issue_number}")
     return base_cli.ExitCode.SUCCESS

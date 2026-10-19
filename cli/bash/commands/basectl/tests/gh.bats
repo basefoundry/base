@@ -130,10 +130,16 @@ EOF
     cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
-if [[ "${BASE_GH_TEST_PROJECT_STATUS_MODE:-success}" == "failure" ]]; then
-    printf 'simulated Project status update failure\n' >&2
-    exit 42
-fi
+case "${BASE_GH_TEST_PROJECT_STATUS_MODE:-success}" in
+    failure)
+        printf 'simulated Project status update failure\n' >&2
+        exit 42
+        ;;
+    missing-project)
+        printf "ERROR: Project 'base' was not found for owner 'upstream'.\n" >&2
+        exit 1
+        ;;
+esac
 exit 0
 EOF
     chmod +x "$TEST_MOCKBIN/project-wrapper"
@@ -592,6 +598,10 @@ run_gh_subcommand() {
     [[ "$output" == *"--repo, -R <owner/name>"* ]]
     [[ "$output" == *"--category <category>"* ]]
     [[ "$output" == *"--title <title>"* ]]
+    [[ "$output" == *"--project <title>"* ]]
+    [[ "$output" == *"--project-owner <login>"* ]]
+    [[ "$output" == *"--no-project"* ]]
+    [[ "$output" == *"--allow-cross-repo"* ]]
     [[ "$output" != *"basectl gh issue create"* ]]
     [[ "$output" != *"ERROR:"* ]]
 }
@@ -1403,6 +1413,42 @@ EOF
     [[ "$output" == *"Unable to move issue #117 to Project Status=In Progress."* ]]
     [[ "$output" == *"Worktree handoff was not printed"* ]]
     [[ "$output" != *"To create a worktree:"* ]]
+}
+
+@test "basectl gh issue start preserves the handoff when no linked Project exists" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_PROJECT_STATUS_MODE=missing-project run_gh_subcommand issue start 117 --repo upstream/base
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"enhancement/117-"*"-add-basectl-gh-workflow-for-issues"* ]]
+    [[ "$output" == *"No linked Project was found"* ]]
+    [[ "$output" == *"To create a worktree:"* ]]
+    [[ "$output" == *"Project status: not updated (no linked Project found; handoff continued)."* ]]
+}
+
+@test "basectl gh issue start supports an intentional Project-independent handoff" {
+    local repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+
+    BASE_GH_TEST_CWD="$repo" run_gh_subcommand issue start 117 --no-project
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Project status: skipped (--no-project)."* ]]
+    [ ! -e "$TEST_STATE_DIR/wrapper-args" ]
 }
 
 @test "basectl gh issue start parses the selected leaf through the shared helper" {

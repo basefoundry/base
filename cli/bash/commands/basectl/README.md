@@ -118,8 +118,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   categories. `issue start` and `pr create` require the branch prefix to match
   the issue's single standard category label. `issue start` selects that issue
   repository from `--repo`/`-R`, then `GH_REPO`, then `origin`, moves the linked
-  Project item to `In Progress`, and verifies that transition before printing
-  the worktree handoff. Issue creation
+  Project item to `In Progress` when available, and verifies that transition
+  before printing the worktree handoff. A missing or unlinked Project is
+  reported as a warning; `--no-project` intentionally skips the transition.
+  Issue creation
   is unassigned by default unless `--assignee` is passed or
   `.github/base-project.yml` sets `project.issue_defaults.assignee`.
   `basectl gh auth status` reports the active credential state without printing

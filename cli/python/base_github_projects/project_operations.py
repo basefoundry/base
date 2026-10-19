@@ -13,6 +13,7 @@ from .project_model import OwnerInfo
 from .project_model import ProjectArguments
 from .project_model import ProjectField
 from .project_model import ProjectInfo
+from .project_model import ProjectItemState
 from .project_model import ProjectSchema
 from .project_model import ProjectView
 from .project_model import SelectFieldSpec
@@ -72,6 +73,7 @@ class ProjectOperations:
     fetch_project_views: Callable[[str], tuple[ProjectView, ...]]
     find_owner_and_project: Callable[[str, str], OwnerInfo]
     find_project_item_id: Callable[[str, str], str | None]
+    find_project_item_state: Callable[[str, str], ProjectItemState | None]
     issue_field_values_for_args: Callable[[ProjectArguments], dict[str, str]]
     link_project_to_repository: Callable[[str, str], None]
     missing_option_names: Callable[[ProjectField, SelectFieldSpec], tuple[str, ...]]

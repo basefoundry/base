@@ -54,7 +54,7 @@ Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [--allow-cross-repo] [project options...]
   basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>] [--format <text|json>]
-  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>]
+  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>] [--project <title>] [--project-owner <login>] [--no-project] [--allow-cross-repo]
   basectl gh pr create [--no-fixes] [gh options...]
   basectl gh pr status [gh options...]
   basectl gh pr checks [gh options...]
@@ -98,7 +98,8 @@ Notes:
   - When the GitHub repo is known, issue create also adds the issue to the
     repo-named Project and applies defaults from .github/base-project.yml.
   - Issue start resolves its issue repository from --repo/-R, then GH_REPO,
-    then the origin remote.
+    then the origin remote. It updates the linked Project to In Progress when
+    available; use --no-project for an intentional Project-independent start.
   - PR creation auto-injects Fixes #<issue> when the branch follows the Base
     naming convention. If base_manifest.yaml declares github.pr, the generated
     body also follows that project policy. Pass --no-fixes to suppress body
@@ -882,6 +883,14 @@ base_gh_project_issue_set_fields_command() {
     printf '\n'
 }
 
+base_gh_log_warn_lines() {
+    local output="$1" line
+
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -n "$line" ]] && base_std_log_warn "$line"
+    done <<<"$output"
+}
+
 base_gh_apply_project_issue_fields() {
     local project_title="$1" config_path="$2" project_size="$3" issue_number="$4"
     local output status line
@@ -897,11 +906,7 @@ base_gh_apply_project_issue_fields() {
         return 0
     fi
 
-    if [[ -n "$output" ]]; then
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            [[ -n "$line" ]] && base_std_log_warn "$line"
-        done <<<"$output"
-    fi
+    [[ -n "$output" ]] && base_gh_log_warn_lines "$output"
     base_std_log_warn "Issue #$issue_number was created, but Project metadata is incomplete."
     base_std_log_warn "Project field update failed. Set fields manually or resume the metadata update with:"
     base_std_log_warn "$(base_gh_project_issue_set_fields_command "$@")"
@@ -909,12 +914,12 @@ base_gh_apply_project_issue_fields() {
 }
 
 base_gh_set_issue_in_progress() {
-    local issue_number="$1" github_repo="$2"
-    local project_title project_owner output status line
+    local issue_number="$1" github_repo="$2" project_title="${3:-}" project_owner="${4:-}"
+    local allow_cross_repo="${5:-0}" output status
     local -a field_args
 
-    project_title="$(base_gh_default_project_title "$github_repo")"
-    project_owner="$(base_gh_project_owner_from_repo "$github_repo")"
+    [[ -n "$project_title" ]] || project_title="$(base_gh_default_project_title "$github_repo")"
+    [[ -n "$project_owner" ]] || project_owner="$(base_gh_project_owner_from_repo "$github_repo")"
     field_args=(
         "$issue_number"
         --project "$project_title"
@@ -922,17 +927,22 @@ base_gh_set_issue_in_progress() {
         --repo "$github_repo"
         --status "In Progress"
     )
+    ((allow_cross_repo)) && field_args+=(--allow-cross-repo)
     output="$(base_gh_project_issue_set_fields "${field_args[@]}" 2>&1)"
     status=$?
     if ((status == 0)); then
+        printf 'verified\n'
         return 0
     fi
 
-    if [[ -n "$output" ]]; then
-        while IFS= read -r line || [[ -n "$line" ]]; do
-            [[ -n "$line" ]] && base_std_log_warn "$line"
-        done <<<"$output"
+    if [[ "$output" == *" was not found for owner "* || "$output" == *" is not linked to repository "* || "$output" == *"GitHub owner "*" was not found."* ]]; then
+        [[ -n "$output" ]] && base_gh_log_warn_lines "$output"
+        base_std_log_warn "No linked Project was found for issue #$issue_number; continuing with the worktree handoff."
+        base_std_log_warn "Use --project/--project-owner for an alternate Project or --no-project to acknowledge a Project-independent start."
+        printf 'unavailable\n'
+        return 0
     fi
+    [[ -n "$output" ]] && base_gh_log_warn_lines "$output"
     base_std_log_warn "Unable to move issue #$issue_number to Project Status=In Progress."
     base_std_log_warn "Worktree handoff was not printed because the lifecycle transition was not verified."
     base_std_log_warn "Fix: run '$(base_gh_project_issue_set_fields_command "${field_args[@]}")'."
