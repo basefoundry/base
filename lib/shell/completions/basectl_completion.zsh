@@ -1075,6 +1075,10 @@ _base_basectl_completion() {
                                 '--category[Issue category]:category:(bug enhancement documentation ci security)' \
                                 '--title[Issue title]:title:' \
                                 '(-R --repo)'{-R,--repo}'[Repository containing the issue]:repo:' \
+                                '--project[GitHub Project title]:title:' \
+                                '--project-owner[GitHub Project owner]:owner:' \
+                                '--no-project[Skip the Project status transition]' \
+                                '--allow-cross-repo[Allow updating a Project not linked to the issue repository]' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         readiness)

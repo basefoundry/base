@@ -11,6 +11,7 @@ setup() {
     TEST_STATE_DIR="$TEST_TMPDIR/state"
     TEST_BASH_BIN_DIR="$(dirname "$(command -v bash)")"
     mkdir -p "$TEST_HOME" "$TEST_MOCKBIN" "$TEST_STATE_DIR"
+    unset BASE_GH_PROJECT_WRAPPER
     export BASH_ENV="$BASE_REPO_ROOT/cli/bash/commands/basectl/tests/command_protocol_fixtures.bash"
 }
 

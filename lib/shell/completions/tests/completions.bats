@@ -598,6 +598,10 @@ run_zsh_positional_completion() {
     [[ "$block" == *"-R"* ]]
     [[ "$block" == *"--category"* ]]
     [[ "$block" == *"--title"* ]]
+    [[ "$block" == *"--project"* ]]
+    [[ "$block" == *"--project-owner"* ]]
+    [[ "$block" == *"--no-project"* ]]
+    [[ "$block" == *"--allow-cross-repo"* ]]
     [[ "$block" != *"--assignee"* ]]
 }
 

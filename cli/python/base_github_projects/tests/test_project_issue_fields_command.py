@@ -73,6 +73,10 @@ def base_operations() -> ProjectOperations:
         assert (project_id, issue_id) == ("project-id", "issue-id")
         return "item-id"
 
+    def find_item_state(project_id: str, issue_id: str) -> engine.ProjectItemState:
+        assert (project_id, issue_id) == ("project-id", "issue-id")
+        return engine.ProjectItemState(item_id="item-id", values={})
+
     return replace(
         engine.project_operations(),
         require_owner=lambda args: args.owner or pytest.fail("owner is required"),
@@ -87,6 +91,7 @@ def base_operations() -> ProjectOperations:
         split_repo=engine.split_repo,
         fetch_issue_id=fetch_issue,
         find_project_item_id=find_item,
+        find_project_item_state=find_item_state,
         add_project_item=unexpected("add_project_item"),
         update_item_field=unexpected("update_item_field"),
     )
@@ -196,7 +201,7 @@ def test_allow_cross_repo_preserves_explicit_cross_project_behavior(
             if (owner, name, number) == ("basefoundry", "base-cli", 1604)
             else pytest.fail("unexpected issue lookup")
         ),
-        find_project_item_id=find_item,
+        find_project_item_state=find_item,
         add_project_item=add_item,
         update_item_field=update_item,
     )
@@ -249,7 +254,7 @@ def test_dry_run_with_missing_item_performs_no_mutations(
 ) -> None:
     ops = replace(
         base_operations(),
-        find_project_item_id=lambda _project_id, _issue_id: None,
+        find_project_item_state=lambda _project_id, _issue_id: None,
     )
 
     status = project_issue_fields_command.issue_set_fields_command(issue_arguments(dry_run=True), ops)
@@ -267,16 +272,16 @@ def test_existing_item_receives_multiple_updates_in_resolved_order(
 ) -> None:
     events: list[tuple[str, ...]] = []
 
-    def find_item(project_id: str, issue_id: str) -> str:
+    def find_item(project_id: str, issue_id: str) -> engine.ProjectItemState:
         events.append(("find", project_id, issue_id))
-        return "existing-item"
+        return engine.ProjectItemState(item_id="existing-item", values={})
 
     def update_item(project_id: str, item_id: str, update: engine.FieldUpdate) -> None:
         events.append(("update", project_id, item_id, update.field_name, update.option_name))
 
     ops = replace(
         base_operations(),
-        find_project_item_id=find_item,
+        find_project_item_state=find_item,
         update_item_field=update_item,
     )
 
@@ -306,7 +311,7 @@ def test_missing_item_is_added_before_field_updates() -> None:
 
     ops = replace(
         base_operations(),
-        find_project_item_id=find_item,
+        find_project_item_state=find_item,
         add_project_item=add_item,
         update_item_field=update_item,
     )
@@ -320,6 +325,23 @@ def test_missing_item_is_added_before_field_updates() -> None:
         ("update", "project-id", "new-item", "Status", "In Progress"),
         ("update", "project-id", "new-item", "Priority", "P2"),
     ]
+
+
+def test_existing_item_with_current_values_skips_field_mutations(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ops = replace(
+        base_operations(),
+        find_project_item_state=lambda _project_id, _issue_id: engine.ProjectItemState(
+            item_id="existing-item",
+            values={"Status": "In Progress", "Priority": "P2"},
+        ),
+    )
+
+    status = project_issue_fields_command.issue_set_fields_command(issue_arguments(), ops)
+
+    assert status == base_cli.ExitCode.SUCCESS
+    assert capsys.readouterr().out == "✓ Project metadata already current for issue #1604\n"
 
 
 def test_issue_lookup_failure_propagates_controlled_error_without_mutation() -> None:
@@ -340,7 +362,7 @@ def test_add_item_failure_propagates_controlled_error_before_updates() -> None:
 
     ops = replace(
         base_operations(),
-        find_project_item_id=lambda _project_id, _issue_id: None,
+        find_project_item_state=lambda _project_id, _issue_id: None,
         add_project_item=fail_add,
     )
 

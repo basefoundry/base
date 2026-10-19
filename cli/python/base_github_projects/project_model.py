@@ -59,6 +59,12 @@ class FieldUpdate:
 
 
 @dataclass(frozen=True)
+class ProjectItemState:
+    item_id: str
+    values: dict[str, str]
+
+
+@dataclass(frozen=True)
 class ProjectInfo:
     project_id: str
     title: str

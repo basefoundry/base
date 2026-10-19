@@ -261,6 +261,12 @@ default for one issue. `basectl gh pr create` requires the current branch to
 follow the Base `<category>/<issue>-<YYYYMMDD>-<slug>` convention and
 auto-injects `Fixes #<issue>`; pass `--no-fixes` when the PR should not close
 the issue automatically. An invalid branch fails before `gh pr create` runs.
+`basectl gh issue start` updates the linked repo Project to `In Progress` and
+verifies the transition before printing the worktree handoff. If the target
+repository has no linked Project, it reports that condition and continues;
+pass `--no-project` for an intentional Project-independent handoff, or use
+`--project`, `--project-owner`, and `--allow-cross-repo` for an explicitly
+selected Project.
 When `base_manifest.yaml` declares `github.pr`, PR creation renders the body
 from that project policy and still preserves the issue link.
 
