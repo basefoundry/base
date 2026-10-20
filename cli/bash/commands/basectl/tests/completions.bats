@@ -282,7 +282,19 @@ EOF
             COMP_WORDS=(basectl gh worktree prune --); \
             COMP_CWORD=4; \
             _base_basectl_completion; \
-            printf "gh_worktree_prune_options=%s\n" "${COMPREPLY[*]}"'
+            printf "gh_worktree_prune_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh review ""); \
+            COMP_CWORD=3; \
+            _base_basectl_completion; \
+            printf "gh_review_commands=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh review fetch --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "gh_review_fetch_options=%s\n" "${COMPREPLY[*]}"; \
+            COMP_WORDS=(basectl gh review prune --); \
+            COMP_CWORD=4; \
+            _base_basectl_completion; \
+            printf "gh_review_prune_options=%s\n" "${COMPREPLY[*]}"'
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"complete -F _base_basectl_completion basectl"* ]]
@@ -341,7 +353,7 @@ EOF
     [[ "$output" == *"repo_configure_options=--repo --no-protect-default-branch --project --project-owner --project-schema --initiative-option --copy-project-fields-from --replace-project --no-project --release --dry-run"* ]]
     [[ "$output" == *"repo_agent_guidance_options=--repo --issue --category --repo-name --default-branch --validation-command --pr --dry-run"* ]]
     [[ "$output" == *"repo_installer_template_options=--print --stdout --repo --issue --category --pr --dry-run"* ]]
-    [[ "$output" == *"gh_areas=auth issue pr branch worktree project"* ]]
+    [[ "$output" == *"gh_areas=auth issue pr branch worktree project review"* ]]
     [[ "$output" == *"gh_auth_commands=status refresh"* ]]
     [[ "$output" == *"gh_auth_refresh_options=--hostname --scope --scopes --clipboard --help"* ]]
     [[ "$output" == *"gh_project_commands=doctor configure issue"* ]]
@@ -349,6 +361,9 @@ EOF
     [[ "$output" == *"gh_project_issue_set_fields_options=--repo --project --owner --config --allow-cross-repo --status --priority --area --initiative --size --dry-run"* ]]
     [[ "$output" == *"gh_worktree_commands=prune"* ]]
     [[ "$output" == *"gh_worktree_prune_options=--dry-run --yes --closed-unmerged"* ]]
+    [[ "$output" == *"gh_review_commands=fetch prune"* ]]
+    [[ "$output" == *"gh_review_fetch_options=--name --repo --root --refresh --help"* ]]
+    [[ "$output" == *"gh_review_prune_options=--dry-run --yes --closed-unmerged --pr --root --help"* ]]
 }
 
 @test "Zsh repo pull request helper completions include issue and category options" {

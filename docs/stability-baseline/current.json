@@ -676,6 +676,53 @@
         }
       }
     },
+    "basectl gh review fetch <number>": {
+      "flags": {
+        "--help": {
+          "takes_value": false
+        },
+        "--name": {
+          "takes_value": true
+        },
+        "--refresh": {
+          "takes_value": false
+        },
+        "--repo": {
+          "takes_value": true
+        },
+        "--root": {
+          "takes_value": true
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
+    },
+    "basectl gh review prune": {
+      "flags": {
+        "--closed-unmerged": {
+          "takes_value": false
+        },
+        "--dry-run": {
+          "takes_value": false
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--pr": {
+          "takes_value": true
+        },
+        "--root": {
+          "takes_value": true
+        },
+        "--yes": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
+    },
     "basectl gh worktree prune": {
       "flags": {
         "--closed-unmerged": {
