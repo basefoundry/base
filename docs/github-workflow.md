@@ -261,6 +261,12 @@ default for one issue. `basectl gh pr create` requires the current branch to
 follow the Base `<category>/<issue>-<YYYYMMDD>-<slug>` convention and
 auto-injects `Fixes #<issue>`; pass `--no-fixes` when the PR should not close
 the issue automatically. An invalid branch fails before `gh pr create` runs.
+`basectl gh issue start` updates the linked repo Project to `In Progress` and
+verifies the transition before printing the worktree handoff. If the target
+repository has no linked Project, it reports that condition and continues;
+pass `--no-project` for an intentional Project-independent handoff, or use
+`--project`, `--project-owner`, and `--allow-cross-repo` for an explicitly
+selected Project.
 When `base_manifest.yaml` declares `github.pr`, PR creation renders the body
 from that project policy and still preserves the issue link.
 
@@ -488,6 +494,16 @@ worktree and local branch; the remote branch remains for
 `basectl gh branch prune --remote --closed-unmerged`. Resolve any reported
 GitHub verification failures and rerun the preview before applying it with
 `--yes`.
+
+Worktree pruning only handles branch-attached worktrees with valid linked
+worktree metadata. If a branch-attached path still exists but is no longer a
+valid Git worktree, Base retains the path and local branch, reports a failure,
+and does not delete the directory contents. Inspect or preserve anything needed
+from that path, then use `git worktree prune --dry-run -v` followed by
+`git worktree prune -v` to remove stale Git administrative records. Git's prune
+only removes stale worktree metadata; it does not delete an orphaned directory.
+Detached worktrees are intentionally outside Base's branch/PR cleanup boundary
+and should be handled through the explicit Git command after review.
 
 If a worktree is removed but its local branch cannot be deleted, the command
 retains the branch, reports the incomplete cleanup, and exits nonzero. Resolve

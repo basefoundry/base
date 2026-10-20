@@ -40,8 +40,9 @@ compatibility surfaces, such as Dev Containers and Nix/devenv planning reports,
 are stable as commands but may keep individual classification details
 experimental while those ecosystems mature.
 
-`basectl workspace test` is Experimental. Its serial execution, selection,
-failure, skip, and JSON-report details may evolve while workspace-wide test
+`basectl workspace test` is Experimental. Its workspace-wide trust preflight,
+serial execution, selection, failure, skip, blocked/not-run states, dry-run
+plan, and JSON-report details may evolve while workspace-wide test
 orchestration matures.
 
 `basectl uninstall <project>|--all` is Stable. It previews by default, applies
@@ -78,7 +79,7 @@ Stable JSON contracts include:
   [`schemas/workspace-agent-brief.json`](schemas/workspace-agent-brief.json).
 - `basectl workspace update --format json`, whose schema version 1 is published
   at [`schemas/workspace-update.json`](schemas/workspace-update.json).
-- `basectl workspace test --format json`, whose schema version 1 is published
+- `basectl workspace test --format json`, whose schema version 2 is published
   at [`schemas/workspace-test.json`](schemas/workspace-test.json).
 - `basectl workspace status --format json`, whose schema version 1 is
   published at [`schemas/workspace-status.json`](schemas/workspace-status.json).

@@ -68,6 +68,7 @@ def print_blocked_command_text(
     *,
     stream: Any,
 ) -> None:
+    print("EXECUTION BLOCKED: No project command was executed.", file=stream)
     identity = trust_status.identity
     if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
         print(

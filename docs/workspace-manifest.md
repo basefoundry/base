@@ -687,13 +687,21 @@ action also applies the shared repository URL sanitizer defensively. Ordinary
 command supplies validation, the brief recommends `basectl test`; it does not
 expose or execute the raw command.
 
-`basectl workspace test --manifest <path>` runs each selected repository's
-declared test command serially. The JSON report's `project_count` includes
-every selected repository, and `counts.passed`, `counts.failed`, and
+`basectl workspace test --manifest <path>` first preflights manifest-command
+trust for every selected repository. If any selected test is blocked or cannot
+be preflighted, no project test command is started; trusted projects are
+reported as `not_run` and the blocked project is reported as `blocked`. This
+workspace-wide gate prevents a later trusted project from running after an
+earlier project displays a trust error. Use `--dry-run` to inspect the same
+preflight and planned commands without executing them.
+
+When preflight passes, each selected repository's declared test command runs
+serially. The JSON report's `project_count` includes every selected repository,
+and `counts.passed`, `counts.failed`, `counts.blocked`, `counts.not_run`, and
 `counts.skipped` partition those projects by result; therefore their sum equals
 `project_count`. A project without a declared test command is skipped, while a
-delegated command failure is failed and includes its exit code and redacted
-captured output. The published v1 shape is
+delegated command failure is failed and includes its exit code, elapsed time,
+and redacted captured output. The published schema version 2 shape is
 [`docs/schemas/workspace-test.json`](schemas/workspace-test.json).
 
 `basectl workspace clone --manifest <path>` clones or validates expected

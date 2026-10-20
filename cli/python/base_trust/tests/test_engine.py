@@ -383,6 +383,7 @@ class ManifestCommandTrustTests(unittest.TestCase):
 
         self.assertEqual(status, 1, stderr.getvalue())
         self.assertEqual(stdout.getvalue(), "")
+        self.assertIn("EXECUTION BLOCKED: No project command was executed.", stderr.getvalue())
         self.assertIn("Manifest-declared commands are not allowed for project 'demo'", stderr.getvalue())
         self.assertIn(f"Manifest SHA-256: {expected_digest}", stderr.getvalue())
         self.assertIn("Review first:", stderr.getvalue())

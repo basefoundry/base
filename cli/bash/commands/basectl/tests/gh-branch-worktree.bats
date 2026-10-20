@@ -863,6 +863,48 @@ EOF
     ! git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
 }
 
+@test "basectl gh worktree prune retains invalid linked worktree metadata without raw git fatal" {
+    local repo invalid_worktree
+
+    repo="$TEST_TMPDIR/repo"
+    invalid_worktree="$TEST_TMPDIR/invalid-worktree"
+    init_git_repo "$repo"
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    git -C "$repo" branch merged-work
+    mkdir -p "$invalid_worktree"
+    printf 'orphaned checkout\n' > "$invalid_worktree/README.md"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        INVALID_WORKTREE="$invalid_worktree" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_list_worktree_branches() {
+                printf "%s\\t%s\\n" "$INVALID_WORKTREE" "merged-work"
+            }
+            base_gh_branch_cleanup_state() {
+                printf -v "$3" "%s" merged
+                printf -v "$4" "%s" github
+                printf -v "$5" "%s" ""
+                printf -v "$6" "%s" ""
+                printf -v "$7" "%s" 0
+                return 0
+            }
+            base_gh_subcommand_main worktree prune --yes
+        ' bash "$repo"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"invalid linked-worktree metadata; path and branch retained"* ]]
+    [[ "$output" != *"fatal: not a git repository"* ]]
+    [[ "$output" == *"Summary: 0 removed, 0 skipped current/default, 0 skipped dirty, 0 skipped unmerged, 1 failed."* ]]
+    [ -d "$invalid_worktree" ]
+    git -C "$repo" show-ref --verify --quiet refs/heads/merged-work
+}
+
 @test "basectl gh worktree prune reports retained branches after deletion failure" {
     local repo worktree
 

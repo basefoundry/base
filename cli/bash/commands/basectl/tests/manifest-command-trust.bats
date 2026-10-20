@@ -15,6 +15,7 @@ if [[ "${1:-}" == "-m" && "${2:-}" == "base_trust" && "${3:-}" == "require" && "
         exit 0
     fi
     cat >&2 <<TRUST
+EXECUTION BLOCKED: No project command was executed.
 ERROR: Manifest-declared commands are not allowed for project 'demo' on this machine.
 Project root: ${BASE_TEST_PROJECT_ROOT:?}
 Manifest: ${BASE_TEST_PROJECT_ROOT:?}/base_manifest.yaml
@@ -107,6 +108,7 @@ EOF
 
 assert_untrusted_block() {
     [ "$status" -eq 1 ]
+    [[ "$output" == *"EXECUTION BLOCKED: No project command was executed."* ]]
     [[ "$output" == *"Manifest-declared commands are not allowed for project 'demo'"* ]]
     [[ "$output" == *"Review first:"* ]]
     [[ "$output" == *"basectl run demo --list"* ]]

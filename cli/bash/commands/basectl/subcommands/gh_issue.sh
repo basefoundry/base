@@ -10,7 +10,7 @@ Usage:
   basectl gh issue list [gh options...]
   basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [--allow-cross-repo] [project options...]
   basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>] [--format <text|json>]
-  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>]
+  basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>] [--project <title>] [--project-owner <login>] [--no-project] [--allow-cross-repo]
 
 Purpose:
   List, create, validate, and start GitHub issues using Base's issue-first workflow.
@@ -40,6 +40,10 @@ Issue start options:
                                 the explicit option, GH_REPO, then the origin remote.
   --category <category>         Must match the issue's single category label.
   --title <title>               Override the issue title used to generate the slug.
+  --project <title>             Project to update. Defaults to the repository name.
+  --project-owner <login>       Project owner. Defaults to the repository owner.
+  --no-project                  Skip the Project status transition.
+  --allow-cross-repo            Allow an intentional update to a Project not linked to the issue repository.
 
 Default category: enhancement.
 Default assignee: none unless project.issue_defaults.assignee is set in .github/base-project.yml.
@@ -53,14 +57,19 @@ Usage:
   basectl gh issue start <number> [options]
 
 Purpose:
-  Print the canonical issue-backed branch and worktree commands after verifying
-  the issue's standard category label.
+  Move the linked Project item to In Progress when available, then print the
+  canonical issue-backed branch and worktree commands after verifying the
+  issue's standard category label.
 
 Options:
   --repo, -R <owner/name>  Repository containing the issue. Selection order is
                            the explicit option, GH_REPO, then the origin remote.
   --category <category>    Must match the issue's single category label.
   --title <title>          Override the issue title used to generate the slug.
+  --project <title>        Project to update. Defaults to the repository name.
+  --project-owner <login>  Project owner. Defaults to the repository owner.
+  --no-project             Skip the Project status transition.
+  --allow-cross-repo       Allow an intentional update to a Project not linked to the issue repository.
   -h, --help               Show this help text.
 EOF
 }
@@ -343,6 +352,8 @@ base_gh_issue_create() {
 
 base_gh_issue_start() {
     local issue="${1:-}" category="" issue_category="" github_repo="" title="" slug branch default_branch worktree_path
+    local project_title="" project_owner="" project_status=""
+    local no_project=0 allow_cross_repo=0
     local option_value
     local repo_args=()
     local parser_args=()
@@ -351,6 +362,10 @@ base_gh_issue_start() {
         "category|value|--category"
         "title|value|--title"
         "repo|value|--repo"
+        "project|value|--project"
+        "project_owner|value|--project-owner"
+        "no_project|flag|--no-project"
+        "allow_cross_repo|flag|--allow-cross-repo"
     )
     local -a positionals=()
     local -A parsed_options=()
@@ -415,6 +430,30 @@ base_gh_issue_start() {
                 shift
                 continue
                 ;;
+            --project|--project-owner)
+                if (($# < 2)) || [[ -z "$2" || "$2" == -* ]]; then
+                    base_gh_usage_error base_gh_issue_usage "Option '$1' requires an argument."
+                    return $?
+                fi
+                parser_args+=("${1#--}=$2")
+                shift 2
+                continue
+                ;;
+            --project=*|--project-owner=*)
+                option_value="${1#*=}"
+                if [[ -z "$option_value" ]]; then
+                    base_gh_usage_error base_gh_issue_usage "Option '${1%%=*}' requires an argument."
+                    return $?
+                fi
+                parser_args+=("${1%%=*}=$option_value")
+                shift
+                continue
+                ;;
+            --no-project|--allow-cross-repo)
+                parser_args+=("$1")
+                shift
+                continue
+                ;;
             -h|--help)
                 base_gh_issue_start_usage
                 return 0
@@ -438,6 +477,10 @@ base_gh_issue_start() {
     category="${parsed_options[category]:-}"
     title="${parsed_options[title]:-}"
     github_repo="${parsed_options[repo]:-}"
+    project_title="${parsed_options[project]:-}"
+    project_owner="${parsed_options[project_owner]:-}"
+    no_project="${parsed_options[no_project]:-0}"
+    allow_cross_repo="${parsed_options[allow_cross_repo]:-0}"
     if [[ -n "$github_repo" ]]; then
         repo_args=(--repo "$github_repo")
     fi
@@ -487,8 +530,21 @@ base_gh_issue_start() {
     default_branch="$(base_gh_default_branch)"
     worktree_path="$(base_gh_issue_worktree_path "$issue" "$slug")" || return 1
 
+    if ((no_project)); then
+        project_status="skipped"
+    else
+        project_status="$(base_gh_set_issue_in_progress "$issue" "$github_repo" "$project_title" "$project_owner" "$allow_cross_repo")" || return $?
+    fi
+
     printf '%s\n' "$branch"
     printf '\n'
     printf 'To create a worktree:\n'
     printf '  git worktree add -b %s %s origin/%s\n' "$branch" "$worktree_path" "$default_branch"
+    if [[ "$project_status" == "verified" ]]; then
+        printf 'Project status: In Progress (verified for issue #%s).\n' "$issue"
+    elif ((no_project)); then
+        printf 'Project status: skipped (--no-project).\n'
+    else
+        printf 'Project status: not updated (no linked Project found; handoff continued).\n'
+    fi
 }

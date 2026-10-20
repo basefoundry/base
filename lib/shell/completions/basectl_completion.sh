@@ -878,7 +878,7 @@ _base_basectl_completion() {
                                 _base_basectl_completion_compgen "--repo --project-owner --project-number --format -h --help" "$cur"
                                 ;;
                             start)
-                                _base_basectl_completion_compgen "--category --title --repo -R -h --help" "$cur"
+                                _base_basectl_completion_compgen "--category --title --repo -R --project --project-owner --no-project --allow-cross-repo -h --help" "$cur"
                                 ;;
                         esac
                     fi

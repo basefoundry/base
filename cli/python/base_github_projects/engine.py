@@ -27,7 +27,7 @@ from .project_git import require_repo
 from .project_git import split_repo
 from .project_model import BASE_PROJECT_SCHEMA, DEFAULT_TEMPLATE_PROJECT
 from .project_model import ConfigureAction, FieldUpdate, Finding, OwnerInfo
-from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectSchema, ProjectView
+from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectItemState, ProjectSchema, ProjectView
 from .project_model import SelectFieldSpec, SelectOption
 from .project_operations import ProjectOperations
 from .project_schema import ISSUE_DEFAULT_OUTPUT_ORDER  # pylint: disable=unused-import
@@ -135,6 +135,7 @@ def project_operations() -> ProjectOperations:
         fetch_project_views=fetch_project_views,
         find_owner_and_project=find_owner_and_project,
         find_project_item_id=find_project_item_id,
+        find_project_item_state=find_project_item_state,
         issue_field_values_for_args=issue_field_values_for_args,
         link_project_to_repository=link_project_to_repository,
         missing_option_names=missing_option_names,
@@ -440,6 +441,22 @@ def find_project_item_id(project_id: str, issue_id: str) -> str | None:
     for item in payload["data"]["node"]["items"]["nodes"]:
         if item.get("content", {}).get("id") == issue_id:
             return item["id"]
+    return None
+
+
+def find_project_item_state(project_id: str, issue_id: str) -> ProjectItemState | None:
+    payload = run_graphql(queries.FIND_PROJECT_ITEM_WITH_FIELDS, {"projectId": project_id})
+    for item in payload["data"]["node"]["items"]["nodes"]:
+        if (item.get("content") or {}).get("id") != issue_id:
+            continue
+        values: dict[str, str] = {}
+        for raw_value in item.get("fieldValues", {}).get("nodes", []):
+            if raw_value.get("__typename") != "ProjectV2ItemFieldSingleSelectValue":
+                continue
+            field_name = (raw_value.get("field") or {}).get("name")
+            if field_name and raw_value.get("name"):
+                values[field_name] = raw_value["name"]
+        return ProjectItemState(item_id=item["id"], values=values)
     return None
 
 

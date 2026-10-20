@@ -829,6 +829,13 @@ base_gh_worktree_dirty() {
     [[ -n "$(git -C "$path" status --porcelain --ignore-submodules=none)" ]]
 }
 
+base_gh_worktree_is_valid() {
+    local path="$1"
+
+    [[ -f "$path/.git" ]] || return 1
+    git -C "$path" rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
 base_gh_worktree_prune_delete_branch() {
     local branch="$1"
     local merge_source="$2"
@@ -935,6 +942,12 @@ base_gh_worktree_prune() {
         if [[ "$branch" == "$default_branch" ]]; then
             printf 'SKIP   %s (%s)  default branch worktree\n' "$path" "$branch"
             skipped_current=$((skipped_current + 1))
+            continue
+        fi
+        if ! base_gh_worktree_is_valid "$path"; then
+            printf 'FAIL   %s (%s)  invalid linked-worktree metadata; path and branch retained; inspect the path, then run git worktree prune for stale metadata\n' \
+                "$path" "$branch"
+            failed=$((failed + 1))
             continue
         fi
         if base_gh_worktree_dirty "$path"; then

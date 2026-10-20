@@ -363,6 +363,47 @@ def test_missing_issue_and_project_item_are_reported(monkeypatch: pytest.MonkeyP
     assert len(calls) == 2
 
 
+def test_find_project_item_state_reads_existing_single_select_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = graphql_responses(
+        monkeypatch,
+        [
+            {
+                "data": {
+                    "node": {
+                        "items": {
+                            "nodes": [
+                                {
+                                    "id": "item-id",
+                                    "content": {"id": "issue-id"},
+                                    "fieldValues": {
+                                        "nodes": [
+                                            {
+                                                "__typename": "ProjectV2ItemFieldSingleSelectValue",
+                                                "name": "In Progress",
+                                                "field": {"name": "Status"},
+                                            },
+                                            {
+                                                "__typename": "ProjectV2ItemFieldTextValue",
+                                                "text": "ignored",
+                                            },
+                                        ]
+                                    },
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        ],
+    )
+
+    assert engine.find_project_item_state("project-id", "issue-id") == engine.ProjectItemState(
+        item_id="item-id",
+        values={"Status": "In Progress"},
+    )
+    assert calls == [(queries.FIND_PROJECT_ITEM_WITH_FIELDS, {"projectId": "project-id"})]
+
+
 def test_single_select_field_mutations_build_option_payloads(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = graphql_responses(monkeypatch, [{"data": {}}, {"data": {}}])
     spec = engine.SelectFieldSpec(
