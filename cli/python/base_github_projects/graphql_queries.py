@@ -180,6 +180,30 @@ query($projectId: ID!) {
 }
 """
 
+FIND_PROJECT_ITEM_WITH_FIELDS = """
+query($projectId: ID!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: 100) {
+        nodes {
+          id
+          content { ... on Issue { id } }
+          fieldValues(first: 50) {
+            nodes {
+              __typename
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field { ... on ProjectV2SingleSelectField { name } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 ADD_PROJECT_ITEM = """
 mutation($projectId: ID!, $contentId: ID!) {
   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
