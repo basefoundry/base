@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 from base_cli_adapters.history import build_finished_record
+from base_cli_adapters.paths import checkout_id
 from base_export_context import engine
 
 
@@ -43,6 +44,57 @@ def invoke_engine(args: list[str], project_root: Path) -> tuple[int, str, str]:
 
 
 class ExportContextTests(unittest.TestCase):
+    def test_default_exports_isolate_same_named_checkouts_and_reuse_canonical_root(self) -> None:
+        for output_format, extension in (("markdown", "md"), ("zip", "zip")):
+            with self.subTest(output_format=output_format), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir).resolve()
+                first_root = root / "first" / "demo"
+                second_root = root / "second" / "demo"
+                write_context_file(first_root, "PROJECT.md", "First checkout\n")
+                write_context_file(second_root, "PROJECT.md", "Second checkout\n")
+                cache_root = root / "cache"
+                filename = f"demo-ai-context.{extension}"
+                with mock.patch.dict(os.environ, {"BASE_CACHE_DIR": str(cache_root)}):
+                    with chdir(first_root):
+                        status, _, stderr = invoke_engine(
+                            ["--project-name", "demo", "--project-root", str(first_root),
+                             "--format", output_format],
+                            first_root,
+                        )
+                    self.assertEqual((status, stderr), (0, ""))
+                    first_destination, = cache_root.rglob(filename)
+                    first_content = first_destination.read_bytes()
+
+                    with chdir(second_root):
+                        status, _, stderr = invoke_engine(
+                            ["--project-name", "demo", "--project-root", str(second_root),
+                             "--format", output_format],
+                            second_root,
+                        )
+                    self.assertEqual((status, stderr), (0, ""))
+                    self.assertEqual(first_destination.read_bytes(), first_content)
+                    destinations = set(cache_root.rglob(filename))
+                    self.assertEqual(len(destinations), 2)
+                    second_destination, = destinations - {first_destination}
+                    if output_format == "markdown":
+                        self.assertIn("Second checkout\n", second_destination.read_text(encoding="utf-8"))
+                    else:
+                        with zipfile.ZipFile(second_destination) as archive:
+                            self.assertEqual(archive.read("PROJECT.md"), b"Second checkout\n")
+
+                    alias = root / "alias"
+                    alias.symlink_to(first_root, target_is_directory=True)
+                    with chdir(second_root):
+                        status, stdout, stderr = invoke_engine(
+                            ["--project-name", "demo", "--project-root", str(alias),
+                             "--format", output_format],
+                            first_root,
+                        )
+                    self.assertEqual((status, stderr), (0, ""))
+                    self.assertIn(f" to {first_destination}\n", stdout)
+                    self.assertEqual(set(cache_root.rglob(filename)), destinations)
+                    self.assertEqual(first_destination.read_bytes(), first_content)
+
     def test_default_exports_use_base_cache_from_current_or_other_project(self) -> None:
         for output_format, extension in (("markdown", "md"), ("zip", "zip")):
             for caller_name in ("demo", "other"):
@@ -60,7 +112,7 @@ class ExportContextTests(unittest.TestCase):
                         write_context_file(project_root, "PROJECT.md", "Project\n")
                         cache_root = root / "cache"
                         filename = f"demo-ai-context.{extension}"
-                        destination = cache_root / "base" / "exports" / filename
+                        destination = cache_root / "base" / "exports" / checkout_id(project_root) / filename
 
                         with chdir(root / caller_name), mock.patch.dict(
                             os.environ, {"BASE_CACHE_DIR": str(cache_root)}

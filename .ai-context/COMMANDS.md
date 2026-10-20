@@ -48,7 +48,8 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
 - `basectl run [project] <command>` - run a declared command for the positional, explicit, or nearest project.
 - `basectl export-context [project]` - export `.ai-context/` as a Markdown or
   Zip bundle for manual upload or copy/paste into AI tools. Defaults to
-  `$BASE_CACHE_DIR/base/exports/<project>-ai-context.md` (or `.zip`);
+  `$BASE_CACHE_DIR/base/exports/<checkout-id>/<project>-ai-context.md` (or `.zip`),
+  using a stable hash of the canonical project root to isolate same-named checkouts;
   `--output` explicitly selects another destination, including project directories.
   `--print` and `--list-files` do not write a bundle.
 - `basectl trust status [project]` - inspect one project's manifest command

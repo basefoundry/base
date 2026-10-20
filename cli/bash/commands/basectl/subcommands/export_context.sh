@@ -28,8 +28,9 @@ Options:
 Export a Base-managed project's .ai-context directory for manual upload or
 copy/paste into AI tools.
 
-Without --output, bundles are written under base/exports/ in the Base cache
+Without --output, bundles are written under base/exports/<checkout-id>/ in the Base cache
 root (BASE_CACHE_DIR), using <project>-ai-context.md or <project>-ai-context.zip.
+The checkout ID is derived from the canonical project root, isolating same-named checkouts.
 Use --output to choose another destination, including a project directory.
 EOF
 }

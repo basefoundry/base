@@ -1005,8 +1005,11 @@ stable source headings, using `.ai-context/INDEX.md` order when available and
 falling back to deterministic filename order for unlisted files. Zip exports
 contain only files from `.ai-context/` so they can be uploaded manually.
 Without `--output`, bundles are written to
-`$BASE_CACHE_DIR/base/exports/<project>-ai-context.md` (or `.zip`). Base's normal
-cache root defaults to `~/Library/Caches/base` on macOS and `~/.cache/base` on
+`$BASE_CACHE_DIR/base/exports/<checkout-id>/<project>-ai-context.md` (or `.zip`).
+The checkout ID is a stable 12-character hash of the canonical project-root path,
+so same-named checkouts and worktrees keep separate exports. Re-exporting the same
+checkout, including through a symlink or from another directory, updates its same bundle.
+Base's normal cache root defaults to `~/Library/Caches/base` on macOS and `~/.cache/base` on
 Linux, so running from a project directory does not put the bundle there.
 An explicit `--output` file or existing directory overrides this default;
 relative paths are relative to the current directory, and project-directory
