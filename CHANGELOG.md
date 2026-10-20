@@ -10,8 +10,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
-- Use the same readable blocked-trust explanations in workspace test preflight
-  and individual project command diagnostics.
+- Use the same readable blocked-trust explanations in workspace test preflight,
+  individual project command diagnostics, and `basectl trust status`.
 - Make `basectl workspace test` preflight manifest-command trust across the
   entire selected set before running any project test, and report explicit
   blocked, not-run, start, completion, and dry-run states.
