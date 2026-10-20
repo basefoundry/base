@@ -17,6 +17,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
   automation can distinguish trust-blocked and not-run projects from tests
   that actually executed.
 
+### Added
+
+- Stability compatibility: enroll the new `basectl gh review fetch` and
+  `basectl gh review prune` command contracts, including the migration path
+  from ordinary local `pr-*` branches to namespaced detached review refs.
+
 ## [1.10.5] - 2026-10-14
 
 ### Added
