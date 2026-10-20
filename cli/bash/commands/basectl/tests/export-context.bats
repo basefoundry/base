@@ -11,6 +11,8 @@ load ./basectl_helpers.bash
     [[ "$output" == *"basectl export-context [project] [options]"* ]]
     [[ "$output" == *"--format <markdown|zip>"* ]]
     [[ "$output" == *"--list-files"* ]]
+    [[ "$output" == *"base/exports/<checkout-id>/ in the Base cache"* ]]
+    [[ "$output" == *"Use --output to choose another destination"* ]]
 }
 
 @test "basectl export-context parses options through reusable arg helper" {

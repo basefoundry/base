@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 import base_cli
+from base_cli_adapters.paths import base_cache_root, checkout_id
 from base_cli_profile import base_cli_app
 
 
@@ -55,7 +56,10 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.option("--project-name", required=True, help="Resolved Base project name.")
 @base_cli.option("--project-root", required=True, help="Resolved Base project root.")
 @base_cli.option("--format", "output_format", default=MARKDOWN_FORMAT, help="Output format: markdown or zip.")
-@base_cli.option("--output", "output_path", help="Output path for the export bundle.")
+@base_cli.option(
+    "--output", "output_path",
+    help="Output path for the export bundle. Defaults to base/exports/<checkout-id>/ under the Base cache root.",
+)
 @base_cli.option("--print", "print_bundle", is_flag=True, help="Print the Markdown bundle to stdout.")
 @base_cli.option("--list-files", is_flag=True, help="Print the files in export order without writing a bundle.")
 # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -121,7 +125,7 @@ def export_context(options: ExportContextOptions) -> int:
         return export_markdown_context(options)
 
     files = ordered_context_files(options.project_name, options.project_root, include_all=True)
-    destination = resolve_output_path(options.project_name, options.output_path, "zip")
+    destination = resolve_output_path(options.project_name, options.project_root, options.output_path, "zip")
     write_zip_file(destination, files)
     print(f"Wrote Zip AI context export for project '{options.project_name}' to {destination}")
     return base_cli.ExitCode.SUCCESS
@@ -133,20 +137,20 @@ def export_markdown_context(options: ExportContextOptions) -> int:
     if options.print_bundle:
         print(content, end="")
         return base_cli.ExitCode.SUCCESS
-    destination = resolve_output_path(options.project_name, options.output_path, "md")
+    destination = resolve_output_path(options.project_name, options.project_root, options.output_path, "md")
     write_text_file(destination, content)
     print(f"Wrote Markdown AI context export for project '{options.project_name}' to {destination}")
     return base_cli.ExitCode.SUCCESS
 
 
-def resolve_output_path(project_name: str, output_path: str | None, extension: str) -> Path:
+def resolve_output_path(project_name: str, project_root: Path, output_path: str | None, extension: str) -> Path:
     default_filename = f"{project_name}-ai-context.{extension}"
     if output_path:
         path = Path(output_path).expanduser()
         if path.is_dir():
             return path / default_filename
         return path
-    return Path.cwd() / default_filename
+    return base_cache_root() / "base" / "exports" / checkout_id(project_root) / default_filename
 
 
 def ordered_context_files(project_name: str, project_root: Path, include_all: bool) -> tuple[ContextFile, ...]:
