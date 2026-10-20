@@ -115,6 +115,8 @@ reference. The filename should answer "what is this about?"
   shortest supported install-to-verified-project-PR journey.
 - [Clean macOS Install Validation](macos-install-validation.md) defines the
   repeatable Homebrew and source checkout validation checklist.
+- [Local macOS Install Matrix](macos-install-matrix.md) defines the guarded
+  four-account scenario runner and maintainer-only account preparation.
 - [Execution Model](execution-model.md) documents the current `basectl` runtime,
   dispatch order, public launchers, and runtime shell behavior.
 - [Linux Support](linux-support.md) defines the Ubuntu/Debian runtime support,

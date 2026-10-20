@@ -50,6 +50,8 @@ The current command surface covers:
 - explicit `linux-lab` prerequisite profile for host-side Multipass checks and
   setup
 - Ubuntu/Debian runtime checks, diagnostics, and source-checkout validation
+- local macOS install-matrix scenario validation with a guarded four-account
+  runas contract; real Homebrew/account mutations remain maintainer-run
 
 Recent trust and workspace updates are part of the current implementation:
 
