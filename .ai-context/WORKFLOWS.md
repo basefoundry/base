@@ -107,6 +107,13 @@ cross-command workflows, setup/check/doctor interactions, shell profile
 behavior, installation layout assumptions, or public behavior that cannot be
 proven by a focused unit test.
 
+The local macOS install matrix is a maintainer-run validation boundary, not a
+hosted CI job. Review `tools/macos_matrix_admin.sh --dry-run` before applying
+the one-time account and sudoers contract, then use `bin/base-matrix` to run
+versioned scenarios through `sudo -n -u <matrix-account> -i`. Persisted result
+logs are redacted and mode `0600`; real Homebrew upgrades and user-owned shell
+state remain outside ordinary CI.
+
 Documentation-only changes usually need `git diff --check`.
 First external PRs should start from an issue labeled `good first issue`.
 Contributor-facing guidance lives in `CONTRIBUTING.md`; the workflow policy and
