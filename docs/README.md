@@ -51,6 +51,10 @@ for the concise product framing; the map below links to the deeper references.
 
 ## Internal Planning Artifacts
 
+The [Documentation Maintenance Strategy](documentation-maintenance-strategy.md)
+is a proposed design-first documentation and PR workflow. It records adoption
+decisions and staged enforcement; it is not active repository policy.
+
 The `docs/superpowers/` directory contains agent-written planning artifacts
 such as implementation plans and feature specs. These files are useful for
 understanding how a change was shaped, but they are not the canonical product
