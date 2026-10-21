@@ -8,6 +8,11 @@ separate from the tap update checklist: the tap checklist proves the formula can
 be published, while this rehearsal proves an existing user can upgrade without
 losing local Base state.
 
+Use [Upgrading Base](upgrading.md) for the consumer command matrix, runtime
+reconciliation, version availability, and recovery. This rehearsal exercises
+the direct Homebrew route plus explicit setup; it does not replace the
+`basectl update` route described there.
+
 ## Preconditions
 
 - Run on a macOS machine or test account that can install Homebrew packages.

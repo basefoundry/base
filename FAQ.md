@@ -259,6 +259,20 @@ route.
 
 ## Setup, Profile, And Diagnostics
 
+### How Do I Upgrade An Existing Base Installation?
+
+Use the [Upgrade Contract](docs/upgrading.md). Homebrew and mutable default-branch
+source installs use `basectl update`. A stable detached source checkout uses
+`basectl update --release <tag>` when that option is available; older versions
+use the documented pinned-checkout procedure. Confirm the active executable
+with `command -v basectl` and `type -a basectl` before choosing a route.
+
+Omitting the project updates Base itself. `basectl update example` updates the
+consumer project instead. Direct Homebrew or Git operations need an explicit
+setup step. `update-profile` refreshes shell integration and does not upgrade
+Base. The upgrade guide distinguishes current-main features from v1.10.5 and
+explains runtime verification and trust re-review.
+
 ### What is the difference between basectl setup and basectl update-profile?
 
 `basectl setup` prepares Base and project prerequisites: Homebrew artifacts,

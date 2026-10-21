@@ -45,32 +45,17 @@ run `basectl update-profile --no-defaults` to disable them again. Plain
 `BASE_PROFILE_VERSION` records the schema version of this Base-managed file. It
 is reserved for future migrations and is not intended to be edited by users.
 
-Update Base or a Base-managed project checkout with:
+For Base and consumer-project upgrades, follow the [Upgrade Contract](upgrading.md).
+It distinguishes Homebrew, mutable default-branch source checkouts, and stable
+source tags. Current Homebrew updates reconcile setup even when the formula
+version is unchanged; ordinary Git updates run setup only when the revision
+changes. Stable Base source upgrades use `update --release` when supported by
+the installed version.
 
-```bash
-basectl update
-basectl update bankbuddy
-```
-
-Omitting the project is equivalent to `basectl update base`. This command is
-intentionally conservative. In a source checkout, it only runs from the selected
-project repository's default branch, requires tracked project files to be clean,
-pulls the latest changes through Git, and runs `basectl setup <project>` only
-when the pull changes the checked-out revision. Untracked files do not block the
-update; Git still stops the pull if an incoming tracked file would overwrite
-them.
-
-In a Homebrew-managed install, the Base update path remains Base-only:
-`basectl update` runs the Base package upgrade,
-`brew upgrade basefoundry/base/base`, and runs `basectl setup base` with
-inherited Base environment variables cleared only when the installed Base version
-changes. `basectl update --dry-run` prints the Git or Homebrew handoff it would
-perform without changing files or packages.
-For manual Homebrew upgrades outside `basectl update`, prefer
-`brew upgrade --no-ask basefoundry/base/base` so Homebrew skips the preview
-prompt path on already-current installs. If Homebrew refuses to load
-`basefoundry/base/base-bash-libs` from an untrusted tap, run
-`brew trust basefoundry/base` once and retry the upgrade.
+`basectl update-profile` only refreshes managed shell integration. Run it when
+the selected installation path or shell configuration changes, then open a
+fresh shell and confirm the active `basectl`. It does not replace upgrading
+Base or reconciling its runtime with setup.
 
 Base also reads `~/.baserc` when it exists. Unlike `profile.conf`, `~/.baserc`
 is user-managed and may be hand-edited. It is intended for simple,
