@@ -170,6 +170,13 @@ reports every discovered project whose manifest declares an executable test,
 run, build, demo, or activation surface. Metadata-only manifests are omitted so
 workspace onboarding does not suggest unnecessary approval.
 
+In the default terminal text view without a project, `trust status` prints a
+compact workspace table with blocked projects first, a short reason for each
+status, and aggregate allowed/blocked counts. It states the trust-scope limit
+once and points to `basectl trust status <project>` for the detailed identity,
+review, and allow guidance. An explicit project keeps the detailed text report;
+JSON/YAML/CSV/TSV workspace output keeps its existing schema and columns.
+
 For schema-v1 compatibility, explicit single-project JSON continues to report
 the underlying allow-record state, including `status: blocked` and an
 `allow_command` for a metadata-only manifest. Human text reports that approval
