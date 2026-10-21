@@ -111,8 +111,9 @@ This is deliberate; auto-activation on `cd` is ambiguous and error-prone.
 
 ## Project Manifest Contract
 
-Each project opts into Base with a small declarative YAML file at its root. All
-fields are optional:
+Each project opts into Base with a small declarative YAML file at its root.
+Feature sections are optional; a selected section can have required fields,
+such as `release.github.repository`. This is a complete current-schema example:
 
 ```yaml
 schema_version: 1
@@ -151,12 +152,14 @@ build:
       working_dir: services/api
 
 ide:
-  vs-code:
+  vscode:
     extensions: [ms-python.python]
 
 release:
   version_file: VERSION
   changelog: CHANGELOG.md
+  github:
+    repository: example/example
 ```
 
 **Design principle:** manifests describe *what* the project needs, not *how* to do
@@ -266,7 +269,7 @@ exec "$SHELL" -l
 | Path | Purpose |
 |---|---|
 | `~/.base.d/config.yaml` | Machine-local config (workspace root, workspace manifest, canonical manifest source, log level) |
-| `<project-root>/.venv` | Default non-Base project Python virtual environment when the manifest declares `python:` or `python-package` artifacts; not created for shell-only control-plane work |
+| `<project-root>/.venv` | Default non-Base project Python virtual environment when the manifest declares `python:`, `python-package` artifacts, or `test.requirements`; not created for shell-only control-plane work |
 | `~/.base.d/<project>/.venv` | Historical external project Python virtual environment when `python.venv_location: external` is set |
 | `~/.base.d/<project>/checks/last.json` | Latest recorded `basectl check <project>` result used by workspace status |
 | `~/Library/Caches/base/` | Runtime logs, temp files, project discovery cache |
@@ -278,11 +281,11 @@ exec "$SHELL" -l
 | Layer | Tool | Where |
 |---|---|---|
 | Bash unit tests | BATS | `cli/bash/commands/basectl/tests/`, `lib/bash/*/tests/` |
-| Python unit tests | pytest | `cli/python/*/tests/`, `lib/python/*/tests/` |
+| Python unit tests | pytest | `cli/python/*/tests/` and top-level `tests/` |
 | Integration tests | BATS | `tests/integration/base_workflows.bats` |
 | Shell static analysis | ShellCheck | All `*.sh` files |
-| Python lint | Pylint | `cli/python/`, `lib/python/` (3.10–3.13 matrix) |
-| Python security scan | Bandit | `cli/python/`, `lib/python/` |
+| Python lint | Pylint | `cli/python/` (see the CI workflow for the interpreter matrix) |
+| Python security scan | Bandit | `cli/python/` |
 | Python dependency audit | pip-audit | `requirements-dev.txt` |
 
 Run everything locally with `basectl test base` or `bin/base-test`.

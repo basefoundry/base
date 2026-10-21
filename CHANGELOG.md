@@ -10,6 +10,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Run activation-source discovery with Base's interpreter while preserving the
+  selected project's manifest and activation context.
 - Use the same readable blocked-trust explanations in workspace test preflight,
   individual project command diagnostics, and `basectl trust status`.
 - Make `basectl workspace test` preflight manifest-command trust across the

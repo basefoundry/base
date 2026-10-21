@@ -69,8 +69,8 @@ with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
 After this Bash bootstrap layer creates Base's own Python environment, setup
 installs Base bootstrap Python packages into that environment. Shell-only
 project reconciliation runs from that Base runtime and does not copy those
-packages into a project venv. Projects that explicitly declare `python:` or a
-`python-package` artifact keep the project-runtime path: Base first seeds the
+packages into a project venv. Projects that explicitly declare `python:`, a
+`python-package` artifact, or `test.requirements` keep the project-runtime path: Base first seeds the
 target project venv with `bootstrap: true` default artifacts and then invokes
 the Python project setup layer through `base-wrapper --project <project>`.
 Prerequisite profiles are opt-in. Use `--profile dev` to install Base
@@ -195,7 +195,7 @@ manifest trust.
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name[,name...]>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name[,name...]>`, `--lines <count>` |
 | `basectl clean` | Preview cleanup of completed Base run bundles and component caches; use `--yes` to delete matches. Active runs are retained and reported. | `--older-than <age>`, `--keep-last <count>`, `--dry-run`, `--yes` |
-| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and persistent runtime caches. Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--project <name>`, `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
+| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and runtime caches, including project run bundles. Base-level history remains; see [Uninstall And Retention](uninstall.md). Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--project <name>`, `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
 | `basectl config path` | Print the local Base config path. | none |
 | `basectl config show` | Show local Base config as redacted JSON. | none |
 | `basectl config doctor` | Diagnose local Base config. | none |
@@ -562,8 +562,8 @@ For uv-managed projects, Base delegates setup to `uv sync`, including any
 activation and project commands, and skips
 Base-managed `python-package` reconciliation. See
 [Python Manifest Section](python-manifest.md).
-Projects without a top-level `python:` section or any `python-package`
-artifacts are treated as shell-only for setup and diagnostics. Base parses and
+Projects without a top-level `python:` section, any `python-package`
+artifacts, or `test.requirements` are treated as shell-only for setup and diagnostics. Base parses and
 reconciles those manifests from its own runtime, does not create a project
 `.venv` for its control plane, and reports workspace venv state as
 `not_applicable`. An explicit `python: {}` keeps the existing Base-managed
@@ -725,6 +725,10 @@ manifest, Base scans discovered local Base-managed projects under the workspace
 root. This is the fastest way to roll out shared repo or Project schema repairs
 across a local repository set while keeping each repository's `repo configure`
 behavior idempotent.
+
+Workspace setup/test/update have fixed per-operation deadlines. See
+[Execution Deadlines And Cancellation](workspace-manifest.md#execution-deadlines-and-cancellation)
+for timeout, interruption, process-group, output-capture, and retry boundaries.
 
 Use `basectl workspace setup --dry-run` to preview project setup across the
 expected repositories, then run `basectl workspace setup` to execute it. Setup

@@ -218,6 +218,10 @@ For a clean exit after a rehearsal, use the verified removal path:
 
 Removal previews by default. Use `--yes` only after reviewing the plan; an
 applied `--all` removal runs its verification check automatically.
+Project run bundles are removed with project caches, while Base-level history
+and run bundles remain. Checkouts, manifests, and project-local environments
+are retained. See [Uninstall](uninstall.md) for the complete scope and recovery
+procedure.
 
 ## Validation Record
 

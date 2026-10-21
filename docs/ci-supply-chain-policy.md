@@ -77,7 +77,7 @@ this policy if the rule changes.
 
 The security job must keep these checks:
 
-- Bandit over `cli/python` and `lib/python`
+- Bandit over `cli/python`
 - `pip-audit` over `requirements-dev.txt`
 - ShellCheck errors over tracked Bash entry points, scripts, and `.bash`
   helpers; managed Zsh startup and completion sources are checked with `zsh -n`.
