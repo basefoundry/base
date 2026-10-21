@@ -8,6 +8,9 @@ the documentation map.
 For contribution workflow, branch naming, tests, and PR expectations, see
 [CONTRIBUTING.md](../CONTRIBUTING.md).
 
+For an existing installation, see [Upgrading Base](upgrading.md), including
+Homebrew, mutable source, stable tags, and recovery after setup failures.
+
 For the public support front door, discussion categories, response target, and
 discussion-to-issue workflow, see [Community Support](community-support.md).
 
