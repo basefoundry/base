@@ -8,6 +8,11 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+### Changed
+
+- Make project-less terminal `basectl trust status` output a compact workspace
+  table with blocked projects first, short reasons, and an aggregate summary.
+
 ### Fixed
 
 - Use the same readable blocked-trust explanations in workspace test preflight,
