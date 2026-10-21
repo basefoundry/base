@@ -40,6 +40,9 @@ if [[ "$1" == api && "$2" == repos/basefoundry/base/pulls/2621 ]]; then
         closed_unmerged)
             printf '{"base":{"repo":{"full_name":"basefoundry/base"}},"head":{"sha":"%s"},"state":"closed","merged_at":null}\n' "$BASE_REVIEW_TEST_HEAD_SHA"
             ;;
+        mismatch)
+            printf '{"base":{"repo":{"full_name":"basefoundry/base"}},"head":{"sha":"0000000000000000000000000000000000000001"},"state":"open","merged_at":null}\n'
+            ;;
         *)
             printf '{"base":{"repo":{"full_name":"basefoundry/base"}},"head":{"sha":"%s"},"state":"open","merged_at":null}\n' "$BASE_REVIEW_TEST_HEAD_SHA"
             ;;
@@ -220,6 +223,22 @@ review_metadata_path() {
     [ -d "$worktree" ]
     ! git -C "$worktree" symbolic-ref --quiet HEAD
     git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/stale-worktree
+}
+
+@test "review fetch removes the fetched ref when the API head SHA is stale" {
+    local repo review_root
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    mkdir -p "$TEST_TMPDIR/review-worktrees"
+    review_root="$(cd "$TEST_TMPDIR/review-worktrees" && pwd -P)"
+    write_review_gh_mock
+
+    BASE_REVIEW_TEST_STATE=mismatch run_review "$repo" fetch 2621 --name stale-worktree --repo basefoundry/base --root "$review_root"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"did not match the GitHub head SHA"* ]]
+    [ ! -e "$review_root/pr-2621-stale-worktree" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/stale-worktree
 }
 
 @test "review fetch validates names and exposes command-scoped help" {

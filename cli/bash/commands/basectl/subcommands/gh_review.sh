@@ -384,7 +384,7 @@ base_gh_review_fetch() {
     actual_sha="$(git -C "$worktree_path" rev-parse HEAD 2>/dev/null)" || actual_sha=""
     if [[ "$actual_sha" != "$head_sha" ]]; then
         git worktree remove "$worktree_path" >/dev/null 2>&1 || true
-        git update-ref -d "$review_ref" "$head_sha" >/dev/null 2>&1 || true
+        git update-ref -d "$review_ref" "$actual_sha" >/dev/null 2>&1 || true
         base_gh_error "Fetched review head for #$number did not match the GitHub head SHA."
         return 1
     fi
