@@ -11,13 +11,16 @@ from io import StringIO
 from pathlib import Path
 from unittest import mock
 
+from base_cli.testing import invoke
 from base_projects import engine
+from base_projects.test_preflight import project_test_preflight
 from base_projects.workspace_manifest import WorkspaceManifestRepo
 from base_projects.workspace_repo_inspection import WorkspaceRepoInspection
 from base_projects.workspace_test import workspace_test_manifest_target
 from base_setup.manifest import read_manifest
 from base_setup.manifest_trust import ManifestCommandTrustStore
 from base_setup.manifest_trust import compute_trust_identity
+from base_trust import engine as trust_engine
 
 
 def write_workspace_manifest(path: Path, repositories: tuple[str, ...]) -> None:
@@ -107,6 +110,95 @@ def invoke_workspace_test(
 
 
 class WorkspaceTestCommandTests(unittest.TestCase):
+    def assert_trust_status_guidance(self, workspace: Path, home: Path, base_home: Path, explanation: str) -> str:
+        with mock.patch("base_cli.is_terminal", return_value=True):
+            result = invoke(
+                trust_engine.app,
+                ["status", "demo", "--workspace", str(workspace)],
+                home=home,
+                env={"BASE_HOME": str(base_home)},
+            )
+        self.assertEqual(result.exit_code, 0, result.output)
+        self.assertEqual(result.stdout.splitlines()[0], f"{explanation}.")
+        self.assertIn("Current identity:", result.stdout)
+        self.assertIn("Review first:", result.stdout)
+        self.assertIn("Allow after review:", result.stdout)
+        return result.stdout
+
+    def test_blocked_trust_guidance_matches_individual_project_preflight(self) -> None:
+        for reason in ("not_allowed", "manifest_changed", "test_requirements_changed"):
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmpdir:
+                root = Path(tmpdir)
+                home = root / "home"
+                home.mkdir()
+                base_home = root / "base"
+                write_fake_basectl(base_home)
+                workspace = root / "workspace"
+                workspace_manifest = root / "workspace.yaml"
+                write_workspace_manifest(workspace_manifest, ("demo",))
+                project_root = workspace / "demo"
+                write_test_manifest(project_root, "demo")
+                manifest_path = project_root / "base_manifest.yaml"
+                manifest_path.write_text(
+                    manifest_path.read_text(encoding="utf-8").replace(
+                        "  command: ./run-tests.sh\n",
+                        "  command: ./run-tests.sh\n  requirements: requirements-dev.txt\n",
+                    ),
+                    encoding="utf-8",
+                )
+                requirements_path = project_root / "requirements-dev.txt"
+                requirements_path.write_text("pytest==8.0.0\n", encoding="utf-8")
+                store = ManifestCommandTrustStore(home=home)
+                if reason != "not_allowed":
+                    store.allow(compute_trust_identity(read_manifest(manifest_path)), base_version="test")
+                if reason == "manifest_changed":
+                    with manifest_path.open("a", encoding="utf-8") as stream:
+                        stream.write("# Changed after approval.\n")
+                elif reason == "test_requirements_changed":
+                    requirements_path.write_text("pytest==8.1.0\n", encoding="utf-8")
+
+                manifest = read_manifest(manifest_path)
+                self.assertEqual(store.status(compute_trust_identity(manifest)).reason, reason)
+                project_stderr = StringIO()
+                with mock.patch.dict(os.environ, {"HOME": str(home)}), redirect_stderr(project_stderr):
+                    self.assertFalse(project_test_preflight(mock.Mock(), manifest))
+                diagnostic = project_stderr.getvalue()
+                self.assertIn("Review first:", diagnostic)
+                self.assertIn("Allow after review:", diagnostic)
+                self.assertIn("basectl trust allow demo", diagnostic)
+                explanation = next(
+                    line.removeprefix("ERROR: ") for line in diagnostic.splitlines() if line.startswith("ERROR: ")
+                ).removesuffix(".")
+
+                trust_output = self.assert_trust_status_guidance(workspace, home, base_home, explanation)
+                self.assertEqual("review the requirements file" in trust_output, reason == "test_requirements_changed")
+
+                for output_format in ("text", "json"):
+                    with self.subTest(output_format=output_format), mock.patch(
+                        "base_projects.workspace_test.run_workspace_subprocess"
+                    ) as run:
+                        status, stdout, stderr = invoke_workspace_test(
+                            [
+                                "test", "--workspace", str(workspace), "--manifest", str(workspace_manifest),
+                                "--format", output_format,
+                            ],
+                            base_home,
+                            home,
+                            trusted_projects=(),
+                        )
+                    self.assertEqual(status, 1)
+                    self.assertEqual(stderr, "")
+                    run.assert_not_called()
+                    if output_format == "json":
+                        payload = json.loads(stdout)
+                        self.assertFalse(payload["execution_started"])
+                        self.assertEqual(payload["projects"][0]["status"], "blocked")
+                        self.assertEqual(payload["projects"][0]["trust_status"], "blocked")
+                        self.assertEqual(payload["projects"][0]["detail"], explanation)
+                    else:
+                        self.assertIn(f"reason: {explanation}\n", stdout)
+                        self.assertIn(f"at '{project_root.resolve()}': {explanation}.\n", stdout)
+
     def test_workspace_test_fails_closed_when_inspected_manifest_is_missing(self) -> None:
         root = Path("/workspace/api")
         inspection = WorkspaceRepoInspection(

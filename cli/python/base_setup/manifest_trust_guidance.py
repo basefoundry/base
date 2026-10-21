@@ -40,18 +40,13 @@ def print_status_text(trust_status: TrustStatus, surfaces: tuple[str, ...]) -> N
         print_trust_scope_warning()
         return
 
+    print(f"{blocked_command_summary(trust_status)}.")
     if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
-        print(
-            f"Manifest command trust is blocked for project '{identity.project_name}': "
-            "manifest or declared test requirements changed."
-        )
         if trust_status.reason == "test_requirements_changed":
             print("Declared test requirements changed; review the requirements file before allowing commands.")
         changed_project = (trust_status.changed_record or {}).get("project", {})
         if isinstance(changed_project, dict) and changed_project.get("manifest_sha256"):
             print(f"Recorded Manifest SHA-256: {changed_project['manifest_sha256']}")
-    else:
-        print(f"Manifest command trust is blocked for project '{identity.project_name}'.")
     print_identity("Current identity", identity)
     print()
     print_trust_scope_warning()
@@ -62,6 +57,17 @@ def print_status_text(trust_status: TrustStatus, surfaces: tuple[str, ...]) -> N
     print(f"  {allow_command_text(identity)}")
 
 
+def blocked_command_summary(trust_status: TrustStatus) -> str:
+    """Return the shared blocked-trust explanation without terminal punctuation."""
+    project_name = trust_status.identity.project_name
+    if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
+        return (
+            f"Manifest command trust is blocked for project '{project_name}': "
+            "manifest command or declared test requirements contract changed"
+        )
+    return f"Manifest-declared commands are not allowed for project '{project_name}' on this machine"
+
+
 def print_blocked_command_text(
     trust_status: TrustStatus,
     surfaces: tuple[str, ...],
@@ -70,18 +76,7 @@ def print_blocked_command_text(
 ) -> None:
     print("EXECUTION BLOCKED: No project command was executed.", file=stream)
     identity = trust_status.identity
-    if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:
-        print(
-            f"ERROR: Manifest command trust is blocked for project '{identity.project_name}': "
-            "manifest command or declared test requirements contract changed.",
-            file=stream,
-        )
-    else:
-        print(
-            f"ERROR: Manifest-declared commands are not allowed for project "
-            f"'{identity.project_name}' on this machine.",
-            file=stream,
-        )
+    print(f"ERROR: {blocked_command_summary(trust_status)}.", file=stream)
     print(f"Project root: {identity.project_root}", file=stream)
     print(f"Manifest: {identity.manifest_path}", file=stream)
     if trust_status.reason in {"manifest_changed", "test_requirements_changed"}:

@@ -415,7 +415,7 @@ class ManifestCommandTrustTests(unittest.TestCase):
                 )
 
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertIn("Manifest command trust is blocked for project 'demo'.", result.stdout)
+        self.assertIn("Manifest-declared commands are not allowed for project 'demo' on this machine.", result.stdout)
         self.assertIn(f"basectl run demo --list --workspace {workspace.resolve()}", result.stdout)
         self.assertIn(f"basectl build demo --list --workspace {workspace.resolve()}", result.stdout)
         self.assertIn(f"basectl test demo --dry-run --workspace {workspace.resolve()}", result.stdout)
@@ -451,7 +451,8 @@ class ManifestCommandTrustTests(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, result.output)
         self.assertIn(
-            "Manifest command trust is blocked for project 'demo': manifest or declared test requirements changed.",
+            "Manifest command trust is blocked for project 'demo': "
+            "manifest command or declared test requirements contract changed.",
             result.stdout,
         )
         self.assertIn(f"Recorded Manifest SHA-256: {identity.manifest_sha256}", result.stdout)
