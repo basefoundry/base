@@ -381,6 +381,8 @@ run_zsh_positional_completion() {
     assert_bash_completion_options_match_help gh-issue-readiness gh issue readiness
     assert_bash_completion_options_match_help gh-branch-stale gh branch stale
     assert_bash_completion_options_match_help gh-branch-prune gh branch prune
+    assert_bash_completion_options_match_help gh-review-fetch gh review fetch 2621
+    assert_bash_completion_options_match_help gh-review-prune gh review prune
     assert_bash_completion_options_match_help gh-project-doctor gh project doctor
     assert_bash_completion_options_match_help gh-project-configure gh project configure
 }
@@ -407,6 +409,8 @@ run_zsh_positional_completion() {
     assert_zsh_completion_options_match_help gh-issue-readiness gh issue readiness
     assert_zsh_completion_options_match_help gh-branch-stale gh branch stale
     assert_zsh_completion_options_match_help gh-branch-prune gh branch prune
+    assert_zsh_completion_options_match_help gh-review-fetch gh review fetch 2621
+    assert_zsh_completion_options_match_help gh-review-prune gh review prune
     assert_zsh_completion_options_match_help gh-project-doctor gh project doctor
     assert_zsh_completion_options_match_help gh-project-configure gh project configure
 }
@@ -535,7 +539,7 @@ run_zsh_positional_completion() {
 
     run_zsh_positional_completion basectl gh ""
     [ "$status" -eq 0 ]
-    [[ "$output" == *"positional=2:gh area:(auth issue pr branch worktree project)"* ]]
+    [[ "$output" == *"positional=2:gh area:(auth issue pr branch worktree project review)"* ]]
 
     run_zsh_positional_completion basectl gh auth ""
     [ "$status" -eq 0 ]
@@ -548,6 +552,14 @@ run_zsh_positional_completion() {
     run_zsh_positional_completion basectl gh issue readiness ""
     [ "$status" -eq 0 ]
     [[ "$output" == *"positional=4:issue number:"* ]]
+
+    run_zsh_positional_completion basectl gh review ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=3:review command:(fetch prune)"* ]]
+
+    run_zsh_positional_completion basectl gh review fetch ""
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"positional=4:pull request number:"* ]]
 
     run_zsh_positional_completion basectl gh project issue set-fields ""
     [ "$status" -eq 0 ]
@@ -603,6 +615,21 @@ run_zsh_positional_completion() {
     [[ "$block" == *"--no-project"* ]]
     [[ "$block" == *"--allow-cross-repo"* ]]
     [[ "$block" != *"--assignee"* ]]
+}
+
+@test "Zsh gh review completion includes fetch and prune options" {
+    local fetch_options prune_options
+
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    fetch_options="$(zsh_completion_long_options basectl gh review fetch --)"
+    prune_options="$(zsh_completion_long_options basectl gh review prune --)"
+
+    [[ "$fetch_options" == *"--name"* ]]
+    [[ "$fetch_options" == *"--root"* ]]
+    [[ "$fetch_options" == *"--refresh"* ]]
+    [[ "$prune_options" == *"--closed-unmerged"* ]]
+    [[ "$prune_options" == *"--pr"* ]]
 }
 
 @test "Zsh gh project configure completion includes replace-project option" {

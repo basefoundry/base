@@ -502,8 +502,55 @@ and does not delete the directory contents. Inspect or preserve anything needed
 from that path, then use `git worktree prune --dry-run -v` followed by
 `git worktree prune -v` to remove stale Git administrative records. Git's prune
 only removes stale worktree metadata; it does not delete an orphaned directory.
-Detached worktrees are intentionally outside Base's branch/PR cleanup boundary
-and should be handled through the explicit Git command after review.
+Unmanaged detached worktrees are intentionally outside Base's branch/PR cleanup
+boundary and should be handled through the explicit Git command after review.
+
+## Review Worktrees
+
+Review-only checkouts use a separate, detached namespace so a reviewer never
+has to create a local `pr-*` branch merely to inspect a pull request. Create one
+with:
+
+```bash
+basectl gh review fetch 2621 --name stale-worktree-review
+```
+
+The command records the checkout outside the worktree itself and uses these
+stable names:
+
+```text
+refs/base-review/pr/<number>/<slug>
+<repo>-review-worktrees/pr-<number>-<slug>
+```
+
+The worktree is detached, the review ref is not an ordinary
+`refs/heads/pr-*` branch, and the default root is next to the repository root
+represented by the common Git directory. Use `--root <path>` when a different
+review workspace is needed. Use `--refresh` only to replace an existing clean
+review checkout with the current pull-request head.
+The optional `--repo <owner/name>` selector must match the checkout's `origin`
+repository; use a checkout of that repository when reviewing an upstream PR.
+
+Review cleanup is conservative and dry-run by default:
+
+```bash
+basectl gh review prune
+basectl gh review prune --yes
+basectl gh review prune --closed-unmerged --yes
+```
+
+The pruner removes only Base-owned metadata records whose worktrees are inside
+the configured review root, still detached and clean, whose local ref and
+checkout still match the recorded pull-request head, and whose current GitHub
+pull request is merged. Open, changed, missing, dirty, branch-attached,
+closed-unmerged, invalid, or unowned review checkouts remain in place and are
+reported. `--closed-unmerged` is an explicit opt-in for clean closed-but-not-
+merged reviews; it never removes an open review. `--pr <number>` narrows a
+preview or cleanup to one pull request.
+
+The old local `pr-*` branches created by ad-hoc review scripts are not part of
+this feature. They are a one-time migration/cleanup task and must be audited
+before deletion; the review pruner deliberately does not guess their ownership.
 
 If a worktree is removed but its local branch cannot be deleted, the command
 retains the branch, reports the incomplete cleanup, and exits nonzero. Resolve

@@ -846,7 +846,7 @@ _base_basectl_completion() {
             ;;
         gh)
             if ((COMP_CWORD == 2)); then
-                _base_basectl_completion_compgen "auth issue pr branch worktree project" "$cur"
+                _base_basectl_completion_compgen "auth issue pr branch worktree project review" "$cur"
             else
                 case "${COMP_WORDS[2]:-}" in
                 auth)
@@ -906,6 +906,15 @@ _base_basectl_completion() {
                         _base_basectl_completion_compgen "prune" "$cur"
                     else
                         _base_basectl_completion_compgen "--dry-run --yes --closed-unmerged -h --help" "$cur"
+                    fi
+                    ;;
+                review)
+                    if ((COMP_CWORD == 3)); then
+                        _base_basectl_completion_compgen "fetch prune" "$cur"
+                    elif [[ "${COMP_WORDS[3]:-}" == fetch ]]; then
+                        _base_basectl_completion_compgen "--name --repo --root --refresh -h --help" "$cur"
+                    elif [[ "${COMP_WORDS[3]:-}" == prune ]]; then
+                        _base_basectl_completion_compgen "--dry-run --yes --closed-unmerged --pr --root -h --help" "$cur"
                     fi
                     ;;
                 project)

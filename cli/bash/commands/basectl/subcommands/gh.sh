@@ -13,6 +13,8 @@ source "$BASE_HOME/cli/bash/commands/basectl/subcommands/github_policy.sh"
 # shellcheck source=cli/bash/commands/basectl/subcommands/inspection_json.sh
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/inspection_json.sh"
 source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_branch_worktree.sh"
+# shellcheck source=cli/bash/commands/basectl/subcommands/gh_review.sh
+source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_review.sh"
 
 base_gh_load_module() {
     local function_name="$1"
@@ -66,6 +68,8 @@ Usage:
   basectl gh branch stale [--days <days>] [--format <text|json>]
   basectl gh branch prune [--dry-run] [--yes] [--remote] [--closed-unmerged]
   basectl gh worktree prune [--dry-run] [--yes] [--closed-unmerged]
+  basectl gh review fetch <number> --name <slug> [--repo <owner/name>] [--root <path>] [--refresh]
+  basectl gh review prune [--dry-run] [--yes] [--closed-unmerged] [--pr <number>] [--root <path>]
 
 Purpose:
   Manage GitHub issues, pull requests, Project metadata, branch naming, and
@@ -105,7 +109,8 @@ Notes:
     body also follows that project policy. Pass --no-fixes to suppress body
     injection.
   - Pull request implementation work should happen in a dedicated worktree.
-  - Branch and worktree pruning are dry-run by default and apply only when --yes is passed.
+  - Review worktrees are detached and use refs/base-review/pr/<number>/<slug>.
+  - Branch, worktree, and review pruning are dry-run by default and apply only when --yes is passed.
 EOF
 }
 
@@ -1033,6 +1038,7 @@ base_gh_subcommand_main() {
         project) base_gh_do_project "$@" ;;
         branch) base_gh_do_branch "$@" ;;
         worktree) base_gh_do_worktree "$@" ;;
+        review) base_gh_review_main "$@" ;;
         -h|--help|help|"") base_gh_usage ;;
         *)
             base_gh_usage_error base_gh_usage "Unknown gh area '$area'."

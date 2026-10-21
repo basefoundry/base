@@ -131,6 +131,10 @@ such command directories exist. Optional utility CLIs such as `caff` and
   is set, it takes precedence and must be unset or rotated at its source.
   Prefer this command for Base repository GitHub workflows when it supports the
   task.
+  `basectl gh review fetch <number> --name <slug>` creates a detached,
+  namespaced review checkout without a local `pr-*` branch, and
+  `basectl gh review prune` previews or removes only verified safe review
+  checkouts. Legacy local `pr-*` branches remain a separate one-time cleanup.
 - `basectl onboard` guides first-run setup around existing setup, check,
   doctor, profile, and project-discovery primitives. See
   `docs/basectl-onboard.md`.
