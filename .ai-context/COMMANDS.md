@@ -32,6 +32,11 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   environment and optional project artifacts. Project `--dry-run` previews run
   through Base's interpreter and work before the project virtualenv exists,
   without creating or recreating that environment.
+- `basectl update [project]` - update Base by default, or the named consumer
+  project. Current Homebrew updates always reconcile setup; ordinary Git
+  updates do so only when the revision changes. Stable Base source checkouts
+  can use `--release <tag>`. Consult `docs/upgrading.md` for version availability,
+  older-version fallback, explicit setup, trust, and recovery.
 - `basectl check [project]` - check Base readiness only by default; pass a
   project name or `--manifest` to also check manifest-declared project
   requirements. It does not install or repair prerequisites, modify project

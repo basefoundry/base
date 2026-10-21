@@ -33,6 +33,8 @@ inventory -> prepare -> verify -> trust -> onboard -> hand off
 
 For the canonical source-checkout install commands, see the
 [source checkout install recipe](docs/bootstrap.md#source-checkout-install-recipe).
+For an existing installation, use the [Upgrade Contract](docs/upgrading.md)
+to select the Homebrew, mutable-source, or stable-tag procedure.
 For the complete install-to-verified-project-PR journey, see the
 [adopter golden path](docs/adopter-golden-path.md).
 Then run the trust-conscious project proof:
