@@ -413,6 +413,44 @@ their own dry-run output and confirmation rules. A workspace manifest must not
 imply that Base can overwrite, pull, reset, or otherwise mutate existing
 checkouts.
 
+## Execution Deadlines And Cancellation
+
+Workspace orchestration uses fixed internal deadlines; the CLI and workspace
+manifest do not currently expose timeout overrides. These limits apply per
+operation, not to the entire workspace batch.
+
+| Operation | Deadline | On timeout |
+| --- | --- | --- |
+| Each delegated `workspace setup` | 1,800 seconds (30 minutes) | Count the repository as failed and continue to later eligible repositories. |
+| Each delegated `workspace test` | 1,800 seconds (30 minutes) | Report a failed execution attempt; continue unless `--fail-fast` stops later tests. |
+| Each `git pull --ff-only` in `workspace update` | 1,800 seconds (30 minutes) | Report that repository as failed and continue. |
+| Each Git subprocess in update preflight | 30 seconds | Report a preflight problem; skip mutation, failing the batch for a required target. |
+
+On supported POSIX hosts, setup and test run their delegated command in a new
+session. Timeout cleanup signals that process group with `SIGTERM`, waits up
+to one second, then escalates to `SIGKILL` with another bounded wait. Ordinary
+descendants in that group are included; a descendant that deliberately leaves
+the group is outside this guarantee. `SIGINT` and `SIGTERM` are forwarded to
+the active group before the parent follows its own signal handling. An
+interrupted parent is not guaranteed to emit a complete final report.
+
+Update uses its own direct-child subprocess timeout handling. It does not
+share setup/test's process-group cleanup guarantee. None of these details
+extend Base's native Windows support boundary.
+
+Setup/test capture child output and redact it before presenting completed
+results; they do not stream live output. Timeout reporting records the timeout
+but does not promise all partial child output. Update similarly captures and
+redacts Git output. Preserve available run evidence when diagnosing a failure.
+
+Timeout or interruption does not roll back completed repository updates,
+installed dependencies, or project test side effects. Inspect the failed
+project before retrying. Setup may be rerun after the cause is corrected;
+update and test can select only the affected repositories/projects. A test
+retry repeats project-owned behavior and is safe only when that project's
+test contract permits it. Workspace test still preflights trust for the whole
+selected set before starting any delegated test, as described below.
+
 ## Partial Failure
 
 Workspace commands should treat partial failure as normal. A missing optional

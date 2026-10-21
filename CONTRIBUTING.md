@@ -128,8 +128,8 @@ Follow [STANDARDS.md](STANDARDS.md). In particular:
 
 - Keep Bash control flow explicit. Do not rely on `set -e`.
 - Keep command implementations under `cli/bash/commands/<command>/`.
-- Keep Base-owned Python package code under `cli/python/` or `lib/python/` as
-  appropriate. The reusable `base_cli` framework is maintained in the
+- Keep Base-owned Python packages and integration helpers under `cli/python/`,
+  following [Python Package Ownership](docs/python-package-ownership.md). The reusable `base_cli` framework is maintained in the
   standalone `base-cli` repository.
 - Put tests next to the command, library, or package they validate.
 - Keep public command launchers in `bin/` thin.

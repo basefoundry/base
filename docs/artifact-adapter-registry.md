@@ -20,10 +20,11 @@ portable `tool` artifacts to system packages. The initial mapping is
 `tool:bats-core` to system package `bats`; macOS keeps using the Homebrew
 `bats-core` package for the same manifest artifact.
 
-That behavior is useful but too implicit. The supported artifact list, manager
-selection, package name, install target, and diagnostics are encoded in Python.
-Adding another artifact family would require changing command code before Base
-has a stable vocabulary for describing what it can manage.
+The bundled YAML records the supported definitions, manager, package name,
+install target, version policy, and check kind. Python owns schema validation
+and typed manager behavior. Adding a new manager or artifact family still
+requires implementation and tests; a registry row cannot introduce arbitrary
+execution.
 
 ## Goals
 
@@ -55,8 +56,8 @@ make Base responsible for every installer or dependency solver.
 Base should continue to delegate:
 
 - host packages to Homebrew or a project-owned Brewfile;
-- Python environments to the current Base project venv path or a future
-  structured `python:` contract such as uv;
+- Python environments to the Base-managed project venv or the implemented
+  `python.manager: uv` delegation contract;
 - language dependencies to native files such as `go.mod`, `package.json`,
   `pom.xml`, or `build.gradle`;
 - project tasks to explicit task runners such as mise, just, or repo-local
@@ -68,15 +69,16 @@ typed adapters. They should not absorb project-specific installers into Base.
 
 ## Recommended Shape
 
-Base should introduce the registry in phases.
+Phase 1 is implemented. Phases 2 and 3 below are proposals, not accepted input
+to the current bundled-registry loader.
 
-### Phase 1: Declarative Built-ins
+### Phase 1: Declarative Built-ins (Implemented)
 
-Move the current hard-coded `_ARTIFACTS` table into a built-in declarative
-registry bundled with Base, for example `lib/base/artifact-registry.yaml`.
-Command behavior remains in Python manager adapters.
+The built-in declarative registry is bundled at
+`lib/base/artifact-registry.yaml`. Command behavior remains in Python manager
+adapters.
 
-Example:
+Complete current schema example:
 
 ```yaml
 version: 1
@@ -98,10 +100,10 @@ artifacts:
     version_policy: latest-only
     check:
       kind: homebrew_package
-      package: kubernetes-cli
 ```
 
-The Python API can stay close to the current code:
+`check` accepts only `kind`; the package comes from the entry's `package` field.
+The loader exposes this Python record:
 
 ```python
 @dataclass(frozen=True)
@@ -116,9 +118,7 @@ class ArtifactDefinition:
     registry_source: str = ""
 ```
 
-`get_artifact_definition(type, name)` should continue to return one
-definition or `None`, so existing setup/check call sites can migrate without
-changing their control flow.
+`get_artifact_definition(type, name)` returns one definition or `None`.
 
 ### Phase 2: Workspace Overlay Registry
 

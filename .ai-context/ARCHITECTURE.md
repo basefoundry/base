@@ -55,10 +55,14 @@ boundary. Do not split `setup_common.sh` into sourced fragments by topic.
 its own path, sources `base_init.sh`, and dispatches to either a Base command,
 an explicit Bash script, or an interactive Base runtime shell.
 
-`bin/base-wrapper` is the Python execution wrapper. It runs Base Python packages
-with the selected project virtual environment and a `PYTHONPATH` that includes
-Base's `lib/python` and `cli/python`; the `base_cli` provider is selected by
-`lib/base/base_cli_runtime.sh` and is not copied into this repository.
+`bin/base-wrapper` selects the interpreter through `--project`. With
+`--project base` and a `base_*` package it uses the Base interpreter and the
+isolated `python -I` module entrypoint, limiting Base imports to `cli/python`
+and the selected `base_cli` provider. Other selections use the selected project
+environment and module execution. The provider is resolved by
+`lib/base/base_cli_runtime.sh`, not copied into this repository. See
+`docs/manifest-command-trust.md` for the isolation boundary and
+`docs/python-package-ownership.md` for package responsibilities.
 
 Run-bundle propagation is an internal capability, not user configuration.
 `basectl` reuses inherited bundle state only when the physical path is a real
@@ -68,7 +72,8 @@ replaced with a fresh bundle, and finalization repeats the validation before
 writing metadata or removing temporary data.
 
 Project Python ownership is explicit. A top-level `python:` mapping (including
-`python: {}`) or a `python-package` artifact requires a project runtime.
+`python: {}`), a `python-package` artifact, or `test.requirements` requires a
+project runtime.
 Shell-only manifests use Base's own venv for setup/check/doctor control-plane
 work, do not inherit Base bootstrap packages into a project venv, and report
 workspace venv state as `not_applicable`. `project.languages` remains taxonomy.
@@ -77,8 +82,11 @@ The broader runtime separation remains tracked in #1611.
 Manifest-declared test requirements are an explicit project-runtime contract.
 `test.requirements` is repository-relative and currently supports direct
 package names with optional exact `==` versions. Setup installs the file into
-the routed project environment; check, doctor, and test preflight fail closed
-for missing files, invalid declarations, or missing/mismatched packages.
+the routed project environment. Static check/doctor inspection validates the
+declaration but reports package readiness as unverified without executing the
+project runtime. `--verify-project-runtime` explicitly enables that runtime
+verification; missing/mismatched installed requirements then produce failures.
+Test preflight verifies requirements before running the declared test command.
 uv-managed projects keep dependency ownership in `pyproject.toml` and their
 lockfile instead of using this requirements-file path.
 

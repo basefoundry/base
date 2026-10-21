@@ -5,22 +5,49 @@ Base supports two Python project shapes.
 ## When A Project Python Runtime Is Required
 
 Base treats project Python as explicit. A manifest requires a project Python
-runtime when either of these is present:
+runtime when any of these is present:
 
 - a top-level `python:` mapping, including `python: {}`
 - at least one `python-package` artifact
+- a `test.requirements` file declaration, even without `python:` or artifacts
 
 The empty mapping is a compatibility opt-in to Base's default managed project
 venv. `project.languages: [python]` is classification metadata only and does
 not independently request an environment.
 
-A manifest with neither contract is shell-only for Base setup and diagnostics.
+A manifest with none of these contracts is shell-only for Base setup and diagnostics.
 `basectl setup`, `basectl check`, and `basectl doctor` run Base-owned manifest
 parsing and reconciliation from `~/.base.d/base/.venv`; they do not copy
 Click, PyYAML, tomli, or other Base bootstrap packages into the project and do
 not create `<project-root>/.venv` solely for Base. Workspace status and
 onboarding expose the venv state as `not_applicable` and can report the project
 healthy without a project interpreter.
+
+| Manifest declaration | Project Python required? |
+| --- | --- |
+| No `python:`, no `python-package` artifact, and no `test.requirements` | No |
+| `project.languages: [python]` alone | No; taxonomy only |
+| `python: {}` or a configured `python:` mapping | Yes |
+| One or more `python-package` artifacts | Yes |
+| `test.requirements: requirements-test.txt` alone | Yes |
+| More than one of these runtime triggers | Yes; they share the selected project environment |
+
+For example, this manifest requests a Base-managed project environment without
+declaring a `python:` section:
+
+```yaml
+project:
+  name: example
+test:
+  command: pytest
+  requirements: requirements-test.txt
+```
+
+The requirements file is repository-relative. Setup installs its declared
+packages into the routed environment; see [Testing](testing.md#declared-test-requirements)
+for supported declarations and verification. `python.manager: uv` instead owns
+dependencies through `pyproject.toml` and its lockfile; it cannot be combined
+with `test.requirements`.
 
 This is a scoped boundary, not the complete migration tracked in
 [#1611](https://github.com/basefoundry/base/issues/1611). Project-owned
