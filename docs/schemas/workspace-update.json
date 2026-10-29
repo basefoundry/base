@@ -98,7 +98,7 @@
     },
     "counts": {
       "type": "object",
-      "required": ["planned", "updated", "unchanged", "skipped", "failed"],
+      "required": ["planned", "updated", "unchanged", "skipped", "blocked", "failed"],
       "properties": {
         "planned": {
           "type": "integer",

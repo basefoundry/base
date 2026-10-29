@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -672,7 +673,7 @@ repos:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             primary = root / "primary"
-            nested = primary / "base-cli-worktrees" / "242-api-freeze"
+            nested = primary / "base-cli-worktrees" / "242-api-*?"
             primary.mkdir()
             subprocess.run(["git", "init", "--initial-branch=main", str(primary)], check=True, capture_output=True)
             subprocess.run(["git", "-C", str(primary), "config", "user.name", "Workspace Test"], check=True)
@@ -710,6 +711,31 @@ repos:
                 )
             )
 
+            sibling = nested.parent / "242-api-other"
+            sibling.mkdir()
+            (sibling / "unrelated.txt").write_text("unrelated edit\n", encoding="utf-8")
+            literal_pathspec_result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget(
+                    name="demo",
+                    root=primary,
+                    action="pull",
+                    default_branch="main",
+                )
+            )
+
+            shutil.rmtree(sibling)
+            shutil.rmtree(nested)
+            nested.mkdir(parents=True)
+            (nested / "stale-registration.txt").write_text("stale registration edit\n", encoding="utf-8")
+            stale_registration_result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget(
+                    name="demo",
+                    root=primary,
+                    action="pull",
+                    default_branch="main",
+                )
+            )
+
             (primary / "primary-change.txt").write_text("real primary edit\n", encoding="utf-8")
             dirty_result = workspace_update.preflight_workspace_update_target(
                 workspace_update.WorkspaceUpdateTarget(
@@ -721,8 +747,14 @@ repos:
             )
 
         self.assertIsNone(result)
+        self.assertIsNotNone(literal_pathspec_result)
+        self.assertIsNotNone(stale_registration_result)
         self.assertIsNotNone(dirty_result)
+        assert literal_pathspec_result is not None
+        assert stale_registration_result is not None
         assert dirty_result is not None
+        self.assertEqual(literal_pathspec_result.preflight, ("dirty",))
+        self.assertEqual(stale_registration_result.preflight, ("dirty",))
         self.assertEqual(dirty_result.preflight, ("dirty",))
 
     def test_workspace_update_reports_preflight_diagnostics_in_text(self) -> None:

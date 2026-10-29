@@ -294,12 +294,12 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl workspace update` preflights manifest roots, then runs
   `git pull --ff-only` serially across safe present repositories in manifest
   order. It supports `--dry-run` with the same read-only preflight,
-  continues after individual failures, skips
-  dirty, non-default, non-tracking, or linked-worktree roots with recovery
-  guidance, skips missing optional repositories, treats missing required
-  repositories as failures, and includes the active `BASE_HOME` checkout when
-  it is the manifest's `base` target. It never stashes, resets, switches, or
-  updates linked PR worktrees implicitly.
+  continues after individual failures, blocks required roots that fail
+  preflight, skips missing or unsafe optional repositories with recovery
+  guidance, and includes the active `BASE_HOME` checkout when it is the
+  manifest's `base` target. Registered linked worktrees nested under a primary
+  root are ignored only for that root's untracked-file check. It never stashes,
+  resets, switches, or updates linked PR worktrees implicitly.
 - `basectl workspace configure` previews the existing `basectl repo configure`
   repair path by default across discovered Base-managed projects, or across
   present Base-managed repositories from a configured or explicit workspace

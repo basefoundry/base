@@ -516,7 +516,7 @@ def workspace_update_git_status(
 
     filtered_status_arguments = [*status_arguments, "--", "."]
     filtered_status_arguments.extend(
-        f":(exclude){path.relative_to(target_root).as_posix()}" for path in nested_worktrees
+        f":(exclude,literal){path.relative_to(target_root).as_posix()}" for path in nested_worktrees
     )
     filtered_status = workspace_update_git_status_for_arguments(target, filtered_status_arguments)
     if isinstance(filtered_status, WorkspaceUpdateResult):
@@ -573,11 +573,24 @@ def workspace_update_nested_worktree_paths(target: WorkspaceUpdateTarget) -> tup
 
 
 def parse_workspace_worktree_paths(output: str) -> tuple[Path, ...]:
-    return tuple(
-        Path(line.removeprefix("worktree ")).resolve()
-        for line in output.splitlines()
-        if line.startswith("worktree ") and line.removeprefix("worktree ").strip()
-    )
+    paths: list[Path] = []
+    block: list[str] = []
+    for line in (*output.splitlines(), ""):
+        if line.strip():
+            block.append(line)
+            continue
+
+        worktree_value = next(
+            (entry.removeprefix("worktree ").strip() for entry in block if entry.startswith("worktree ")),
+            "",
+        )
+        if worktree_value and not any(entry.startswith("prunable ") for entry in block):
+            path = Path(worktree_value).resolve()
+            if path.is_dir():
+                paths.append(path)
+        block = []
+
+    return tuple(paths)
 
 
 def workspace_update_preflight_state(
