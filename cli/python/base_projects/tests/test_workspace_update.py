@@ -355,12 +355,15 @@ class WorkspaceUpdateTests(unittest.TestCase):  # pylint: disable=too-many-publi
             )
         self.assertEqual(text_status, 0)
         self.assertEqual(text_stderr, "")
-        self.assertIn("Workspace update plan complete: planned=0 skipped=0 failed=0.", text_stdout)
+        self.assertIn("Workspace update plan complete: planned=0 skipped=0 blocked=0 failed=0.", text_stdout)
         self.assertEqual(json_status, 0)
         self.assertEqual(json_stderr, "")
         payload = json.loads(json_stdout)
         self.assertEqual(payload["repositories"], [])
-        self.assertEqual(payload["counts"], {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 0, "failed": 0})
+        self.assertEqual(
+            payload["counts"],
+            {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 0, "blocked": 0, "failed": 0},
+        )
 
     def test_workspace_update_debug_log_formats_captured_output(self) -> None:
         cases = (
@@ -469,9 +472,9 @@ repos:
 
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
-        self.assertIn("SKIP    skipped", stdout)
+        self.assertIn("SKIP    blocked", stdout)
         self.assertIn("resolves outside workspace root", stdout)
-        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=1 failed=1.", stdout)
+        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=0 blocked=1 failed=0.", stdout)
         run.assert_not_called()
 
     def test_workspace_update_allows_repository_symlink_inside_workspace(self) -> None:
@@ -527,7 +530,7 @@ repos:
             assert_workspace_result(self, stdout, "optional-missing", "SKIP", "skipped")
             assert_workspace_result(self, stdout, "later", "PULL", "planned")
             self.assertNotIn("active Base control plane is managed from BASE_HOME", stdout)
-            self.assertIn("Workspace update plan complete: planned=5 skipped=2 failed=1.", stdout)
+            self.assertIn("Workspace update plan complete: planned=5 skipped=1 blocked=1 failed=0.", stdout)
             self.assertIn("[DRY-RUN] No repositories were modified.", stdout)
             self.assertLess(stdout.index("\nbase "), stdout.index("\nfirst "))
             self.assertLess(stdout.index("\nfirst "), stdout.index("\nlater "))
@@ -634,6 +637,18 @@ repos:
             (primary / "README.md").write_text("workspace test\n", encoding="utf-8")
             subprocess.run(["git", "-C", str(primary), "add", "README.md"], check=True)
             subprocess.run(["git", "-C", str(primary), "commit", "-m", "initial"], check=True, capture_output=True)
+            remote = root / "origin.git"
+            subprocess.run(
+                ["git", "init", "--bare", "--initial-branch=main", str(remote)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(["git", "-C", str(primary), "remote", "add", "origin", str(remote)], check=True)
+            subprocess.run(
+                ["git", "-C", str(primary), "push", "--set-upstream", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
             subprocess.run(
                 ["git", "-C", str(primary), "worktree", "add", "-b", "pr-33-review", str(linked), "HEAD"],
                 check=True,
@@ -652,6 +667,63 @@ repos:
         assert result is not None
         self.assertEqual(result.preflight, ("linked_worktree",))
         self.assertIn("linked Git worktree", result.detail or "")
+
+    def test_workspace_update_ignores_registered_nested_worktree_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            primary = root / "primary"
+            nested = primary / "base-cli-worktrees" / "242-api-freeze"
+            primary.mkdir()
+            subprocess.run(["git", "init", "--initial-branch=main", str(primary)], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(primary), "config", "user.name", "Workspace Test"], check=True)
+            subprocess.run(
+                ["git", "-C", str(primary), "config", "user.email", "workspace-test@example.com"],
+                check=True,
+            )
+            (primary / "README.md").write_text("workspace test\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(primary), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(primary), "commit", "-m", "initial"], check=True, capture_output=True)
+            remote = root / "origin.git"
+            subprocess.run(
+                ["git", "init", "--bare", "--initial-branch=main", str(remote)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(["git", "-C", str(primary), "remote", "add", "origin", str(remote)], check=True)
+            subprocess.run(
+                ["git", "-C", str(primary), "push", "--set-upstream", "origin", "main"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(primary), "worktree", "add", "-b", "pr-242-api-freeze", str(nested), "HEAD"],
+                check=True,
+                capture_output=True,
+            )
+
+            result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget(
+                    name="demo",
+                    root=primary,
+                    action="pull",
+                    default_branch="main",
+                )
+            )
+
+            (primary / "primary-change.txt").write_text("real primary edit\n", encoding="utf-8")
+            dirty_result = workspace_update.preflight_workspace_update_target(
+                workspace_update.WorkspaceUpdateTarget(
+                    name="demo",
+                    root=primary,
+                    action="pull",
+                    default_branch="main",
+                )
+            )
+
+        self.assertIsNone(result)
+        self.assertIsNotNone(dirty_result)
+        assert dirty_result is not None
+        self.assertEqual(dirty_result.preflight, ("dirty",))
 
     def test_workspace_update_reports_preflight_diagnostics_in_text(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -691,9 +763,9 @@ repos:
 
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
-        assert_workspace_result(self, stdout, "demo", "SKIP", "skipped")
+        assert_workspace_result(self, stdout, "demo", "SKIP", "blocked")
         self.assertIn("working tree is dirty", stdout)
-        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=1 failed=1.", stdout)
+        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=0 blocked=1 failed=0.", stdout)
         run.assert_not_called()
 
     def test_workspace_update_json_reports_preflight_classification(self) -> None:
@@ -740,7 +812,10 @@ repos:
         self.assertEqual(payload["repositories"][0]["status"], "skipped")
         self.assertTrue(payload["repositories"][0]["fatal"])
         self.assertEqual(payload["repositories"][0]["preflight"], ["linked_worktree"])
-        self.assertEqual(payload["counts"], {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 1, "failed": 1})
+        self.assertEqual(
+            payload["counts"],
+            {"planned": 0, "updated": 0, "unchanged": 0, "skipped": 0, "blocked": 1, "failed": 0},
+        )
 
     def test_workspace_update_pulls_serially_and_aggregates_failures(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -824,7 +899,7 @@ repos:
             self.assertIn("fatal: Not possible to fast-forward, aborting.", stdout)
             assert_workspace_result(self, stdout, "later", "PULL", "updated")
             self.assertNotIn("Already up to date.", stdout)
-            self.assertIn("Workspace update completed: updated=2 unchanged=2 skipped=1 failed=1.", stdout)
+            self.assertIn("Workspace update completed: updated=2 unchanged=2 skipped=1 blocked=0 failed=1.", stdout)
             self.assertEqual(
                 [call.kwargs["cwd"] for call in run.call_args_list],
                 [
@@ -960,7 +1035,10 @@ repos:
             self.assertTrue(payload["dry_run"])
             self.assertEqual(payload["selected_repositories"], ["first", "later"])
             self.assertEqual([repo["status"] for repo in payload["repositories"]], ["planned", "planned"])
-            self.assertEqual(payload["counts"], {"planned": 2, "updated": 0, "unchanged": 0, "skipped": 0, "failed": 0})
+            self.assertEqual(
+                payload["counts"],
+                {"planned": 2, "updated": 0, "unchanged": 0, "skipped": 0, "blocked": 0, "failed": 0},
+            )
             run.assert_not_called()
 
     def test_workspace_update_json_reports_results_and_exit_code(self) -> None:
@@ -1021,7 +1099,10 @@ repos:
             self.assertEqual(payload["repositories"][1]["exit_code"], 1)
             self.assertIn("Not possible to fast-forward", payload["repositories"][1]["detail"])
             self.assertEqual(payload["repositories"][2]["status"], "skipped")
-            self.assertEqual(payload["counts"], {"planned": 0, "updated": 1, "unchanged": 0, "skipped": 1, "failed": 1})
+            self.assertEqual(
+                payload["counts"],
+                {"planned": 0, "updated": 1, "unchanged": 0, "skipped": 1, "blocked": 0, "failed": 1},
+            )
 
     def test_workspace_update_optional_preflight_skip_is_nonfatal(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1061,7 +1142,7 @@ repos:
 
         self.assertEqual(status, 0)
         self.assertEqual(stderr, "")
-        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=1 failed=0.", stdout)
+        self.assertIn("Workspace update completed: updated=0 unchanged=0 skipped=1 blocked=0 failed=0.", stdout)
 
     def test_workspace_update_dry_run_reports_preflight_diagnostics(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1102,9 +1183,9 @@ repos:
 
         self.assertEqual(status, 1)
         self.assertEqual(stderr, "")
-        assert_workspace_result(self, stdout, "demo", "SKIP", "skipped")
+        assert_workspace_result(self, stdout, "demo", "SKIP", "blocked")
         self.assertIn("working tree is dirty", stdout)
-        self.assertIn("Workspace update plan complete: planned=0 skipped=1 failed=1.", stdout)
+        self.assertIn("Workspace update plan complete: planned=0 skipped=0 blocked=1 failed=0.", stdout)
         run.assert_not_called()
 
     def test_workspace_update_requires_a_manifest(self) -> None:

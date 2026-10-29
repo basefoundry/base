@@ -116,6 +116,11 @@
           "type": "integer",
           "minimum": 0
         },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Required repositories safely refused before a pull because they were missing or failed preflight."
+        },
         "failed": {
           "type": "integer",
           "minimum": 0

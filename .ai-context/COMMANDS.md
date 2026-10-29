@@ -125,8 +125,13 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     skipped.
   - `workspace update --dry-run` previews the ordered Git pull plan; without
     `--dry-run`, it continues after per-repo failures and reports
-    updated/unchanged/skipped/failed counts. JSON dry runs perform the same
-    read-only Git preflight as apply runs and report `planned` results without
+    updated/unchanged/skipped/blocked/failed counts. Required roots that fail
+    read-only preflight are shown as blocked and keep a nonzero exit status;
+    actual Git pull errors are counted as failed. Git-registered linked
+    worktrees nested under a primary root are excluded from that root's
+    untracked-file check, while arbitrary untracked files and real primary-root
+    edits still block updates. JSON dry runs perform the same read-only Git
+    preflight as apply runs and report planned or blocked results without
     pulling or mutating a checkout.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
