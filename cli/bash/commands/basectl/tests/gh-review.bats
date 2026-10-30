@@ -113,6 +113,72 @@ review_metadata_path() {
     jq -e '.pull_request == 2621 and .slug == "stale-worktree" and .head_sha == env.BASE_REVIEW_TEST_HEAD_SHA' "$metadata" >/dev/null
 }
 
+@test "review fetch rejects a nested worktree root before GitHub or Git mutation" {
+    local repo nested_root
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    nested_root="$repo/review-worktrees"
+
+    run_review "$repo" fetch 2621 --name nested-root --root "$nested_root"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing review worktree root"* ]]
+    [[ "$output" == *"inside repository root"* ]]
+    [ ! -e "$nested_root" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/nested-root
+}
+
+@test "review fetch rejects a symlinked nested worktree root" {
+    local repo nested_link
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    nested_link="$TEST_TMPDIR/review-worktrees-link"
+    ln -s "$repo" "$nested_link"
+
+    run_review "$repo" fetch 2621 --name symlinked-root --root "$nested_link/children"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing review worktree root"* ]]
+    [[ "$output" == *"inside repository root"* ]]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/symlinked-root
+}
+
+@test "review fetch rejects a missing-sibling traversal into the repository" {
+    local repo nested_root
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    nested_root="$TEST_TMPDIR/review-repo-shadow/../review-repo/review-worktrees"
+
+    run_review "$repo" fetch 2621 --name traversal-root --root "$nested_root"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing review worktree root"* ]]
+    [[ "$output" == *"inside repository root"* ]]
+    [ ! -e "$TEST_TMPDIR/review-repo/review-worktrees" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/traversal-root
+}
+
+@test "review fetch treats glob characters in a peer root literally" {
+    local repo review_root worktree
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    review_root="$TEST_TMPDIR/review[*?]-worktrees"
+    mkdir -p "$review_root"
+    review_root="$(cd "$review_root" && pwd -P)"
+    worktree="$review_root/pr-2621-literal-glob"
+    write_review_gh_mock
+
+    run_review "$repo" fetch 2621 --name literal-glob --repo basefoundry/base --root "$review_root"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"CREATED $worktree"* ]]
+    [ -d "$worktree" ]
+}
+
 @test "review prune removes only a verified merged review checkout" {
     local repo review_root worktree metadata
 
