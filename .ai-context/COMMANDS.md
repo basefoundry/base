@@ -190,6 +190,10 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   - `basectl gh worktree prune` previews safe merged-worktree cleanup by
     default; pass `--closed-unmerged` to include clean worktrees tied to
     closed, unmerged pull requests.
+  - `basectl gh review fetch <number>` creates a detached review worktree in
+    the peer `../<repo>-review-worktrees` root by default. An explicit
+    `--root` must resolve outside the repository; nested and symlinked nested
+    roots are rejected before GitHub or Git mutation.
   - `basectl gh project doctor --project <title>` - inspect Project metadata
     fields against the Base Project schema.
   - `basectl gh project configure --project <title>` - create or repair the

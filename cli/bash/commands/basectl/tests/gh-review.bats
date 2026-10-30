@@ -113,6 +113,40 @@ review_metadata_path() {
     jq -e '.pull_request == 2621 and .slug == "stale-worktree" and .head_sha == env.BASE_REVIEW_TEST_HEAD_SHA' "$metadata" >/dev/null
 }
 
+@test "review fetch rejects a nested worktree root before GitHub or Git mutation" {
+    local repo nested_root
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    nested_root="$repo/review-worktrees"
+
+    run_review "$repo" fetch 2621 --name nested-root --root "$nested_root"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing review worktree root"* ]]
+    [[ "$output" == *"inside repository root"* ]]
+    [ ! -e "$nested_root" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/nested-root
+}
+
+@test "review fetch rejects a symlinked nested worktree root" {
+    local repo nested_target nested_link
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    nested_target="$repo/nested-review-target"
+    nested_link="$repo/review-worktrees-link"
+    mkdir -p "$nested_target"
+    ln -s "$nested_target" "$nested_link"
+
+    run_review "$repo" fetch 2621 --name symlinked-root --root "$nested_link/children"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing review worktree root"* ]]
+    [[ "$output" == *"inside repository root"* ]]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/symlinked-root
+}
+
 @test "review prune removes only a verified merged review checkout" {
     local repo review_root worktree metadata
 

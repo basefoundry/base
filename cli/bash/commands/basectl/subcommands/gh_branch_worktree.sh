@@ -820,6 +820,53 @@ base_gh_resolve_physical_path() {
     (cd "$path" && pwd -P)
 }
 
+base_gh_resolve_path_for_creation() {
+    local path="$1"
+    local candidate suffix
+
+    [[ -n "$path" ]] || return 1
+    if [[ "$path" != /* ]]; then
+        path="$PWD/$path"
+    fi
+
+    candidate="$path"
+    suffix=""
+    while [[ ! -e "$candidate" ]]; do
+        [[ "$candidate" != "/" ]] || return 1
+        suffix="/$(basename "$candidate")$suffix"
+        candidate="$(dirname "$candidate")"
+    done
+    [[ -d "$candidate" ]] || return 1
+
+    printf '%s%s\n' "$(cd "$candidate" && pwd -P)" "$suffix"
+}
+
+base_gh_validate_worktree_root() {
+    local requested="$1"
+    local label="${2:-worktree root}"
+    local repo_root resolved_root
+
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+        base_gh_error "Unable to resolve the repository root before validating $label."
+        return 1
+    }
+    repo_root="$(base_gh_resolve_physical_path "$repo_root")" || {
+        base_gh_error "Unable to resolve the physical repository root before validating $label."
+        return 1
+    }
+    resolved_root="$(base_gh_resolve_path_for_creation "$requested")" || {
+        base_gh_error "Unable to resolve $label '$requested'."
+        return 1
+    }
+
+    if [[ "$resolved_root" == "$repo_root" || "$resolved_root" == "$repo_root/"* ]]; then
+        base_gh_error "Refusing $label '$requested': it resolves inside repository root '$repo_root'. Use a peer directory outside the repository."
+        return 1
+    fi
+
+    printf '%s\n' "$resolved_root"
+}
+
 base_gh_list_worktree_branches() {
     base_git_list_worktree_branches .
 }
