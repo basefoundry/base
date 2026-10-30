@@ -130,14 +130,12 @@ review_metadata_path() {
 }
 
 @test "review fetch rejects a symlinked nested worktree root" {
-    local repo nested_target nested_link
+    local repo nested_link
 
     create_review_repo
     repo="$BASE_REVIEW_TEST_REPO"
-    nested_target="$repo/nested-review-target"
-    nested_link="$repo/review-worktrees-link"
-    mkdir -p "$nested_target"
-    ln -s "$nested_target" "$nested_link"
+    nested_link="$TEST_TMPDIR/review-worktrees-link"
+    ln -s "$repo" "$nested_link"
 
     run_review "$repo" fetch 2621 --name symlinked-root --root "$nested_link/children"
 
