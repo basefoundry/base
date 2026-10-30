@@ -145,6 +145,40 @@ review_metadata_path() {
     ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/symlinked-root
 }
 
+@test "review fetch rejects a missing-sibling traversal into the repository" {
+    local repo nested_root
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    nested_root="$TEST_TMPDIR/review-repo-shadow/../review-repo/review-worktrees"
+
+    run_review "$repo" fetch 2621 --name traversal-root --root "$nested_root"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Refusing review worktree root"* ]]
+    [[ "$output" == *"inside repository root"* ]]
+    [ ! -e "$TEST_TMPDIR/review-repo/review-worktrees" ]
+    ! git -C "$repo" show-ref --verify --quiet refs/base-review/pr/2621/traversal-root
+}
+
+@test "review fetch treats glob characters in a peer root literally" {
+    local repo review_root worktree
+
+    create_review_repo
+    repo="$BASE_REVIEW_TEST_REPO"
+    review_root="$TEST_TMPDIR/review[*?]-worktrees"
+    mkdir -p "$review_root"
+    review_root="$(cd "$review_root" && pwd -P)"
+    worktree="$review_root/pr-2621-literal-glob"
+    write_review_gh_mock
+
+    run_review "$repo" fetch 2621 --name literal-glob --repo basefoundry/base --root "$review_root"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"CREATED $worktree"* ]]
+    [ -d "$worktree" ]
+}
+
 @test "review prune removes only a verified merged review checkout" {
     local repo review_root worktree metadata
 
