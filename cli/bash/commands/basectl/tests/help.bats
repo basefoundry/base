@@ -385,6 +385,10 @@ PY
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl workspace update [options]"* ]]
+    [[ "$output" == *"Required roots that fail preflight are blocked"* ]]
+    [[ "$output" == *"optional roots are skipped"* ]]
+    [[ "$output" == *"Registered linked worktrees"* ]]
+    [[ "$output" == *"nested under a primary root"* ]]
 
     workspace_update_row="$(grep -F '| `basectl workspace update` |' "$command_reference")"
     [[ "$workspace_update_row" == *"Run \`git pull --ff-only\` across present repositories in manifest order"* ]]

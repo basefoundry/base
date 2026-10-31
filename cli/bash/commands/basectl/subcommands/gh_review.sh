@@ -46,7 +46,8 @@ Options:
   --name <slug>       Required lower-case kebab-case review name.
   --repo <owner/name> Pull request repository. Defaults to origin and must
                       match the checkout's origin repository.
-  --root <path>       Review worktree root. Defaults to ../<repo>-review-worktrees.
+  --root <path>       Review worktree root outside the repository. Defaults to
+                      ../<repo>-review-worktrees; nested roots are rejected.
   --refresh           Replace an existing clean review worktree with the current PR head.
   -h, --help          Show this help text.
 EOF
@@ -129,12 +130,16 @@ base_gh_review_default_root() {
 
 base_gh_review_resolve_root() {
     local requested="${1:-}"
+    local validate_root="${2:-0}"
     local root
 
     if [[ -n "$requested" ]]; then
         root="$requested"
     else
         root="$(base_gh_review_default_root)" || return 1
+    fi
+    if ((validate_root)); then
+        root="$(base_gh_validate_worktree_root "$root" "review worktree root")" || return 1
     fi
     mkdir -p "$root" || return 1
     (cd "$root" && pwd -P)
@@ -321,7 +326,7 @@ base_gh_review_fetch() {
         }
     fi
     root="${parsed_options[root]:-}"
-    review_root="$(base_gh_review_resolve_root "$root")" || {
+    review_root="$(base_gh_review_resolve_root "$root" 1)" || {
         base_gh_error "Unable to prepare the review worktree root."
         return 1
     }
