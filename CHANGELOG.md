@@ -18,9 +18,13 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: publish workspace-test JSON schema version 2 so
   automation can distinguish trust-blocked and not-run projects from tests
   that actually executed.
+- Reconcile pinned Base runtime requirements after Homebrew upgrades even when
+  the formula version is unchanged, using the newly linked executable.
 
 ### Added
 
+- Upgrade clean, detached Base source checkouts to a reviewed later stable tag
+  with `basectl update --release <tag>`, including a preview and setup recovery.
 - Stability compatibility: enroll the new `basectl gh review fetch` and
   `basectl gh review prune` command contracts, including the migration path
   from ordinary local `pr-*` branches to namespaced detached review refs.
