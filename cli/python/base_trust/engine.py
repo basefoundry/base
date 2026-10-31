@@ -239,10 +239,6 @@ def workspace_status_command(ctx: base_cli.Context, workspace: str | None, outpu
         )
         return base_cli.ExitCode.SUCCESS
 
-    if not statuses:
-        _print_workspace_status_text(workspace_root, ())
-        return base_cli.ExitCode.SUCCESS
-
     _print_workspace_status_text(workspace_root, tuple(trust_status for trust_status, _surfaces in statuses))
     return base_cli.ExitCode.SUCCESS
 
@@ -261,22 +257,32 @@ def _print_workspace_status_text(workspace_root: Path, statuses: tuple[TrustStat
         statuses,
         key=lambda trust_status: (trust_status.is_allowed, trust_status.identity.project_name.casefold()),
     )
-    project_width = max(len("PROJECT"), *(len(item.identity.project_name) for item in display_statuses))
-    print()
-    print(f"{'PROJECT':<{project_width}}  {'STATUS':<7}  REASON")
-    for trust_status in display_statuses:
-        project_name = trust_status.identity.project_name
-        status_label = "Allowed" if trust_status.is_allowed else "Blocked"
-        reason_label = _workspace_status_reason_label(trust_status.reason)
-        print(f"{project_name:<{project_width}}  {status_label:<7}  {reason_label}")
-
+    records = [
+        {
+            "project": trust_status.identity.project_name,
+            "status": "Allowed" if trust_status.is_allowed else "Blocked",
+            "reason": _workspace_status_reason_label(trust_status.reason),
+        }
+        for trust_status in display_statuses
+    ]
     blocked_count = sum(1 for trust_status in statuses if not trust_status.is_allowed)
     allowed_count = project_count - blocked_count
-    print(f"\nSummary: {blocked_count} blocked, {allowed_count} allowed.")
-    print("Details: basectl trust status <project>")
-    print("Trust scope: approval binds manifest and declared test-requirements digests.")
-    print("             Referenced scripts, direct executables, and Git HEAD are not covered.")
-    print("             Uncommitted working-tree changes are not checked.")
+    footer = "\n".join(
+        (
+            f"Summary: {blocked_count} blocked, {allowed_count} allowed.",
+            "Details: basectl trust status <project>",
+            "Trust scope: approval binds manifest and declared test-requirements digests.",
+            "             Referenced scripts, direct executables, and Git HEAD are not covered.",
+            "             Uncommitted working-tree changes are not checked.",
+        )
+    )
+    print()
+    base_cli.render_records(
+        records,
+        requested_format="text",
+        columns=(("PROJECT", "project"), ("STATUS", "status"), ("REASON", "reason")),
+        footer=footer,
+    )
 
 
 def _workspace_status_reason_label(reason: str) -> str:
@@ -286,7 +292,9 @@ def _workspace_status_reason_label(reason: str) -> str:
         "manifest_changed": "Manifest changed",
         "test_requirements_changed": "Test requirements changed",
     }
-    return labels.get(reason, reason.replace("_", " ").capitalize())
+    if reason in labels:
+        return labels[reason]
+    return " ".join(word[:1].upper() + word[1:] for word in reason.replace("_", " ").split())
 
 
 def workspace_status_projects(

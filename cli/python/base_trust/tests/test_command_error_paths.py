@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import json
+import unicodedata
 from pathlib import Path
 
 import pytest
 import yaml
 
+from base_cli import output as base_cli_output
 from base_cli.testing import invoke
 from base_trust import engine
+
+
+def _force_terminal_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(engine.base_cli, "is_terminal", lambda: True)
+    monkeypatch.setattr(base_cli_output, "is_terminal", lambda *_args, **_kwargs: True)
 
 
 @pytest.mark.parametrize("output_format", ["yaml", "csv", "tsv"])
@@ -54,7 +61,7 @@ def test_workspace_status_supports_yaml_and_empty_terminal_output(
 
     empty_workspace = tmp_path / "empty"
     empty_workspace.mkdir()
-    monkeypatch.setattr(engine.base_cli, "is_terminal", lambda: True)
+    _force_terminal_output(monkeypatch)
     text_result = invoke(
         engine.app,
         ["status", "--workspace", str(empty_workspace)],
@@ -86,7 +93,7 @@ def test_workspace_status_text_shows_allowed_projects_compactly(
     for manifest_path in manifests:
         store.allow(engine.compute_trust_identity_for_manifest(manifest_path), base_version="1.10.5")
 
-    monkeypatch.setattr(engine.base_cli, "is_terminal", lambda: True)
+    _force_terminal_output(monkeypatch)
     result = invoke(
         engine.app,
         ["status", "--workspace", str(workspace)],
@@ -137,7 +144,7 @@ def test_workspace_status_text_summarizes_blocked_reasons_before_allowed_project
     requirements_path.write_text("jsonschema==4.25.2\n", encoding="utf-8")
     manifest_factory.write(workspace / "fresh", name="fresh")
 
-    monkeypatch.setattr(engine.base_cli, "is_terminal", lambda: True)
+    _force_terminal_output(monkeypatch)
     result = invoke(
         engine.app,
         ["status", "--workspace", str(workspace)],
@@ -168,7 +175,7 @@ def test_workspace_status_text_summarizes_all_blocked_projects(
     manifest_factory.write(workspace / "zeta", name="zeta")
     manifest_factory.write(workspace / "alpha", name="alpha")
 
-    monkeypatch.setattr(engine.base_cli, "is_terminal", lambda: True)
+    _force_terminal_output(monkeypatch)
     result = invoke(
         engine.app,
         ["status", "--workspace", str(workspace)],
@@ -181,6 +188,49 @@ def test_workspace_status_text_summarizes_all_blocked_projects(
     assert "zeta     Blocked  Not approved" in result.stdout
     assert "Summary: 2 blocked, 0 allowed." in result.stdout
     assert result.stdout.count("Trust scope:") == 1
+
+
+def test_workspace_status_text_uses_unicode_aware_truncating_table(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _force_terminal_output(monkeypatch)
+    monkeypatch.setattr(base_cli_output, "_terminal_width", lambda _stream: 40)
+    project_names = ("a", "界" * 40)
+    statuses = tuple(
+        engine.TrustStatus(
+            status="blocked",
+            reason="not_allowed",
+            identity=engine.ManifestCommandTrustIdentity(
+                project_name=name,
+                project_root=tmp_path,
+                manifest_path=tmp_path / "base_manifest.yaml",
+                manifest_sha256="a" * 64,
+                identity_key=name,
+            ),
+        )
+        for name in project_names
+    )
+
+    engine._print_workspace_status_text(tmp_path, statuses)  # pylint: disable=protected-access
+
+    output = capsys.readouterr().out
+    rows = [line for line in output.splitlines() if "Blocked" in line]
+    assert len(rows) == 2
+    assert any("界" in line and "…" in line for line in rows)
+
+    def display_width(value: str) -> int:
+        return sum(
+            0 if unicodedata.combining(char) else 2 if unicodedata.east_asian_width(char) in {"W", "F"} else 1
+            for char in value
+        )
+
+    assert len({display_width(line.split("Blocked", maxsplit=1)[0]) for line in rows}) == 1
+
+
+def test_workspace_status_reason_fallback_preserves_acronyms() -> None:
+    assert engine._workspace_status_reason_label("remote_HTTP_status") == "Remote HTTP Status"  # pylint: disable=protected-access
 
 
 def test_invalid_status_format_is_a_usage_error(tmp_path: Path) -> None:
