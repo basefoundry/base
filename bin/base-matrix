@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+
+if [[ -n "${BASE_MATRIX_PYTHON:-}" ]]; then
+    PYTHON_BIN="$BASE_MATRIX_PYTHON"
+elif [[ -x "$HOME/.base.d/base/.venv/bin/python" ]]; then
+    PYTHON_BIN="$HOME/.base.d/base/.venv/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
+
+base_cli_source="${BASE_CLI_SOURCE_DIR:-}"
+if [[ -z "$base_cli_source" && -f "$REPO_ROOT/../base-cli/lib/python/base_cli/__init__.py" ]]; then
+    base_cli_source="$REPO_ROOT/../base-cli/lib/python"
+fi
+if [[ -n "$base_cli_source" ]]; then
+    export PYTHONPATH="$base_cli_source:$REPO_ROOT/cli/python${PYTHONPATH:+:$PYTHONPATH}"
+else
+    export PYTHONPATH="$REPO_ROOT/cli/python${PYTHONPATH:+:$PYTHONPATH}"
+fi
+exec "$PYTHON_BIN" -m base_matrix "$@"

@@ -64,6 +64,12 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   product assessment prompt with current Base metadata, and `--output <path>`
   writes the rendered Markdown; Base does not send the prompt to an AI provider.
 - `basectl docs` - open the Base documentation home page on GitHub.
+- `bin/base-matrix <validate|run>` - validate and run versioned local macOS
+  install-matrix scenarios through the fixed four-account, non-interactive
+  runas contract. This is maintainer validation tooling, not hosted CI.
+- `tools/macos_matrix_admin.sh [--dry-run|--remove]` - preview, apply, or
+  remove the one-time macOS account/sudoers preparation required by the local
+  matrix; it is intentionally outside ordinary `basectl setup`.
 - `basectl projects list` - list Base-managed projects discovered in the
   workspace.
 - `basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test>` -
