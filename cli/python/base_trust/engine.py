@@ -204,7 +204,10 @@ class TrustError(RuntimeError):
 
 def workspace_status_command(ctx: base_cli.Context, workspace: str | None, output_format: str) -> int:
     try:
-        projects = workspace_status_projects(ctx, workspace)
+        from base_projects.workspace_context import resolve_workspace_root
+
+        workspace_root = resolve_workspace_root(ctx, workspace)
+        projects = workspace_status_projects(ctx, workspace, workspace_root)
         store = ManifestCommandTrustStore()
         statuses = []
         for project in projects:
@@ -236,22 +239,74 @@ def workspace_status_command(ctx: base_cli.Context, workspace: str | None, outpu
         )
         return base_cli.ExitCode.SUCCESS
 
-    if not statuses:
-        print("No discovered projects require manifest command trust.")
-        return base_cli.ExitCode.SUCCESS
-
-    for index, (trust_status, surfaces) in enumerate(statuses):
-        if index:
-            print()
-        print_status_text(trust_status, surfaces)
+    _print_workspace_status_text(workspace_root, tuple(trust_status for trust_status, _surfaces in statuses))
     return base_cli.ExitCode.SUCCESS
 
 
-def workspace_status_projects(ctx: base_cli.Context, workspace: str | None) -> tuple[Project, ...]:
+def _print_workspace_status_text(workspace_root: Path, statuses: tuple[TrustStatus, ...]) -> None:
+    project_count = len(statuses)
+    project_label = "project" if project_count == 1 else "projects"
+    print(f"Workspace trust status: {workspace_root} ({project_count} command-bearing {project_label})")
+
+    if not statuses:
+        print("\nNo command-bearing projects require manifest command trust.")
+        print("Summary: 0 blocked, 0 allowed.")
+        return
+
+    display_statuses = sorted(
+        statuses,
+        key=lambda trust_status: (trust_status.is_allowed, trust_status.identity.project_name.casefold()),
+    )
+    records = [
+        {
+            "project": trust_status.identity.project_name,
+            "status": "Allowed" if trust_status.is_allowed else "Blocked",
+            "reason": _workspace_status_reason_label(trust_status.reason),
+        }
+        for trust_status in display_statuses
+    ]
+    blocked_count = sum(1 for trust_status in statuses if not trust_status.is_allowed)
+    allowed_count = project_count - blocked_count
+    footer = "\n".join(
+        (
+            f"Summary: {blocked_count} blocked, {allowed_count} allowed.",
+            "Details: basectl trust status <project>",
+            "Trust scope: approval binds manifest and declared test-requirements digests.",
+            "             Referenced scripts, direct executables, and Git HEAD are not covered.",
+            "             Uncommitted working-tree changes are not checked.",
+        )
+    )
+    print()
+    base_cli.render_records(
+        records,
+        requested_format="text",
+        columns=(("PROJECT", "project"), ("STATUS", "status"), ("REASON", "reason")),
+        footer=footer,
+    )
+
+
+def _workspace_status_reason_label(reason: str) -> str:
+    labels = {
+        "allowed": "Approved",
+        "not_allowed": "Not approved",
+        "manifest_changed": "Manifest changed",
+        "test_requirements_changed": "Test requirements changed",
+    }
+    if reason in labels:
+        return labels[reason]
+    return " ".join(word[:1].upper() + word[1:] for word in reason.replace("_", " ").split())
+
+
+def workspace_status_projects(
+    ctx: base_cli.Context,
+    workspace: str | None,
+    workspace_root: Path | None = None,
+) -> tuple[Project, ...]:
     from base_projects.project_discovery import discover_projects_cached, read_project
     from base_projects.workspace_context import resolve_workspace_root
 
-    workspace_root = resolve_workspace_root(ctx, workspace)
+    if workspace_root is None:
+        workspace_root = resolve_workspace_root(ctx, workspace)
     projects_by_name = {project.name: project for project in discover_projects_cached(ctx, workspace_root)}
 
     if workspace is None:

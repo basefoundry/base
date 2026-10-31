@@ -53,7 +53,10 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   `--output` explicitly selects another destination, including project directories.
   `--print` and `--list-files` do not write a bundle.
 - `basectl trust status [project]` - inspect one project's manifest command
-  trust or all discovered command-bearing projects.
+  trust or all discovered command-bearing projects. Its terminal workspace
+  view is a compact, blocked-first summary; use
+  `basectl trust status <project>` for identity digests and review/allow
+  guidance.
 - Generated onboarding trust commands include the canonical workspace and
   manifest digest; they retain their target when copied to another directory.
 - `basectl trust <allow|revoke> <project>` - add or remove local approval for

@@ -93,9 +93,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   history index and supports table, JSON, privacy-conscious reports, chronological
   ordering, and bounded time-window filters.
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
-- `basectl trust status [project]` inspects one project's manifest command
-  trust or all discovered command-bearing projects. `basectl trust
-  allow/revoke <project>` manages local approval under
+- `basectl trust status [project]` shows detailed trust guidance for one
+  project or a compact, blocked-first table for discovered command-bearing
+  projects. `basectl trust allow/revoke <project>` manages local approval under
   `~/.base.d/trust/manifest-commands/`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
