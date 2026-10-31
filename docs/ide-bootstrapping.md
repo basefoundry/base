@@ -68,8 +68,8 @@ Supported IDE keys:
 
 Supported fields:
 
-- `install`: optional boolean. When true, `basectl setup` installs the IDE with
-  Homebrew cask.
+- `install`: optional boolean. When true, setup can install the IDE with
+  Homebrew cask after explicit project IDE mutation consent.
 - `extensions`: optional list of extension IDs.
 - `settings`: optional mapping of user-level IDE settings.
 
@@ -91,7 +91,20 @@ that explicitly declare `python.venv_location: external` resolve to
 
 ## Setup Behavior
 
-`basectl setup <project>` performs IDE work in this order:
+Preview project-originated IDE changes, then explicitly allow the reviewed plan:
+
+```bash
+basectl setup <project> --dry-run
+basectl setup <project> --allow-project-ide-mutations
+```
+
+When the effective manifest requests project-originated IDE mutations, ordinary
+setup refuses to apply them without `--allow-project-ide-mutations`. `--yes`
+does not grant this consent, and manifest-command trust approval is a separate
+boundary. The flag covers the project IDE plan for that invocation; it is not a
+persistent trust grant. See [Manifest Command Trust](manifest-command-trust.md#commands-covered).
+
+After consent, setup performs IDE work in this order:
 
 1. Install opted-in IDE apps through Homebrew casks.
 2. Install missing declared extensions through the IDE CLI.
@@ -127,7 +140,8 @@ and reports the divergence through check/doctor.
 To accept the Base value, remove the key from the IDE `settings.json` and rerun:
 
 ```bash
-basectl setup <project>
+basectl setup <project> --dry-run
+basectl setup <project> --allow-project-ide-mutations
 ```
 
 Settings files may use JSONC line/block comments and trailing commas. Base parses
