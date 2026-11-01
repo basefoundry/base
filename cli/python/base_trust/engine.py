@@ -49,6 +49,15 @@ app = base_cli_app(
     help="Manage local approval for manifest-declared project commands.",
 )
 
+_STATUS_WORKSPACE_HELP = (
+    "Workspace directory to scan for command-bearing projects. "
+    "Defaults to workspace.root, then BASE_HOME's parent."
+)
+_PROJECT_WORKSPACE_HELP = (
+    "Workspace directory used to resolve the project. "
+    "Defaults to workspace.root, then BASE_HOME's parent."
+)
+
 
 def main(argv: list[str] | None = None) -> int:
     return base_cli.run_app(app, argv)
@@ -58,7 +67,7 @@ def main(argv: list[str] | None = None) -> int:
 @base_cli.argument("project", required=False)
 @base_cli.option(
     "--workspace",
-    help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
+    help=_STATUS_WORKSPACE_HELP,
 )
 @base_cli.option(
     "--format",
@@ -104,7 +113,7 @@ def status_command(ctx: base_cli.Context, project: str | None, workspace: str | 
 @base_cli.argument("project")
 @base_cli.option(
     "--workspace",
-    help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
+    help=_PROJECT_WORKSPACE_HELP,
 )
 @base_cli.option("--manifest", "manifest_path", help="Resolved base_manifest.yaml path to verify.")
 def require_command(ctx: base_cli.Context, project: str, workspace: str | None, manifest_path: str | None) -> int:
@@ -130,7 +139,7 @@ def require_command(ctx: base_cli.Context, project: str, workspace: str | None, 
 @base_cli.argument("project")
 @base_cli.option(
     "--workspace",
-    help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
+    help=_PROJECT_WORKSPACE_HELP,
 )
 @base_cli.option("--manifest-sha256", help="Expected SHA-256 digest of base_manifest.yaml.")
 @base_cli.option(
@@ -177,7 +186,7 @@ def allow_command(
 @base_cli.argument("project")
 @base_cli.option(
     "--workspace",
-    help="Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.",
+    help=_PROJECT_WORKSPACE_HELP,
 )
 def revoke_command(ctx: base_cli.Context, project: str, workspace: str | None) -> int:
     try:
@@ -289,8 +298,8 @@ def _workspace_status_reason_label(reason: str) -> str:
     labels = {
         "allowed": "Approved",
         "not_allowed": "Not approved",
-        "manifest_changed": "Manifest changed",
-        "test_requirements_changed": "Test requirements changed",
+        "manifest_changed": "Approval stale: manifest",
+        "test_requirements_changed": "Approval stale: test reqs",
     }
     if reason in labels:
         return labels[reason]

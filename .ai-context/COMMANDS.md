@@ -52,16 +52,18 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   using a stable hash of the canonical project root to isolate same-named checkouts;
   `--output` explicitly selects another destination, including project directories.
   `--print` and `--list-files` do not write a bundle.
-- `basectl trust status [project]` - inspect one project's manifest command
-  trust or all discovered command-bearing projects. Its terminal workspace
-  view is a compact, blocked-first summary; use
-  `basectl trust status <project>` for identity digests and review/allow
-  guidance.
+- `basectl trust status [project]` - read-only inspection of local trust. With
+  no project, show a compact, blocked-first summary of discovered
+  command-bearing projects; with a project, show detailed identity and review
+  guidance. Workspace selection uses `--workspace`, then `workspace.root`, then
+  the parent of `BASE_HOME`.
 - Generated onboarding trust commands include the canonical workspace and
   manifest digest; they retain their target when copied to another directory.
-- `basectl trust <allow|revoke> <project>` - add or remove local approval for
-  manifest-declared project commands. Revocation covers every approved contract
-  revision for that canonical checkout and manifest, preserving other checkouts.
+- `basectl trust <allow|revoke> <project>` - `allow` records local approval for
+  the current manifest command contract on this machine; `revoke` removes local
+  approval for that canonical checkout and manifest, covering every approved
+  contract revision while preserving other checkouts. `--workspace` resolves
+  the project using the same default.
 - `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
   for AI-assisted Base workflows. `product-self-review` prints the periodic
   product assessment prompt with current Base metadata, and `--output <path>`

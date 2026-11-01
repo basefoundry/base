@@ -146,9 +146,9 @@ is requested on macOS, Base warns if `osascript` is not available.
 | `basectl demo [project]` | Run a project-owned demo script. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--project <name>`, `--workspace <path>`, `--format <text\|json>`, `--write` |
 | `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
-| `basectl trust status [project]` | Show detailed trust guidance for one project, or a compact blocked-first table for discovered command-bearing projects. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--project <name>`, `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
-| `basectl trust revoke <project>` | Remove local manifest command approval. | `--project <name>`, `--workspace <path>` |
+| `basectl trust status [project]` | Read-only inspection: show detailed trust guidance for one project, or a compact blocked-first summary for discovered command-bearing projects. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl trust allow <project>` | Record local approval for the project's current manifest command contract on this machine. | `--project <name>`, `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
+| `basectl trust revoke <project>` | Remove local manifest command approval for one project. | `--project <name>`, `--workspace <path>` |
 
 Manifest-declared `test`, `run`, `build`, `demo`, and activation surfaces are
 project-owned code executed from the project root. Review manifests from

@@ -153,8 +153,8 @@ def test_workspace_status_text_summarizes_blocked_reasons_before_allowed_project
     )
 
     assert result.exit_code == 0, result.output
-    assert "changed-manifest      Blocked  Manifest changed" in result.stdout
-    assert "changed-requirements  Blocked  Test requirements changed" in result.stdout
+    assert "changed-manifest      Blocked  Approval stale: manifest" in result.stdout
+    assert "changed-requirements  Blocked  Approval stale: test reqs" in result.stdout
     assert "fresh                 Blocked  Not approved" in result.stdout
     assert "allowed               Allowed  Approved" in result.stdout
     assert result.stdout.index("changed-manifest      Blocked") < result.stdout.index("allowed               Allowed")
@@ -227,6 +227,76 @@ def test_workspace_status_text_uses_unicode_aware_truncating_table(
         )
 
     assert len({display_width(line.split("Blocked", maxsplit=1)[0]) for line in rows}) == 1
+
+
+def test_workspace_status_reason_labels_survive_narrow_terminal_fitting(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _force_terminal_output(monkeypatch)
+    monkeypatch.setattr(base_cli_output, "_terminal_width", lambda _stream: 60)
+    long_project_name = "project-" + "x" * 32
+    assert len(long_project_name) == 40
+    statuses = (
+        engine.TrustStatus(
+            status="blocked",
+            reason="manifest_changed",
+            identity=engine.ManifestCommandTrustIdentity(
+                project_name=long_project_name,
+                project_root=tmp_path,
+                manifest_path=tmp_path / "base_manifest.yaml",
+                manifest_sha256="a" * 64,
+                identity_key=long_project_name,
+            ),
+        ),
+        engine.TrustStatus(
+            status="blocked",
+            reason="test_requirements_changed",
+            identity=engine.ManifestCommandTrustIdentity(
+                project_name="demo",
+                project_root=tmp_path,
+                manifest_path=tmp_path / "base_manifest.yaml",
+                manifest_sha256="b" * 64,
+                identity_key="demo",
+            ),
+        ),
+    )
+
+    engine._print_workspace_status_text(tmp_path, statuses)  # pylint: disable=protected-access
+
+    output = capsys.readouterr().out
+    rows = [line for line in output.splitlines() if "Blocked" in line]
+    assert len(rows) == 2
+    assert any("Approval stale: manifest" in line for line in rows)
+    assert any("Approval stale: test reqs" in line for line in rows)
+
+
+@pytest.mark.parametrize(
+    ("command", "workspace_help"),
+    [
+        ("status", "Workspace directory to scan for command-bearing projects."),
+        ("require", "Workspace directory used to resolve the project."),
+        ("allow", "Workspace directory used to resolve the project."),
+        ("revoke", "Workspace directory used to resolve the project."),
+    ],
+)
+def test_trust_python_help_describes_workspace_resolution(
+    tmp_path: Path,
+    command: str,
+    workspace_help: str,
+) -> None:
+    result = invoke(
+        engine.app,
+        [command, "--help"],
+        home=tmp_path / "home",
+        env={"BASE_HOME": str(tmp_path / "base")},
+    )
+
+    assert result.exit_code == 0, result.output
+    help_text = " ".join(result.stdout.split())
+    assert workspace_help in help_text
+    assert "Defaults to workspace.root, then BASE_HOME's parent." in help_text
 
 
 def test_workspace_status_reason_fallback_preserves_acronyms() -> None:
