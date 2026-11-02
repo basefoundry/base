@@ -5,14 +5,24 @@ readonly _base_trust_subcommand_sourced
 
 base_trust_subcommand_usage() {
     cat <<'EOF'
+Purpose:
+  Status is read-only: it shows detailed guidance for one project, or a compact
+  blocked-first summary of discovered command-bearing projects when no project
+  is supplied. Allow records local approval for manifest-declared commands;
+  revoke removes local approval.
+  See `basectl trust status <project>` for details on what approval covers.
+
 Usage:
   basectl trust status [project] [options]
   basectl trust allow <project> [options]
   basectl trust revoke <project> [options]
 
 Options:
-  --project <name>              Select a project explicitly, including one named help.
-  --workspace <path>            Workspace directory to scan. Defaults to workspace.root, then BASE_HOME's parent.
+  --project <name>              Select a project explicitly instead of the
+                                positional <project> argument.
+  --workspace <path>            Workspace for status discovery or project
+                                resolution. Defaults to workspace.root, then
+                                the parent of BASE_HOME.
   --format <text|csv|tsv|yaml|json>
                                 Output format for status. Defaults to text.
   --manifest-sha256 <sha256>    Expected manifest SHA-256 for allow.
@@ -20,9 +30,6 @@ Options:
                                 Expected SHA-256 for the declared test-requirements file.
   -v                            Enable DEBUG logging for this subcommand.
   -h, --help                    Show this help text.
-
-Inspect trust for one project or all discovered projects, and manage local
-approval for manifest-declared project commands.
 EOF
 }
 
@@ -36,12 +43,14 @@ Usage:
   basectl trust status [project] [options]
 
 Purpose:
-  Show manifest command trust for one project, or for all discovered
-  command-bearing projects when no project is supplied.
+  Read-only trust inspection. Show detailed status for one project, or a
+  compact blocked-first summary of discovered command-bearing projects when no
+  project is supplied.
 
 Options:
-  --project <name>       Select a project explicitly, including one named help.
-  --workspace <path>    Workspace directory to scan.
+  --project <name>       Select a project explicitly instead of using [project].
+  --workspace <path>     Workspace to scan for command-bearing projects.
+                         Defaults to workspace.root, then the parent of BASE_HOME.
   --format <text|csv|tsv|yaml|json>
                         Output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
@@ -54,12 +63,14 @@ Usage:
   basectl trust allow <project> [options]
 
 Purpose:
-  Approve the current manifest command contract for one project on this
-  machine.
+  Record local approval for the current manifest command contract on this
+  machine. See `basectl trust status <project>` for approval-scope details.
 
 Options:
-  --project <name>            Select a project explicitly, including one named help.
-  --workspace <path>          Workspace directory to scan.
+  --project <name>            Select a project explicitly instead of using
+                              <project>.
+  --workspace <path>          Workspace used to resolve the project. Defaults
+                              to workspace.root, then the parent of BASE_HOME.
   --manifest-sha256 <sha256>  Require the current manifest to match this digest.
   --test-requirements-sha256 <sha256>
                               Require the declared test-requirements file to match this digest.
@@ -76,10 +87,12 @@ Purpose:
   Remove local manifest command approval for one project.
 
 Options:
-  --project <name>      Select a project explicitly, including one named help.
-  --workspace <path>  Workspace directory to scan.
-  -v                  Enable DEBUG logging for this subcommand.
-  -h, --help          Show this help text.
+  --project <name>      Select a project explicitly instead of using
+                        <project>.
+  --workspace <path>    Workspace used to resolve the project. Defaults
+                        to workspace.root, then the parent of BASE_HOME.
+  -v                    Enable DEBUG logging for this subcommand.
+  -h, --help            Show this help text.
 EOF
             ;;
         *)

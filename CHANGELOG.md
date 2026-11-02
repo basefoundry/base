@@ -10,6 +10,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Changed
 
+- Clarify `basectl trust` help for workspace scope and approval actions, and make
+  workspace status reasons identify stale approval.
 - Make project-less terminal `basectl trust status` output a compact workspace
   table with blocked projects first, short reasons, and an aggregate summary.
 
