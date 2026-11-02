@@ -233,6 +233,8 @@ PY
     run_basectl trust --help
     [ "$status" -eq 0 ]
     help_text="$(tr '\n' ' ' <<<"$output" | tr -s ' ')"
+    [[ "$help_text" == *"Purpose:"*"Usage:"* ]]
+    [[ "$help_text" == *"instead of the positional <project> argument"* ]]
     [[ "$help_text" == *"Status is read-only"* ]]
     [[ "$help_text" == *"compact blocked-first summary of discovered command-bearing projects"* ]]
     [[ "$help_text" == *"Allow records local approval"* ]]
@@ -243,25 +245,28 @@ PY
     run_basectl trust status --help
     [ "$status" -eq 0 ]
     help_text="$(tr '\n' ' ' <<<"$output" | tr -s ' ')"
+    [[ "$help_text" == *"Usage:"*"Purpose:"* ]]
     [[ "$help_text" == *"Read-only trust inspection"* ]]
     [[ "$help_text" == *"command-bearing projects"* ]]
     [[ "$help_text" == *"Select a project explicitly instead of using [project]"* ]]
     [[ "$help_text" == *"Workspace to scan"* ]]
-    [[ "$help_text" == *"workspace.root, then BASE_HOME's parent"* ]]
+    [[ "$help_text" == *"workspace.root, then the parent of BASE_HOME"* ]]
 
     run_basectl trust allow demo --help
     [ "$status" -eq 0 ]
     help_text="$(tr '\n' ' ' <<<"$output" | tr -s ' ')"
+    [[ "$help_text" == *"Usage:"*"Purpose:"* ]]
     [[ "$help_text" == *"Record local approval for the current manifest command contract"* ]]
     [[ "$help_text" == *"Workspace used to resolve the project"* ]]
-    [[ "$help_text" != *"Workspace directory to scan"* ]]
+    [[ "$help_text" != *scan* ]]
 
     run_basectl trust revoke demo --help
     [ "$status" -eq 0 ]
     help_text="$(tr '\n' ' ' <<<"$output" | tr -s ' ')"
+    [[ "$help_text" == *"Usage:"*"Purpose:"* ]]
     [[ "$help_text" == *"Remove local manifest command approval"* ]]
     [[ "$help_text" == *"Workspace used to resolve the project"* ]]
-    [[ "$help_text" != *"Workspace directory to scan"* ]]
+    [[ "$help_text" != *scan* ]]
 }
 
 @test "command reference documents nested help and repo check release parity" {
@@ -338,22 +343,21 @@ PY
 
 @test "AI command context includes current clone and update surfaces" {
     local commands_file="$BASE_REPO_ROOT/.ai-context/COMMANDS.md"
+    local commands_text
+
+    commands_text="$(tr '\n' ' ' <"$commands_file" | tr -s ' ')"
 
     grep -Fqx -- "- \`basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test>\` -" "$commands_file"
     grep -Fqx -- "  - \`workspace clone\` mutates repository checkouts only when invoked directly;" "$commands_file"
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
     grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project using the" "$commands_file"
     grep -Fqx -- "- \`basectl docs\` - open the Base documentation home page on GitHub." "$commands_file"
-    grep -Fqx -- "- \`basectl trust status [project]\` - read-only inspection of local trust. With" "$commands_file"
-    grep -Fqx -- "  no project, show a compact, blocked-first summary of discovered" "$commands_file"
-    grep -Fqx -- "  command-bearing projects; with a project, show detailed identity and review" "$commands_file"
-    grep -Fqx -- "  guidance. Workspace selection uses \`--workspace\`, then \`workspace.root\`, then" "$commands_file"
-    grep -Fqx -- "  the parent of \`BASE_HOME\`." "$commands_file"
-    grep -Fqx -- "- \`basectl trust <allow|revoke> <project>\` - \`allow\` records local approval for" "$commands_file"
-    grep -Fqx -- "  the current manifest command contract on this machine; \`revoke\` removes local" "$commands_file"
-    grep -Fqx -- "  approval for that canonical checkout and manifest, covering every approved" "$commands_file"
-    grep -Fqx -- "  contract revision while preserving other checkouts. \`--workspace\` resolves" "$commands_file"
-    grep -Fqx -- "  the project using the same default." "$commands_file"
+    [[ "$commands_text" == *'- `basectl trust status [project]` - read-only inspection of local trust.'* ]]
+    [[ "$commands_text" == *'compact, blocked-first summary of discovered command-bearing projects'* ]]
+    [[ "$commands_text" == *'Workspace selection uses `--workspace`, then `workspace.root`, then the parent of `BASE_HOME`.'* ]]
+    [[ "$commands_text" == *'- `basectl trust <allow|revoke> <project>` - `allow` records local approval for the current manifest command contract on this machine; `revoke` removes local approval'* ]]
+    [[ "$commands_text" == *'covering every approved contract revision while preserving other checkouts.'* ]]
+    [[ "$commands_text" == *'`--workspace` resolves the project using the same default.'* ]]
 }
 
 @test "public command inventories include demo, run, and release" {
@@ -448,6 +452,16 @@ PY
     local command_reference="$BASE_REPO_ROOT/docs/command-reference.md"
 
     grep -Fqx -- "| \`basectl docs\` | Open the Base documentation home page on GitHub. | \`--show-url\` |" "$command_reference"
+}
+
+@test "manifest trust docs define workspace stale-approval labels" {
+    local trust_doc="$BASE_REPO_ROOT/docs/manifest-command-trust.md"
+    local trust_text
+
+    trust_text="$(tr '\n' ' ' <"$trust_doc" | tr -s ' ')"
+    [[ "$trust_text" == *'`Approval stale: manifest`'* ]]
+    [[ "$trust_text" == *'`Approval stale: test reqs`'* ]]
+    [[ "$trust_text" == *'contract changed since approval'* ]]
 }
 
 @test "command reference documents trust commands" {

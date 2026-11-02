@@ -175,7 +175,10 @@ compact workspace table with blocked projects first, a short reason for each
 status, and aggregate allowed/blocked counts. It states the trust-scope limit
 once and points to `basectl trust status <project>` for the detailed identity,
 review, and allow guidance. An explicit project keeps the detailed text report;
-JSON/YAML/CSV/TSV workspace output keeps its existing schema and columns.
+JSON/YAML/CSV/TSV workspace output keeps its existing schema and columns. The
+summary labels `Approval stale: manifest` and `Approval stale: test reqs` mean
+the corresponding manifest-command or declared test-requirements contract
+changed since approval.
 
 For schema-v1 compatibility, explicit single-project JSON continues to report
 the underlying allow-record state, including `status: blocked` and an

@@ -236,6 +236,9 @@ def test_workspace_status_reason_labels_survive_narrow_terminal_fitting(
 ) -> None:
     _force_terminal_output(monkeypatch)
     monkeypatch.setattr(base_cli_output, "_terminal_width", lambda _stream: 60)
+    # At width 60, the 24-character project, 7-character status, and 25-character
+    # reason use all columns with two 2-space gaps; the long name forces truncation
+    # while the longest reason label fits with zero slack.
     long_project_name = "project-" + "x" * 32
     assert len(long_project_name) == 40
     statuses = (
@@ -273,18 +276,19 @@ def test_workspace_status_reason_labels_survive_narrow_terminal_fitting(
 
 
 @pytest.mark.parametrize(
-    ("command", "workspace_help"),
+    ("command", "workspace_help", "expect_scan"),
     [
-        ("status", "Workspace directory to scan for command-bearing projects."),
-        ("require", "Workspace directory used to resolve the project."),
-        ("allow", "Workspace directory used to resolve the project."),
-        ("revoke", "Workspace directory used to resolve the project."),
+        ("status", "Workspace directory to scan for command-bearing projects.", True),
+        ("require", "Workspace directory used to resolve the project.", False),
+        ("allow", "Workspace directory used to resolve the project.", False),
+        ("revoke", "Workspace directory used to resolve the project.", False),
     ],
 )
 def test_trust_python_help_describes_workspace_resolution(
     tmp_path: Path,
     command: str,
     workspace_help: str,
+    expect_scan: bool,
 ) -> None:
     result = invoke(
         engine.app,
@@ -296,7 +300,8 @@ def test_trust_python_help_describes_workspace_resolution(
     assert result.exit_code == 0, result.output
     help_text = " ".join(result.stdout.split())
     assert workspace_help in help_text
-    assert "Defaults to workspace.root, then BASE_HOME's parent." in help_text
+    assert "Defaults to workspace.root, then the parent of BASE_HOME." in help_text
+    assert ("scan" in help_text) is expect_scan
 
 
 def test_workspace_status_reason_fallback_preserves_acronyms() -> None:

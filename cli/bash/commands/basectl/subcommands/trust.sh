@@ -18,8 +18,8 @@ Usage:
   basectl trust revoke <project> [options]
 
 Options:
-  --project <name>              Select a project explicitly instead of using
-                                its positional argument.
+  --project <name>              Select a project explicitly instead of the
+                                positional <project> argument.
   --workspace <path>            Workspace for status discovery or project
                                 resolution. Defaults to workspace.root, then
                                 the parent of BASE_HOME.
@@ -39,18 +39,18 @@ base_trust_leaf_usage() {
     case "$trust_command" in
         status)
             cat <<'EOF'
+Usage:
+  basectl trust status [project] [options]
+
 Purpose:
   Read-only trust inspection. Show detailed status for one project, or a
   compact blocked-first summary of discovered command-bearing projects when no
   project is supplied.
 
-Usage:
-  basectl trust status [project] [options]
-
 Options:
   --project <name>       Select a project explicitly instead of using [project].
   --workspace <path>     Workspace to scan for command-bearing projects.
-                         Defaults to workspace.root, then BASE_HOME's parent.
+                         Defaults to workspace.root, then the parent of BASE_HOME.
   --format <text|csv|tsv|yaml|json>
                         Output format. Defaults to text.
   -v                    Enable DEBUG logging for this subcommand.
@@ -59,12 +59,12 @@ EOF
             ;;
         allow)
             cat <<'EOF'
+Usage:
+  basectl trust allow <project> [options]
+
 Purpose:
   Record local approval for the current manifest command contract on this
   machine. See `basectl trust status <project>` for approval-scope details.
-
-Usage:
-  basectl trust allow <project> [options]
 
 Options:
   --project <name>            Select a project explicitly instead of using
@@ -80,11 +80,11 @@ EOF
             ;;
         revoke)
             cat <<'EOF'
-Purpose:
-  Remove local manifest command approval for one project.
-
 Usage:
   basectl trust revoke <project> [options]
+
+Purpose:
+  Remove local manifest command approval for one project.
 
 Options:
   --project <name>      Select a project explicitly instead of using

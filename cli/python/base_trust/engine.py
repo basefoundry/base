@@ -51,11 +51,11 @@ app = base_cli_app(
 
 _STATUS_WORKSPACE_HELP = (
     "Workspace directory to scan for command-bearing projects. "
-    "Defaults to workspace.root, then BASE_HOME's parent."
+    "Defaults to workspace.root, then the parent of BASE_HOME."
 )
 _PROJECT_WORKSPACE_HELP = (
     "Workspace directory used to resolve the project. "
-    "Defaults to workspace.root, then BASE_HOME's parent."
+    "Defaults to workspace.root, then the parent of BASE_HOME."
 )
 
 
