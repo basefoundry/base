@@ -285,29 +285,10 @@ basectl update-profile
 exec "$SHELL" -l
 ```
 
-For upgrades, prefer `basectl update`, which runs the Homebrew upgrade and then
-reconciles the managed Base environment. If Homebrew is run directly, follow
-it with setup through the newly linked executable; `brew upgrade` alone does
-not reconcile an existing managed environment:
-
-```bash
-brew upgrade basefoundry/base/base
-env \
-  -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
-  -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \
-  -u BASE_SHELL_DIR -u BASE_OS -u BASE_HOST -u BASE_SHELL \
-  -u BASE_PLATFORM_TOOLS_HOME -u BASE_PLATFORM_TOOLS_BIN_DIR \
-  -u BASE_PROJECT -u BASE_PROJECT_ROOT -u BASE_PROJECT_MANIFEST \
-  -u BASE_PROJECT_VENV_DIR \
-  "$(brew --prefix base)/libexec/bin/basectl" setup
-```
-
-Verify the result before running project tests:
-
-```bash
-basectl check base --verify-project-runtime
-basectl test base
-```
+For existing installations, use the [Upgrade Contract](upgrading.md#homebrew).
+It covers `basectl update`, direct Homebrew upgrade plus explicit setup,
+version availability, trust review, and readiness verification. A package
+upgrade alone does not reconcile an existing managed Base environment.
 
 ### Stable Source Install Recipe
 
@@ -322,7 +303,9 @@ exec "$SHELL" -l
 ```
 
 The stable checkout reports `basectl 1.10.5`. For future releases, replace the
-release version and tag with the intended published release.
+release version and tag with the intended published release. To upgrade an
+existing stable checkout, follow [Stable Tagged Source Checkouts](upgrading.md#stable-tagged-source-checkouts),
+including the fallback for versions without `update --release`.
 
 ### Source Checkout Install Recipe
 

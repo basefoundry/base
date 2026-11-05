@@ -237,13 +237,14 @@ such command directories exist. Optional utility CLIs such as `caff` and
   an AI tool performs the review.
 - `basectl update-profile` creates, refreshes, or removes managed sections in
   Bash and Zsh dotfiles, backing up existing dotfiles before changes.
-- `basectl update [project]` updates the selected project checkout through Git
-  and then runs `basectl setup <project>`. Omitting the project selects `base`;
-  Homebrew-managed Base installs still hand off only the Base package to
-  `brew upgrade basefoundry/base/base`, then run setup against the newly linked
-  Homebrew executable. If Homebrew is run directly, follow it immediately with
-  `basectl setup`; the formula upgrade alone does not reconcile the managed
-  runtime or exact `base-cli` requirement.
+- `basectl update [project]` updates Base by default or the named project's Git
+  checkout. Git updates run `basectl setup <project>` only when the checkout
+  revision changes. For Homebrew-managed Base installs, it upgrades the Base
+  formula and reconciles setup against the newly linked executable; if Homebrew
+  is run directly, use `brew upgrade --no-ask basefoundry/base/base` and then
+  run `basectl setup`. Stable tagged Base source checkouts support
+  `basectl update --release <tag>`. See [Upgrade Contract](../../../../docs/upgrading.md)
+  for version availability, fallback, and recovery details.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
   project names and paths. Source checkouts can run this read-only command
