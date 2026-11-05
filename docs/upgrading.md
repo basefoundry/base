@@ -62,7 +62,7 @@ For a direct `brew upgrade`, or recovery after an older updater skipped setup,
 use the newly linked executable rather than an old Cellar path:
 
 ```bash
-brew upgrade basefoundry/base/base
+brew upgrade --no-ask basefoundry/base/base
 env \
   -u BASE_HOME -u BASE_BIN_DIR -u BASE_CLI_DIR -u BASE_BASH_DIR \
   -u BASE_BASH_COMMANDS_DIR -u BASE_LIB_DIR -u BASE_BASH_LIB_DIR \

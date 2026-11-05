@@ -246,9 +246,6 @@ are documented in `docs/inspection-json.md`.
 - `basectl onboard` - guide a user through the first Base setup checklist.
 - `basectl update-profile` - create or update Base-managed Bash/Zsh startup
   snippets.
-- `basectl update [project]` - update Base or a named project; Homebrew always
-  reconciles setup, Git updates do so when the revision changes, and stable Base
-  source checkouts support `--release <tag>`. See `docs/upgrading.md`.
 - `basectl version` - show the installed Base version without provider bootstrap.
   `--all` reports selected Base/base-cli/base-bash-libs identity, paths, Git revision
   and dirty state; `--all --json` emits a v1 inspection envelope. Detailed
