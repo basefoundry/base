@@ -113,7 +113,8 @@ This is deliberate; auto-activation on `cd` is ambiguous and error-prone.
 
 Each project opts into Base with a small declarative YAML file at its root.
 Feature sections are optional; a selected section can have required fields,
-such as `release.github.repository`. This is a complete current-schema example:
+such as `release.github.repository`. This is a representative current-schema
+example, not an exhaustive listing of every supported field:
 
 ```yaml
 schema_version: 1
@@ -285,7 +286,7 @@ exec "$SHELL" -l
 | Integration tests | BATS | `tests/integration/base_workflows.bats` |
 | Shell static analysis | ShellCheck | All `*.sh` files |
 | Python lint | Pylint | `cli/python/` (see the CI workflow for the interpreter matrix) |
-| Python security scan | Bandit | `cli/python/` |
+| Python security scan | Bandit | `cli/python/` and `lib/python/` as passed by CI; the current checkout has no tracked Base sources under `lib/python/` |
 | Python dependency audit | pip-audit | `requirements-dev.txt` |
 
 Run everything locally with `basectl test base` or `bin/base-test`.

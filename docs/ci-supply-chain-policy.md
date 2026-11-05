@@ -77,7 +77,14 @@ this policy if the rule changes.
 
 The security job must keep these checks:
 
-- Bandit over `cli/python`
+- Bandit uses the command in `.github/workflows/tests.yml`:
+
+  ```bash
+  bandit -q -r cli/python lib/python -x '*/tests/*' --severity-level medium
+  ```
+
+  The current Base checkout has no tracked Python source under `lib/python/`;
+  CI still passes that path.
 - `pip-audit` over `requirements-dev.txt`
 - ShellCheck errors over tracked Bash entry points, scripts, and `.bash`
   helpers; managed Zsh startup and completion sources are checked with `zsh -n`.

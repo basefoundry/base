@@ -13,11 +13,20 @@ the enforcement authority.
 The implementation was delivered under
 [#2107](https://github.com/basefoundry/base/issues/2107).
 
-Declare `.github/base-review-policy.yml` with `required_approving_reviews`
-(0 through 6) and `require_code_owner_review` (`true` or `false`). Preview with
-`basectl repo configure --dry-run`, then apply with `basectl repo configure`.
-Configuration preserves stronger existing settings and verifies the effective
-GitHub result; it fails when it cannot establish or read back that result.
+Declare `.github/base-review-policy.yml` with the supported keys nested under
+`review_policy`:
+
+```yaml
+review_policy:
+  required_approving_reviews: 1
+  require_code_owner_review: false
+```
+
+The approving-review count must be between 0 and 6. Flat keys are rejected.
+Preview with `basectl repo configure --dry-run`, then apply with
+`basectl repo configure`. Configuration preserves stronger existing settings
+and verifies the effective GitHub result; it fails when it cannot establish or
+read back that result.
 
 Record the effective policy in the repository's contribution guidance.
 A missing policy preserves the existing solo-maintainer default; it is not
