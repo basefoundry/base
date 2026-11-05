@@ -161,6 +161,24 @@ $BASE_HOME/cli/bash/commands/example/example.sh
 
 A command implementation is sourced as Bash and must define `main`.
 
+## Python Command Launches
+
+Base-owned Python command packages are launched by the Bash command layer
+through `$BASE_HOME/bin/base-wrapper <python-package> [args...]`. The wrapper
+selects the Base or requested project virtual environment, resolves the
+`base_cli` provider from `BASE_CLI_SOURCE_DIR`, a sibling `base-cli` checkout,
+or the installed distribution, then exposes that provider and
+`$BASE_HOME/cli/python` to Python. It executes packages as modules, except that
+when the selected environment is Base's and the package name starts with
+`base_`, it uses the isolated adapter entrypoint.
+
+This keeps command selection and Base's shell runtime in the Bash dispatch
+path while the package implements its Python behavior. `base-wrapper` is an
+internal launcher for the command layer; users should normally invoke
+`basectl` or a public launcher. Its options are listed by
+`base-wrapper --help`; the [Runtime Environment](runtime-environment.md)
+reference describes the environment variables used by the runtime.
+
 ## Umbrella Base Command
 
 The umbrella command implementation lives at:

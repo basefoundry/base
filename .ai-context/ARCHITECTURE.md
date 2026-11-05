@@ -16,6 +16,11 @@ GitHub, and release conventions are supporting workflow packs.
 Environment-manager, IDE, container, Nix/devenv, and AI behavior stays in
 adapter or export lanes.
 
+The `trust`, `gh`, and `repo` command domains separate local approval for
+manifest-declared project commands, GitHub workflow automation, and shared
+repository-baseline management. See the [architecture reference](../docs/architecture.md)
+and its focused trust, GitHub, and repository-baseline contracts.
+
 Deterministic means explicit ordering, stable findings or machine-readable
 structures, and clear next actions from declared inputs and inspectable local
 state. It does not mean hermetic builds or transactional multi-repository
