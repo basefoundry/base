@@ -41,8 +41,11 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   fixes.
 - `basectl test [project]` - run a project's declared test command. A
   manifest may declare `test.requirements` as a repository-relative direct
-  requirements file (package extras are unsupported); setup installs it, check/doctor report missing or
-  mismatched packages, and test preflights it before execution.
+  requirements file (package extras are unsupported); setup installs it.
+  Static check/doctor inspection reports package readiness as unverified;
+  `--verify-project-runtime` explicitly enables installed-package probes.
+  Test preflight checks requirements after manifest-command approval and before
+  executing the declared test command.
 - `basectl build [project] [target...]` - run declared build targets for the positional, explicit, or nearest project.
 - `basectl demo [project]` - run a declared interactive demo script.
 - `basectl run [project] <command>` - run a declared command for the positional, explicit, or nearest project.

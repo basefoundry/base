@@ -39,7 +39,7 @@ The Base history index may contain metadata for both owners so that
 `basectl history` can provide one cross-project view. That index is metadata;
 raw project logs and caches remain in the project-owned tree.
 
-## Proposed directory tree
+## Directory tree
 
 The default cache root is `~/Library/Caches/base` on macOS and `~/.cache/base`
 on Ubuntu/Debian. `BASE_CACHE_DIR` can override either default. The ownership
@@ -182,6 +182,15 @@ History and run artifacts are user-private by default. History and metadata
 files are created with mode `0600`; raw log files use the same mode. Directory
 permissions remain controlled by the host cache filesystem and do not change
 the ownership boundary described above.
+
+## Uninstall Retention
+
+Uninstall is a separate lifecycle boundary from per-run temporary cleanup.
+Project uninstall removes the whole selected `projects/<project-id>/` subtree,
+including logs and run metadata for its checkout IDs. `--all` removes all
+project namespaces and `base/cache/`, while retaining `base/runs/` and
+`base/history/`. The history index may consequently refer to removed project
+logs. See [Uninstall And Retention](uninstall.md) for verification and recovery.
 
 ## Runtime invariants
 

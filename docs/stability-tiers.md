@@ -51,7 +51,11 @@ uninstall removes only Base-managed trust, check state, external Base-managed
 project environments, and project runtime caches; it never removes the project
 checkout or its manifest. `--all` additionally removes Base workspace settings,
 the persistent Base and project cache namespaces, and managed shell startup
-sections. Historical run and history records remain available for diagnosis.
+sections. Base-level run bundles and the Base history index remain available
+for diagnosis; project runtime cache removal includes project run bundles for
+all checkout namespaces under the selected project ID. Verification covers the
+selected removal scope, not all historical files. See [Uninstall](uninstall.md)
+for the resource and retention contract.
 
 ## JSON And Schema-Versioned Output
 

@@ -57,15 +57,20 @@ Map each symptom to its likely ownership before changing code:
 - Public command dispatch and Bash command behavior: `bin/basectl`,
   `cli/bash/commands/basectl/`, and nearby BATS tests.
 - Manifest and project-discovery behavior: `base_manifest.yaml`,
-  `cli/python/`, `lib/python/`, and integration tests when multiple commands
+  `cli/python/` and integration tests when multiple commands
   interact.
-- Python CLI and helper behavior: `cli/python/` and `lib/python/`.
+- Python CLI and helper behavior: `cli/python/`.
 
 ## Python Unit Tests
 
+Base-owned packages live under `cli/python/`. The test commands below retain
+the historical `lib/python` search-path entry to match the existing CI
+contract; that absent directory contributes no Base modules. The provider
+path ending in `base-cli/lib/python` is a separate, real source root.
+
 Python engine and helper behavior lives under `cli/python/**/tests/` and
-`lib/python/**/tests/`. These tests should cover parsing, manifest merging,
-artifact decisions, JSON output, and error handling without launching public
+the top-level `tests/` contract checks. These tests should cover parsing,
+manifest merging, artifact decisions, JSON output, and error handling without launching public
 shell commands. Monorepo-wide contract checks that inspect `STANDARDS.md`,
 scan all production packages, or invoke shell files live under the top-level
 `tests/` directory so they are not mistaken for tests of an installed Python

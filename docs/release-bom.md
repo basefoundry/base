@@ -148,3 +148,11 @@ retain the original reviewed BOM and its digest. Re-run the guarded publish
 command: it inspects and resumes the existing draft, uploads only missing
 assets, and stops if an existing asset conflicts. Do not create a second
 release or regenerate evidence from another checkout.
+
+If publication tooling has advanced the default branch since the tag was
+pushed, the guarded publisher can resume from the original BOM/tag commit
+under the [tagged-release recovery contract](release-process.md#recovering-a-tagged-release-after-main-advances).
+Both local and remote annotated tags must match the sidecar-verified canonical
+BOM, the release must be absent or draft, and no unrelated readiness blocker
+may remain. This exception applies to publication recovery only; first-time
+publication retains exact current-remote-HEAD provenance.
