@@ -161,6 +161,12 @@ reference. The filename should answer "what is this about?"
 - [Python Package Ownership](python-package-ownership.md) maps focused
   `cli/python/` package boundaries and compatibility facade expectations.
 
+## Audit Records
+
+- [Documentation Alignment Audit (November 2026)](documentation-alignment-audit-2026-11.md)
+  records the evidence-backed crosswalk for the remaining design and
+  implementation documentation candidates.
+
 ## Presentations
 
 - [Base Presentations](presentations/README.md) documents the presentation
