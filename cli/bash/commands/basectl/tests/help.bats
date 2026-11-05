@@ -350,7 +350,9 @@ PY
     grep -Fqx -- "- \`basectl workspace <status|check|doctor|onboarding|agent-brief|clone|pull|update|init|configure|setup|test>\` -" "$commands_file"
     grep -Fqx -- "  - \`workspace clone\` mutates repository checkouts only when invoked directly;" "$commands_file"
     grep -Fqx -- "- \`basectl repo <init|clone|check|configure|agent-guidance|installer-template>\` -" "$commands_file"
-    grep -Fqx -- "- \`basectl update [project]\` - update Base or a named project; Homebrew always" "$commands_file"
+    [ "$(grep -Fc -- "- \`basectl update [project]\`" "$commands_file")" -eq 1 ]
+    grep -Fqx -- "- \`basectl update [project]\` - update Base by default, or the named consumer" "$commands_file"
+    [[ "$commands_text" == *'Stable Base source checkouts can use `--release <tag>`.'* ]]
     grep -Fqx -- "- \`basectl docs\` - open the Base documentation home page on GitHub." "$commands_file"
     [[ "$commands_text" == *'- `basectl trust status [project]` - read-only inspection of local trust.'* ]]
     [[ "$commands_text" == *'compact, blocked-first summary of discovered command-bearing projects'* ]]
