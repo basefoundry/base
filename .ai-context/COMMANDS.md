@@ -71,7 +71,8 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
 - `basectl docs` - open the Base documentation home page on GitHub.
 - `bin/base-matrix <validate|run>` - validate and run versioned local macOS
   install-matrix scenarios through the fixed four-account, non-interactive
-  runas contract. This is maintainer validation tooling, not hosted CI.
+  runas contract; both commands enforce the published scenario JSON Schema.
+  This is maintainer validation tooling, not hosted CI.
 - `tools/macos_matrix_admin.sh [--dry-run|--remove]` - preview, apply, or
   remove the one-time macOS account/sudoers preparation required by the local
   matrix; it is intentionally outside ordinary `basectl setup`.

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 import base_cli
+import jsonschema
 from base_setup.process import redact_command_argv
 from base_setup.process import redact_command_output
 
@@ -26,6 +27,7 @@ MATRIX_CELLS: dict[str, dict[str, str]] = {
     "brew-zsh": {"account": "base-brew-zsh", "route": "homebrew", "shell": "zsh"},
 }
 ALL_CELLS = tuple(MATRIX_CELLS)
+SCENARIO_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs/schemas/macos-matrix-scenario.json"
 
 
 class MatrixUsageError(ValueError):
@@ -65,6 +67,16 @@ class RunContext:
 
 
 @dataclass(frozen=True)
+class StepExecution:
+    user: str
+    repo_root: Path
+    output_dir: Path
+    failure_status: str = "failed"
+    failure_message: str | None = None
+    failure_finding_id: str | None = None
+
+
+@dataclass(frozen=True)
 class StepOutcome:
     command: Sequence[str]
     log_path: str
@@ -85,6 +97,22 @@ def _as_string_list(value: object, field: str) -> tuple[str, ...]:
     if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
         raise MatrixUsageError(f"{field} must be an array of strings")
     return tuple(value)
+
+
+def _validate_scenario_schema(payload: dict[str, Any], path: Path) -> None:
+    try:
+        schema = json.loads(SCENARIO_SCHEMA_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise MatrixUsageError(f"Unable to load scenario schema '{SCENARIO_SCHEMA_PATH}': {exc}") from exc
+    try:
+        jsonschema.Draft202012Validator.check_schema(schema)
+        validator = jsonschema.Draft202012Validator(schema)
+    except jsonschema.SchemaError as exc:
+        raise MatrixUsageError(f"Scenario schema '{SCENARIO_SCHEMA_PATH}' is invalid: {exc.message}") from exc
+    error = next(validator.iter_errors(payload), None)
+    if error is not None:
+        location = ".".join(str(part) for part in error.absolute_path) or "root"
+        raise MatrixUsageError(f"Scenario '{path}' is invalid at {location}: {error.message}")
 
 
 def _parse_step(value: object, location: str) -> Step:
@@ -128,6 +156,7 @@ def load_scenario(path: Path) -> Scenario:
         raise MatrixUsageError(f"Scenario '{path}' is not valid JSON: {exc}") from exc
     if not isinstance(payload, dict):
         raise MatrixUsageError("Scenario root must be an object")
+    _validate_scenario_schema(payload, path)
     if payload.get("schema_version") != SCHEMA_VERSION:
         raise MatrixUsageError(f"Scenario schema_version must be {SCHEMA_VERSION}")
     name = payload.get("name")
@@ -217,7 +246,11 @@ def _step_result(
     step: Step,
     outcome: StepOutcome,
 ) -> dict[str, Any]:
-    actual_exit = outcome.result.returncode if outcome.result is not None else None
+    returncode = outcome.result.returncode if outcome.result is not None else None
+    actual_exit = _reported_exit_code(returncode) if returncode is not None else None
+    error = outcome.error
+    if returncode is not None and returncode < 0 and not error:
+        error = f"process terminated by signal {-returncode}"
     finding_ids = list(dict.fromkeys((*step.finding_ids, *outcome.extra_findings)))
     return {
         "id": step.step_id,
@@ -228,16 +261,24 @@ def _step_result(
         "duration_ms": outcome.duration_ms,
         "finding_ids": finding_ids,
         "log_path": outcome.log_path,
-        **({"error": redact_command_output(outcome.error)} if outcome.error else {}),
+        **({"error": redact_command_output(error)} if error else {}),
     }
+
+
+def _reported_exit_code(returncode: int) -> int:
+    """Represent POSIX signal termination as the conventional shell status."""
+    if returncode >= 0:
+        return returncode
+    return min(128 - returncode, 255)
 
 
 def _assert_step(step: Step, result: subprocess.CompletedProcess[str]) -> tuple[bool, list[str]]:
     failures: list[str] = []
     stdout = result.stdout or ""
     stderr = result.stderr or ""
-    if result.returncode != step.expected_exit:
-        failures.append(f"exit-{result.returncode}")
+    actual_exit = _reported_exit_code(result.returncode)
+    if actual_exit != step.expected_exit:
+        failures.append(f"exit-{actual_exit}")
     failures.extend(
         f"stdout-missing-{index}" for index, expected in enumerate(step.stdout_contains) if expected not in stdout
     )
@@ -257,19 +298,40 @@ def _assert_step(step: Step, result: subprocess.CompletedProcess[str]) -> tuple[
     return not failures, failures
 
 
-def _run_step(
-    step: Step,
-    user: str,
-    repo_root: Path,
-    output_dir: Path,
-    log_name: str,
-) -> tuple[dict[str, Any], bool]:
-    command = ["sudo", "-n", "-u", user, "-i", "--", *step.command]
+def _resolve_step_cwd(repo_root: Path, step: Step) -> Path:
     cwd = repo_root if step.cwd is None else (repo_root / step.cwd).resolve()
     try:
         cwd.relative_to(repo_root)
     except ValueError as exc:
         raise MatrixUsageError(f"Step '{step.step_id}' cwd must remain inside the Base checkout") from exc
+    return cwd
+
+
+def _validate_scenario_cwds(scenario: Scenario, repo_root: Path) -> None:
+    for step in (*scenario.preconditions, *scenario.steps):
+        _resolve_step_cwd(repo_root, step)
+
+
+def _run_step(
+    step: Step,
+    execution: StepExecution,
+    log_name: str,
+) -> tuple[dict[str, Any], bool]:
+    cwd = _resolve_step_cwd(execution.repo_root, step)
+    command = [
+        "sudo",
+        "-n",
+        "-u",
+        execution.user,
+        "-i",
+        "--",
+        "/bin/sh",
+        "-c",
+        'cd "$1" && shift && exec "$@"',
+        "base-matrix-step",
+        str(cwd),
+        *step.command,
+    ]
     started = time.monotonic()
     try:
         result = subprocess.run(
@@ -282,38 +344,45 @@ def _run_step(
         )
         duration_ms = int((time.monotonic() - started) * 1000)
         passed, assertion_failures = _assert_step(step, result)
-        status = "passed" if passed else "failed"
-        log_path = output_dir / log_name
-        _log_step(log_path, command, result)
+        status = "passed" if passed else execution.failure_status
+        extra_findings = (
+            [f"matrix.{step.step_id}.{failure}" for failure in assertion_failures]
+            if execution.failure_finding_id is None or passed
+            else [execution.failure_finding_id]
+        )
+        error = "" if passed else (execution.failure_message or "")
+        log_path = execution.output_dir / log_name
+        _log_step(log_path, command, result, error)
         return (
             _step_result(
                 step,
                 StepOutcome(
                     command,
-                    str(log_path.relative_to(output_dir)),
+                    str(log_path.relative_to(execution.output_dir)),
                     result,
                     duration_ms,
                     status,
-                    [f"matrix.{step.step_id}.{failure}" for failure in assertion_failures],
+                    extra_findings,
+                    error,
                 ),
             ),
             passed,
         )
     except subprocess.TimeoutExpired:
         duration_ms = int((time.monotonic() - started) * 1000)
-        log_path = output_dir / log_name
-        error = f"step timed out after {step.timeout_seconds:g} seconds"
+        log_path = execution.output_dir / log_name
+        error = execution.failure_message or f"step timed out after {step.timeout_seconds:g} seconds"
         _log_step(log_path, command, None, error)
         return (
             _step_result(
                 step,
                 StepOutcome(
                     command,
-                    str(log_path.relative_to(output_dir)),
+                    str(log_path.relative_to(execution.output_dir)),
                     None,
                     duration_ms,
-                    "failed",
-                    [f"matrix.{step.step_id}.timeout"],
+                    execution.failure_status,
+                    [execution.failure_finding_id or f"matrix.{step.step_id}.timeout"],
                     error,
                 ),
             ),
@@ -321,19 +390,19 @@ def _run_step(
         )
     except OSError as exc:
         duration_ms = int((time.monotonic() - started) * 1000)
-        log_path = output_dir / log_name
-        error = str(exc)
+        log_path = execution.output_dir / log_name
+        error = execution.failure_message or str(exc)
         _log_step(log_path, command, None, error)
         return (
             _step_result(
                 step,
                 StepOutcome(
                     command,
-                    str(log_path.relative_to(output_dir)),
+                    str(log_path.relative_to(execution.output_dir)),
                     None,
                     duration_ms,
-                    "failed",
-                    [f"matrix.{step.step_id}.runner-error"],
+                    execution.failure_status,
+                    [execution.failure_finding_id or f"matrix.{step.step_id}.runner-error"],
                     error,
                 ),
             ),
@@ -341,52 +410,21 @@ def _run_step(
         )
 
 
-def _runas_preflight(user: str, output_dir: Path) -> tuple[dict[str, Any], bool]:
+def _runas_preflight(execution: StepExecution) -> tuple[dict[str, Any], bool]:
     step = Step("runas", ("/usr/bin/true",), 0, (), (), (), (), (), 30.0, None)
-    command = ["sudo", "-n", "-u", user, "-i", "--", *step.command]
-    started = time.monotonic()
-    try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=step.timeout_seconds)
-        duration_ms = int((time.monotonic() - started) * 1000)
-        passed = result.returncode == 0
-        log_path = output_dir / "logs" / "00-runas.log"
-        _log_step(log_path, command, result)
-        error = "" if passed else "passwordless sudo runas is unavailable for this matrix account"
-        return (
-            _step_result(
-                step,
-                StepOutcome(
-                    command,
-                    str(log_path.relative_to(output_dir)),
-                    result,
-                    duration_ms,
-                    "passed" if passed else "blocked",
-                    () if passed else ("matrix.runas.unavailable",),
-                    error,
-                ),
-            ),
-            passed,
-        )
-    except (OSError, subprocess.TimeoutExpired):
-        duration_ms = int((time.monotonic() - started) * 1000)
-        log_path = output_dir / "logs" / "00-runas.log"
-        error = "passwordless sudo runas is unavailable for this matrix account"
-        _log_step(log_path, command, None, error)
-        return (
-            _step_result(
-                step,
-                StepOutcome(
-                    command,
-                    str(log_path.relative_to(output_dir)),
-                    None,
-                    duration_ms,
-                    "blocked",
-                    ("matrix.runas.unavailable",),
-                    error,
-                ),
-            ),
-            False,
-        )
+    preflight = StepExecution(
+        execution.user,
+        execution.repo_root,
+        execution.output_dir,
+        failure_status="blocked",
+        failure_message="passwordless sudo runas is unavailable for this matrix account",
+        failure_finding_id="matrix.runas.unavailable",
+    )
+    return _run_step(
+        step,
+        preflight,
+        "logs/00-runas.log",
+    )
 
 
 def _run_cell(scenario: Scenario, cell: str, context: RunContext) -> tuple[dict[str, Any], bool]:
@@ -395,9 +433,10 @@ def _run_cell(scenario: Scenario, cell: str, context: RunContext) -> tuple[dict[
     started_at = _utc_now()
     cell_dir = context.output_dir / cell
     cell_dir.mkdir(parents=True, exist_ok=True)
+    execution = StepExecution(account, context.repo_root, cell_dir)
     precondition_results: list[dict[str, Any]] = []
     step_results: list[dict[str, Any]] = []
-    runas_result, runas_ok = _runas_preflight(account, cell_dir)
+    runas_result, runas_ok = _runas_preflight(execution)
     precondition_results.append(runas_result)
     status = "passed"
     if not runas_ok:
@@ -405,7 +444,7 @@ def _run_cell(scenario: Scenario, cell: str, context: RunContext) -> tuple[dict[
     else:
         for index, step in enumerate(scenario.preconditions, start=1):
             log_name = f"logs/{index:02d}-precondition-{step.step_id}.log"
-            result, passed = _run_step(step, account, context.repo_root, cell_dir, log_name)
+            result, passed = _run_step(step, execution, log_name)
             precondition_results.append(result)
             if not passed:
                 status = "failed"
@@ -413,7 +452,7 @@ def _run_cell(scenario: Scenario, cell: str, context: RunContext) -> tuple[dict[
         if status == "passed":
             for index, step in enumerate(scenario.steps, start=1):
                 log_name = f"logs/{index + len(scenario.preconditions):02d}-{step.step_id}.log"
-                result, passed = _run_step(step, account, context.repo_root, cell_dir, log_name)
+                result, passed = _run_step(step, execution, log_name)
                 step_results.append(result)
                 if not passed:
                     status = "failed"
@@ -484,7 +523,6 @@ def _build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="Run a scenario through the named matrix accounts.")
     run.add_argument("--scenario", required=True, type=Path)
     run.add_argument("--cells", default="all", help="Comma-separated cells or 'all'.")
-    run.add_argument("--user", help="Explicit matrix account; must match the selected single cell.")
     run.add_argument("--output-dir", type=Path, default=Path("artifacts/macos-matrix"))
     run.add_argument("--base-ref", default="HEAD", help="Git ref recorded in results; defaults to HEAD.")
     return parser
@@ -499,13 +537,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"Scenario valid: {scenario.name} v{scenario.version}")
             return base_cli.ExitCode.SUCCESS
         cells = _parse_cells(args.cells)
-        if args.user is not None:
-            if len(cells) != 1:
-                raise MatrixUsageError("--user requires exactly one selected cell")
-            expected_user = MATRIX_CELLS[cells[0]]["account"]
-            if args.user != expected_user or args.user not in {info["account"] for info in MATRIX_CELLS.values()}:
-                raise MatrixUsageError(f"Refusing non-matrix account '{args.user}' for cell '{cells[0]}'")
         repo_root = _repo_root()
+        _validate_scenario_cwds(scenario, repo_root)
         base_ref, base_commit = _git_value(repo_root, args.base_ref)
         run_id = f"matrix-{dt.datetime.now(dt.timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
         output_dir = args.output_dir.resolve() / run_id

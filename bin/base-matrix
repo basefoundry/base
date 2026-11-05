@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)" || {
+    printf 'base-matrix: unable to resolve the script directory\n' >&2
+    exit 1
+}
+REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd -P)" || {
+    printf 'base-matrix: unable to resolve the repository root\n' >&2
+    exit 1
+}
 
 if [[ -n "${BASE_MATRIX_PYTHON:-}" ]]; then
     PYTHON_BIN="$BASE_MATRIX_PYTHON"
@@ -11,6 +15,11 @@ elif [[ -x "$HOME/.base.d/base/.venv/bin/python" ]]; then
     PYTHON_BIN="$HOME/.base.d/base/.venv/bin/python"
 else
     PYTHON_BIN="python3"
+fi
+
+if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+    printf 'base-matrix: Python interpreter not found: %s\n' "$PYTHON_BIN" >&2
+    exit 127
 fi
 
 base_cli_source="${BASE_CLI_SOURCE_DIR:-}"

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import jsonschema
 from base_matrix.runner import Step
+from base_matrix.runner import StepExecution
 from base_matrix.runner import _run_step
 
 
@@ -72,6 +73,58 @@ def test_validate_accepts_trivial_scenario() -> None:
     assert "Scenario valid: trivial v1" in result.stdout
 
 
+def test_validate_rejects_misspelled_scenario_fields_before_run(tmp_path: Path) -> None:
+    payload = json.loads(SCENARIO.read_text(encoding="utf-8"))
+    payload["steps"][0]["stdout_contians"] = payload["steps"][0].pop("stdout_contains")
+    scenario_path = tmp_path / "misspelled.json"
+    scenario_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    validation = subprocess.run(
+        [sys.executable, "-m", "base_matrix", "validate", "--scenario", str(scenario_path)],
+        cwd=REPO_ROOT,
+        env=_environment(Path("/nonexistent")),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert validation.returncode == 2
+    assert "stdout_contians" in validation.stderr
+
+    output_dir = tmp_path / "results"
+    run = _run(
+        tmp_path,
+        "run",
+        "--scenario",
+        str(scenario_path),
+        "--cells",
+        "source-bash",
+        "--output-dir",
+        str(output_dir),
+    )
+    assert run.returncode == 2
+    assert "stdout_contians" in run.stderr
+    assert not output_dir.exists()
+
+
+def test_validate_rejects_invalid_scenario_name_pattern(tmp_path: Path) -> None:
+    payload = json.loads(SCENARIO.read_text(encoding="utf-8"))
+    payload["name"] = "Bad Name"
+    scenario_path = tmp_path / "bad-name.json"
+    scenario_path.write_text(json.dumps(payload), encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-m", "base_matrix", "validate", "--scenario", str(scenario_path)],
+        cwd=REPO_ROOT,
+        env=_environment(Path("/nonexistent")),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert "does not match" in result.stderr
+
+
 def test_runner_emits_schema_valid_result_for_all_cells(tmp_path: Path) -> None:
     result = _run(
         tmp_path,
@@ -100,7 +153,7 @@ def test_runner_emits_schema_valid_result_for_all_cells(tmp_path: Path) -> None:
         assert (run_dir / cell / payload["steps"][0]["log_path"]).exists()
 
 
-def test_runner_refuses_non_matrix_account(tmp_path: Path) -> None:
+def test_runner_rejects_redundant_user_override_option(tmp_path: Path) -> None:
     result = _run(
         tmp_path,
         "run",
@@ -115,7 +168,59 @@ def test_runner_refuses_non_matrix_account(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 2
-    assert "Refusing non-matrix account 'outside-matrix'" in result.stderr
+    assert "unrecognized arguments: --user" in result.stderr
+
+
+def test_runner_honors_step_cwd_after_login_shell_changes_directory(tmp_path: Path) -> None:
+    payload = json.loads(SCENARIO.read_text(encoding="utf-8"))
+    payload["preconditions"] = []
+    payload["steps"] = [
+        {
+            "id": "working-directory",
+            "command": ["/bin/pwd"],
+            "expected_exit": 0,
+            "cwd": "tests/fixtures/macos_matrix",
+        }
+    ]
+    scenario_path = tmp_path / "cwd.json"
+    scenario_path.write_text(json.dumps(payload), encoding="utf-8")
+    result = _run(
+        tmp_path,
+        "run",
+        "--scenario",
+        str(scenario_path),
+        "--cells",
+        "source-bash",
+        "--output-dir",
+        str(tmp_path / "results"),
+    )
+
+    assert result.returncode == 0, result.stderr
+    run_dir = next((tmp_path / "results").iterdir())
+    log_path = run_dir / "source-bash" / "logs" / "01-working-directory.log"
+    assert f"stdout ---\n{REPO_ROOT / 'tests/fixtures/macos_matrix'}" in log_path.read_text(encoding="utf-8")
+
+
+def test_runner_rejects_cwd_outside_checkout_before_runas(tmp_path: Path) -> None:
+    payload = json.loads(SCENARIO.read_text(encoding="utf-8"))
+    payload["steps"][0]["cwd"] = "../"
+    scenario_path = tmp_path / "outside-cwd.json"
+    scenario_path.write_text(json.dumps(payload), encoding="utf-8")
+    output_dir = tmp_path / "results"
+    result = _run(
+        tmp_path,
+        "run",
+        "--scenario",
+        str(scenario_path),
+        "--cells",
+        "source-bash",
+        "--output-dir",
+        str(output_dir),
+    )
+
+    assert result.returncode == 2
+    assert "cwd must remain inside the Base checkout" in result.stderr
+    assert not output_dir.exists()
 
 
 def test_runner_blocks_when_passwordless_runas_is_unavailable(tmp_path: Path) -> None:
@@ -186,9 +291,27 @@ def test_runner_records_os_error_as_failed_step(tmp_path: Path, monkeypatch) -> 
     monkeypatch.setattr("base_matrix.runner.subprocess.run", raise_os_error)
     step = Step("missing-runner", ("/bin/true",), 0, (), (), (), (), (), 1.0, None)
 
-    result, passed = _run_step(step, "base-source-bash", REPO_ROOT, tmp_path, "logs/01-step.log")
+    execution = StepExecution("base-source-bash", REPO_ROOT, tmp_path)
+    result, passed = _run_step(step, execution, "logs/01-step.log")
 
     assert not passed
     assert result["status"] == "failed"
     assert result["error"] == "runner unavailable"
     assert (tmp_path / "logs/01-step.log").exists()
+
+
+def test_runner_normalizes_signal_exit_code_to_valid_shell_status(tmp_path: Path, monkeypatch) -> None:
+    def return_signal(command, **_kwargs):
+        return subprocess.CompletedProcess(command, -9, "", "")
+
+    monkeypatch.setattr("base_matrix.runner.subprocess.run", return_signal)
+    step = Step("signal-killed", ("/bin/true",), 0, (), (), (), (), (), 1.0, None)
+
+    execution = StepExecution("base-source-bash", REPO_ROOT, tmp_path)
+    result, passed = _run_step(step, execution, "logs/01-step.log")
+
+    assert not passed
+    assert result["actual_exit"] == 137
+    assert result["error"] == "process terminated by signal 9"
+    schema = json.loads(RESULT_SCHEMA.read_text(encoding="utf-8"))
+    jsonschema.Draft202012Validator(schema["$defs"]["step_result"]).validate(result)
