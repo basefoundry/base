@@ -89,7 +89,15 @@ def test_default_pytest_discovery_includes_top_level_contract_tests() -> None:
 
 
 def test_default_pytest_pythonpath_includes_base_package_roots() -> None:
-    assert pytest_config_list("pythonpath") == ["lib/python", "cli/python"]
+    assert pytest_config_list("pythonpath") == ["cli/python"]
+    assert "lib/python" not in pytest_config_list("testpaths")
+
+
+def test_pylint_search_path_uses_only_base_owned_python_root() -> None:
+    pylint_config = (REPO_ROOT / ".pylintrc").read_text(encoding="utf-8")
+
+    assert 'sys.path.extend(["cli/python"])' in pylint_config
+    assert '"lib/python"' not in pylint_config
 
 
 def test_python_coverage_policy_is_wired_and_documented() -> None:
@@ -120,36 +128,42 @@ def test_python_test_docs_and_ci_use_the_standalone_base_cli_source_contract() -
     workflow_guidance = (REPO_ROOT / ".ai-context" / "WORKFLOWS.md").read_text(
         encoding="utf-8"
     )
+    copilot_guidance = (REPO_ROOT / ".github" / "copilot-instructions.md").read_text(
+        encoding="utf-8"
+    )
     skills_doc = (REPO_ROOT / "skills.md").read_text(encoding="utf-8")
     supply_chain_doc = (REPO_ROOT / "docs" / "ci-supply-chain-policy.md").read_text(
         encoding="utf-8"
     )
 
     source_path = "../base-cli/lib/python"
-    pythonpath = f"{source_path}:lib/python:cli/python"
+    pythonpath = f"{source_path}:cli/python"
 
     assert (
         "BASE_CLI_SOURCE_DIR: ${{ github.workspace }}/.dependencies/base-cli/lib/python"
         in workflow
     )
     assert (
-        "PYTHONPATH: .dependencies/base-cli/lib/python:lib/python:cli/python"
+        "PYTHONPATH: .dependencies/base-cli/lib/python:cli/python"
         in workflow
     )
     for text in (
         testing_doc,
         contributor_doc,
         workflow_guidance,
+        copilot_guidance,
         skills_doc,
         supply_chain_doc,
     ):
         assert f"BASE_CLI_SOURCE_DIR={source_path}" in text
         assert f"PYTHONPATH={pythonpath}" in text
+        assert f"PYTHONPATH={source_path}:lib/python:cli/python" not in text
 
     for text in (
         testing_doc,
         contributor_doc,
         workflow_guidance,
+        copilot_guidance,
         skills_doc,
         supply_chain_doc,
     ):

@@ -41,6 +41,6 @@ jobs:
 
       - name: Run Pylint
         env:
-          PYTHONPATH: .dependencies/base-cli/lib/python:lib/python:cli/python
+          PYTHONPATH: .dependencies/base-cli/lib/python:cli/python
         run: |
           git ls-files -z '*.py' | xargs -0 pylint --rcfile=.pylintrc
