@@ -175,7 +175,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 |---|---|
 | `basectl setup [project] [--profile dev\|sre\|ai\|linux-lab]` | Install / reconcile prerequisites |
 | `basectl update-profile [--defaults]` | Wire shell startup files |
-| `basectl update [project] [--dry-run]` | Upgrade Base or a Base-managed project checkout |
+| `basectl update [project] [--dry-run] [--release <tag>]` | Upgrade Base through Homebrew or Git, or update a project; `--release` selects a stable source tag. See [Upgrading Base](upgrading.md). |
 | `basectl onboard [project]` | Guided first-run checklist |
 
 ### Daily Loop

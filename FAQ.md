@@ -259,7 +259,7 @@ route.
 
 ## Setup, Profile, And Diagnostics
 
-### How Do I Upgrade An Existing Base Installation?
+### How do I upgrade an existing Base installation?
 
 Use the [Upgrade Contract](docs/upgrading.md). Homebrew and mutable default-branch
 source installs use `basectl update`. A stable detached source checkout uses
