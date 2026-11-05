@@ -191,8 +191,10 @@ behavior.
 - User-facing install test coverage: `tests/install.bats`
 - Homebrew tap repository: `https://github.com/basefoundry/homebrew-base`
 - User-facing Homebrew install command: `brew install basefoundry/base/base`
-- Keep Homebrew users on `brew upgrade basefoundry/base/base` rather than
-  `basectl update`.
+- Follow the [Upgrade Contract](docs/upgrading.md) for Homebrew, mutable source,
+  and stable tagged source installations. Prefer `basectl update` for Homebrew;
+  a direct `brew upgrade` needs setup through the newly linked executable.
+  Check version availability before recommending `update --release`.
 - Validate with:
 
 ```bash
