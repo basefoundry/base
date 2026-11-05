@@ -286,7 +286,7 @@ exec "$SHELL" -l
 | Integration tests | BATS | `tests/integration/base_workflows.bats` |
 | Shell static analysis | ShellCheck | All `*.sh` files |
 | Python lint | Pylint | `cli/python/` (see the CI workflow for the interpreter matrix) |
-| Python security scan | Bandit | `cli/python/` and `lib/python/` as passed by CI; the current checkout has no tracked Base sources under `lib/python/` |
+| Python security scan | Bandit | `cli/python/` |
 | Python dependency audit | pip-audit | `requirements-dev.txt` |
 
 Run everything locally with `basectl test base` or `bin/base-test`.

@@ -36,7 +36,7 @@ def run_workspace_command(args: list[str], base_home: Path, home: Path) -> subpr
             "BASE_PROJECT_MANIFEST": "",
             "HOME": str(home),
             "PYTHONPATH": os.pathsep.join(
-                [str(REPO_ROOT / "lib/python"), str(REPO_ROOT / "cli/python"), environment.get("PYTHONPATH", "")]
+                [str(REPO_ROOT / "cli/python"), environment.get("PYTHONPATH", "")]
             ),
         }
     )

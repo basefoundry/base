@@ -144,12 +144,12 @@ Use this workflow when adding or changing Python-backed Base behavior.
   the standalone `base-cli` repository.
 - Run Base Python commands with the standalone `base-cli` source checkout:
   `BASE_CLI_SOURCE_DIR=../base-cli/lib/python` and
-  `PYTHONPATH=../base-cli/lib/python:lib/python:cli/python`.
+  `PYTHONPATH=../base-cli/lib/python:cli/python`.
 - Validate with:
 
 ```bash
 BASE_CLI_SOURCE_DIR=../base-cli/lib/python \
-PYTHONPATH=../base-cli/lib/python:lib/python:cli/python \
+PYTHONPATH=../base-cli/lib/python:cli/python \
 python -m pytest
 ```
 

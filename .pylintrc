@@ -1,6 +1,6 @@
 [MAIN]
 py-version=3.10
-init-hook='import sys; sys.path.extend(["lib/python", "cli/python"])'
+init-hook='import sys; sys.path.extend(["cli/python"])'
 jobs=1
 persistent=no
 

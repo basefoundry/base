@@ -44,7 +44,7 @@ this policy if the rule changes.
 
    ```bash
    BASE_CLI_SOURCE_DIR=../base-cli/lib/python \
-   PYTHONPATH=../base-cli/lib/python:lib/python:cli/python \
+   PYTHONPATH=../base-cli/lib/python:cli/python \
    python -m pytest cli/python/base_setup/tests/test_ci_supply_chain_policy.py -q
    ```
 
@@ -80,11 +80,11 @@ The security job must keep these checks:
 - Bandit uses the command in `.github/workflows/tests.yml`:
 
   ```bash
-  bandit -q -r cli/python lib/python -x '*/tests/*' --severity-level medium
+  bandit -q -r cli/python -x '*/tests/*' --severity-level medium
   ```
 
-  The current Base checkout has no tracked Python source under `lib/python/`;
-  CI still passes that path.
+  This scans Base-owned Python packages under `cli/python/`; the standalone
+  `base-cli` provider is managed as a separate dependency.
 - `pip-audit` over `requirements-dev.txt`
 - ShellCheck errors over tracked Bash entry points, scripts, and `.bash`
   helpers; managed Zsh startup and completion sources are checked with `zsh -n`.

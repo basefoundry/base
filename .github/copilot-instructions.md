@@ -34,7 +34,7 @@ Use the narrowest relevant validation first:
 - documentation-only changes: `git diff --check`;
 - Python changes: use the standalone `base-cli` source checkout and run the
   focused pytest target with `BASE_CLI_SOURCE_DIR=../base-cli/lib/python` and
-  `PYTHONPATH=../base-cli/lib/python:lib/python:cli/python`;
+  `PYTHONPATH=../base-cli/lib/python:cli/python`;
 - Bash command changes: run the focused BATS tests;
 - general Base changes: run `basectl test base` when practical.
 

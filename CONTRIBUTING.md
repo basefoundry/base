@@ -82,7 +82,7 @@ For Python-only changes, run the focused pytest target with the standalone
 
 ```bash
 BASE_CLI_SOURCE_DIR=../base-cli/lib/python \
-PYTHONPATH=../base-cli/lib/python:lib/python:cli/python \
+PYTHONPATH=../base-cli/lib/python:cli/python \
 python -m pytest
 ```
 
