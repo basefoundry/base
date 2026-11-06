@@ -5,9 +5,10 @@ Claude's documentation review and their related follow-up work. It is a dated
 audit record, not a new product contract or an exhaustive line-by-line audit of
 every Base source file.
 
-**Snapshot:** repository `main` at
-`d676e258e9b227e5dfe5806b430e0b502cf304c0` (2026-11-05). The issues and pull
-requests linked below may move after this snapshot.
+**Source snapshot:** repository `main` at
+`d676e258e9b227e5dfe5806b430e0b502cf304c0` (commit date 2026-11-02).
+**Issue/PR state:** checked 2026-11-05; linked tracker state may move after
+that date.
 
 The review compared the candidate claims with the architecture and focused
 design documents, implementation paths, the current `basectl --help` output,
