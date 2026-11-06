@@ -151,6 +151,22 @@ and calls its `main` function.
 The current dispatch and runtime contract is documented in
 [execution-model.md](execution-model.md).
 
+### Command-Domain Responsibilities
+
+These command domains support the core readiness-and-handoff loop while
+keeping local project consent, GitHub workflow automation, and repository
+baseline management as distinct responsibilities:
+
+| Domain | Responsibility | Detailed contract |
+|---|---|---|
+| `trust` | Inspect and manage local approval for manifest-declared project commands. Approval gates execution; it does not sandbox project code. | [Manifest Command Trust](manifest-command-trust.md) |
+| `gh` | Coordinate Base-owned GitHub authentication, issue, pull-request, Project, branch, worktree, and review workflows. | [GitHub Workflow](github-workflow.md) |
+| `repo` | Clone existing GitHub repositories into the workspace and create, inspect, or repair the shared Base-managed repository baseline while leaving project-specific source and build behavior with the owning project. | [Repository Baseline](repo-baseline.md) |
+
+These names describe command responsibilities, not separate packages or
+installation layers. The focused references define the behavior within each
+domain.
+
 ---
 
 ## Project Activation Model — Subshell Design
