@@ -160,8 +160,8 @@ baseline management as distinct responsibilities:
 | Domain | Responsibility | Detailed contract |
 |---|---|---|
 | `trust` | Inspect and manage local approval for manifest-declared project commands. Approval gates execution; it does not sandbox project code. | [Manifest Command Trust](manifest-command-trust.md) |
-| `gh` | Coordinate Base's GitHub-specific issue, pull request, branch, worktree, and repository workflows. | [GitHub Workflow](github-workflow.md) |
-| `repo` | Create, inspect, and repair the shared Base-managed repository baseline while leaving project-specific source and build behavior with the owning project. | [Repository Baseline](repo-baseline.md) |
+| `gh` | Coordinate Base-owned GitHub authentication, issue, pull-request, Project, branch, worktree, and review workflows. | [GitHub Workflow](github-workflow.md) |
+| `repo` | Clone existing GitHub repositories into the workspace and create, inspect, or repair the shared Base-managed repository baseline while leaving project-specific source and build behavior with the owning project. | [Repository Baseline](repo-baseline.md) |
 
 These names describe command responsibilities, not separate packages or
 installation layers. The focused references define the behavior within each
