@@ -66,14 +66,15 @@ Recent trust and workspace updates are part of the current implementation:
 
 ## Active Development Direction
 
-The `v1.10.5` release line is active; final publication and public readback are
-tracked in issue #2539. The v1.10.4 release completed the prior recovery train;
-the immutable assetless v1.10.3 recovery artifact is
-documented in issue #2530, and the earlier v1.10.1 assetless publication remains
-documented in issue #2520. Future work is tracked in GitHub Issues,
-with GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
+The active development line is v1.11.0 (`DEVELOPMENT_VERSION`); v1.10.5 remains
+the current published release. Release preparation and publication follow
+[`docs/release-process.md`](../docs/release-process.md). The v1.10.4 release
+completed the prior recovery train; the immutable assetless v1.10.3 recovery
+artifact is documented in issue #2530, and the earlier v1.10.1 assetless
+publication remains documented in issue #2520. GitHub Issues track future
+work on GitHub CLI install/auth polish for Ubuntu, Docker/service artifacts,
 broader prompt ergonomics, broader Linux distribution support, and broader
-setup policy work remaining outside the 1.10.5 release contract.
+setup policy.
 
 The accepted product position is now a local operating contract for
 deterministic readiness and handoff within a project, from a single repository
@@ -149,6 +150,10 @@ Recent released work includes:
 
 Recent commits on `main` include:
 
+- default AI-context exports saved to checkout-specific Base cache paths
+- linked GitHub Project issues moved to `In Progress` by
+  `basectl gh issue start`, with a no-linked-item handoff warning
+- attached worktree metadata validation before branch/worktree pruning
 - public evaluator documentation through `docs/why-base.md`
 - AGPL license cleanup and generated-license correction for `basectl repo init`
 - Homebrew and source checkout install-path clarification

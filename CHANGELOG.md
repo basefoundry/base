@@ -10,6 +10,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Changed
 
+- Save default `basectl export-context` bundles under checkout-specific Base
+  cache paths so same-named checkouts do not overwrite one another; explicit
+  output paths remain unchanged.
+- Move a linked GitHub Project issue to `In Progress` when
+  `basectl gh issue start` begins work, and preserve the handoff with a visible
+  warning when no Project item is linked.
 - Clarify `basectl trust` help for workspace scope and approval actions, and make
   workspace status reasons identify stale approval.
 - Make project-less terminal `basectl trust status` output a compact workspace
@@ -17,6 +23,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Refuse branch/worktree pruning when attached worktree metadata is invalid,
+  reporting the affected path while preserving the local branch for recovery.
 - Run activation-source discovery with Base's interpreter while preserving the
   selected project's manifest and activation context.
 - Use the same readable blocked-trust explanations in workspace test preflight,
