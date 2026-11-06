@@ -482,15 +482,17 @@ orchestration actions. The design rule is delegation-first:
   aliases, or functions. Source paths must be relative to the project root and
   must resolve inside that root.
 - Let Base own Base-aware package reconciliation and any project virtual
-  environment explicitly requested by `python:` or `python-package` manifest
-  contracts. Shell-only manifests use the Base runtime for control-plane work.
+  environment explicitly requested by `python:`, `python-package` artifacts,
+  or `test.requirements`. Shell-only manifests use the Base runtime for
+  control-plane work.
 - Do not run arbitrary project setup hooks until Base has a clear safety
   contract for dry-run behavior, interactivity, setup diagnostics, and broader
   side effects. See [setup-hooks.md](setup-hooks.md) for the setup no-hooks
   decision and future reconsideration criteria.
 
 Base owns the curated tool artifact registry only for things it must manage
-directly. The current registry is `cli/python/base_setup/registry.py`.
+directly. Its data lives in `lib/base/artifact-registry.yaml`; the loader and
+validation live in `cli/python/base_setup/registry.py`.
 
 The optional top-level `brewfile` field delegates ordinary Homebrew dependencies
 to Homebrew's native `brew bundle` flow. The path is relative to the project root
@@ -513,13 +515,18 @@ requests from supported-but-unavailable interpreters. See
 boundary.
 
 A manifest requires project Python when it contains a top-level `python:`
-mapping, including an explicit empty `python: {}`, or declares at least one
-`python-package` artifact. `project.languages: [python]` remains taxonomy and
-does not independently create an environment. When neither project-Python
+mapping, including an explicit empty `python: {}`, declares at least one
+`python-package` artifact, or declares `test.requirements`.
+`project.languages: [python]` remains taxonomy and
+does not independently create an environment. When none of these project-Python
 contract is present, setup, check, and doctor run Base-owned parsing and
 reconciliation from `~/.base.d/base/.venv`, skip Base's default project Python
 bootstrap artifacts, and do not require `<project-root>/.venv`. Workspace
 status reports that venv as `not_applicable` rather than missing.
+
+The [Python runtime decision table](python-manifest.md#when-a-project-python-runtime-is-required)
+is the complete trigger reference. Requirements-file installation and static
+versus executing verification are described in [Testing](testing.md).
 
 This is the shell-only vertical slice of the broader runtime-boundary work in
 [#1611](https://github.com/basefoundry/base/issues/1611). Activation and

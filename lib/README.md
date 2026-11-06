@@ -8,13 +8,13 @@ Top-level library namespace for Base.
   Base-owned internal manifests such as the default manifest and built-in
   prerequisite profiles.
 - `lib/bash/`
-  Base Bash runtime libraries such as `std`, `git`, `file`, and runtime shell
-  startup files.
-- `lib/python/`
-  Python package source for Base-owned Python libraries. The shared `base_cli`
-  framework is maintained in the standalone `base-cli` repository.
+  Base-specific runtime, command protocol, version adapters, and shell startup
+  files. Reusable libraries such as `std`, `git`, and `file` come from the
+  standalone `base-bash-libs` repository.
 - `lib/shell/`
   Base-managed Bash/Zsh startup files and optional shared interactive defaults.
 
-This keeps `cli/` focused on entrypoints, commands, and runtime bootstrap,
-while `lib/` holds reusable sourceable modules.
+Base-owned Python packages and integration helpers live under `cli/python/`;
+there is no local `lib/python/` source tree. The reusable `base_cli` framework
+is maintained in the standalone `base-cli` repository. See
+[Python Package Ownership](../docs/python-package-ownership.md).

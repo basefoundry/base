@@ -76,7 +76,7 @@ Python tests run with:
 
 ```bash
 BASE_CLI_SOURCE_DIR=../base-cli/lib/python \
-PYTHONPATH=../base-cli/lib/python:lib/python:cli/python \
+PYTHONPATH=../base-cli/lib/python:cli/python \
 python -m pytest
 ```
 

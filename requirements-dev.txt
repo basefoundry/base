@@ -1,4 +1,4 @@
-pylint==3.3.9
+pylint==4.0.9
 click==8.4.1
 base-cli==0.5.1
 PyYAML==6.0.3

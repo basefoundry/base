@@ -57,7 +57,7 @@ full compatibility contract.
 |---|---|---|
 | `basectl setup [project]` | Install or reconcile Base and optional project artifacts. Project-originated IDE app, extension, and user-setting mutations require separate approval. | `--project <name>`, `--ci`, `--format <text\|json>`, `--profile <dev,sre,ai>`, `--dry-run`, `--manifest <path>`, `--yes`, `--allow-project-ide-mutations`, `--recreate-venv`, `--upgrade-pip`, `--notify`, `--no-notify` |
 | `basectl update-profile` | Create, refresh, or remove Base-managed Bash and Zsh startup snippets, backing up existing dotfiles before changes. | `--defaults`, `--no-defaults`, `--remove`, `--dry-run` |
-| `basectl update [project]` | Update a Base-managed project checkout through Git, or update Base through Homebrew when Base is Homebrew-managed, then run setup for the selected project. | `--project <name>`, `--release <tag>`, `--dry-run` |
+| `basectl update [project]` | Update Base or a selected project through its installation route. Ordinary Git updates run setup only when the revision changes; current Homebrew updates always reconcile setup. Stable Base source tags use `--release`. See [Upgrading Base](upgrading.md) for version availability and recovery. | `--project <name>`, `--release <tag>`, `--dry-run` |
 | `basectl onboard [project]` | Guide first-run setup through check, setup, shell profile, doctor, project discovery, and read-only manifest trust status. Defaults to `base`. | `--project <name>`, `--profile <list>`, `--dry-run`, `--yes`, `--allow-project-ide-mutations`, `--no-profile` |
 | `basectl version` | Show the installed Base version. | `--all`, `--json` |
 
@@ -69,8 +69,8 @@ with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
 After this Bash bootstrap layer creates Base's own Python environment, setup
 installs Base bootstrap Python packages into that environment. Shell-only
 project reconciliation runs from that Base runtime and does not copy those
-packages into a project venv. Projects that explicitly declare `python:` or a
-`python-package` artifact keep the project-runtime path: Base first seeds the
+packages into a project venv. Projects that explicitly declare `python:`, a
+`python-package` artifact, or `test.requirements` keep the project-runtime path: Base first seeds the
 target project venv with `bootstrap: true` default artifacts and then invokes
 the Python project setup layer through `base-wrapper --project <project>`.
 Prerequisite profiles are opt-in. Use `--profile dev` to install Base
@@ -146,9 +146,9 @@ is requested on macOS, Base warns if `osascript` is not available.
 | `basectl demo [project]` | Run a project-owned demo script. | `--project <name>`, `--workspace <path>`, `--dry-run`, `-- <args>` |
 | `basectl devcontainer [project]` | Preview or write `.devcontainer/devcontainer.json` from a Base manifest. Dry-run is the default. | `--project <name>`, `--workspace <path>`, `--format <text\|json>`, `--write` |
 | `basectl devenv-report [project]` | Classify Base manifest fields for Nix/devenv planning without generating files or requiring Nix. | `--project <name>`, `--workspace <path>`, `--format <text\|json>` |
-| `basectl trust status [project]` | Show one project's manifest trust status, or all discovered command-bearing projects. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
-| `basectl trust allow <project>` | Approve the current manifest command contract on this machine. | `--project <name>`, `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
-| `basectl trust revoke <project>` | Remove local manifest command approval. | `--project <name>`, `--workspace <path>` |
+| `basectl trust status [project]` | Read-only inspection: show detailed trust guidance for one project, or a compact blocked-first summary for discovered command-bearing projects. | `--project <name>`, `--workspace <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
+| `basectl trust allow <project>` | Record local approval for the project's current manifest command contract on this machine. | `--project <name>`, `--workspace <path>`, `--manifest-sha256 <sha256>`, `--test-requirements-sha256 <sha256>` |
+| `basectl trust revoke <project>` | Remove local manifest command approval for one project. | `--project <name>`, `--workspace <path>` |
 
 Manifest-declared `test`, `run`, `build`, `demo`, and activation surfaces are
 project-owned code executed from the project root. Review manifests from
@@ -195,7 +195,7 @@ manifest trust.
 | `basectl logs --open` | Open the newest matching log in `PAGER` or `EDITOR`. | `--command <name[,name...]>` |
 | `basectl logs --tail` | Tail and follow the newest matching log. | `--command <name[,name...]>`, `--lines <count>` |
 | `basectl clean` | Preview cleanup of completed Base run bundles and component caches; use `--yes` to delete matches. Active runs are retained and reported. | `--older-than <age>`, `--keep-last <count>`, `--dry-run`, `--yes` |
-| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and persistent runtime caches. Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--project <name>`, `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
+| `basectl uninstall <project>\|--all` | Preview or remove Base-managed trust, check state, external project environments, and runtime caches, including project run bundles. Base-level history remains; see [Uninstall And Retention](uninstall.md). Project checkouts and manifests are never deleted; `--all` also removes workspace settings and managed shell startup sections. | `--project <name>`, `--workspace <path>`, `--dry-run`, `--yes`, `--verify` |
 | `basectl config path` | Print the local Base config path. | none |
 | `basectl config show` | Show local Base config as redacted JSON. | none |
 | `basectl config doctor` | Diagnose local Base config. | none |
@@ -211,7 +211,7 @@ manifest trust.
 | `basectl workspace agent-brief` | Report local baseline, agent-guidance, AI-context, environment, validation evidence, and derived next actions for expected and extra Base-managed repositories without mutation or network calls. Requires a configured or explicit workspace manifest. JSON schema: [`docs/schemas/workspace-agent-brief.json`](schemas/workspace-agent-brief.json). | `--workspace <path>`, `--manifest <path>`, `--format <text\|csv\|tsv\|yaml\|json>` |
 | `basectl workspace clone` | Clone or validate expected repositories from a workspace manifest. Missing-repository materialization is GitHub-only today because this path delegates to `repo clone`. Uses `workspace.manifest` from user config unless `--manifest` is supplied. Text output uses a stable repository/action/result table with aggregate counts. | `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace pull` | Explicitly fetch and validate a canonical workspace manifest source before updating the local workspace manifest. Uses `workspace.manifest_source` and `workspace.manifest` from user config unless flags are supplied. | `--source <url-or-path>`, `--manifest <path>`, `--dry-run` |
-| `basectl workspace update` | Run `git pull --ff-only` across present repositories in manifest order, including the active Base checkout when it is the manifest's `base` target. `--repos` selects a validated comma-separated subset. Continues after failures, skips missing optional repositories, treats missing required repositories as failures, and reports updated/unchanged/skipped/failed counts. `--format json` emits the stable schema-versioned report. | `--workspace <path>`, `--manifest <path>`, `--repos <name[,name...]>`, `--dry-run`, `--format <text\|json>` |
+| `basectl workspace update` | Run `git pull --ff-only` across present repositories in manifest order, including the active Base checkout when it is the manifest's `base` target. `--repos` selects a validated comma-separated subset. Continues after failures, skips missing optional repositories, reports required missing or unsafe roots as blocked, and reports updated/unchanged/skipped/blocked/failed counts. Git-registered linked worktrees nested under a primary root are excluded from that root's untracked-file check; real primary-root edits still block updates. `--format json` emits the stable schema-versioned report. | `--workspace <path>`, `--manifest <path>`, `--repos <name[,name...]>`, `--dry-run`, `--format <text\|json>` |
 | `basectl workspace init <workspace-source>` | Initialize a workspace from a workspace configuration repository, update local workspace config, and optionally materialize member repositories. | `--owner <owner>`, `--path <path>`, `--workspace <path>`, `--manifest <path>`, `--include-optional`, `--dry-run` |
 | `basectl workspace configure` | Preview the existing `repo configure` repair path by default across discovered Base-managed workspace repositories or an explicit workspace manifest. Use `--apply` to authorize changes; interactive runs prompt unless `--yes` is supplied. Skips missing, non-Base-managed, or non-GitHub repos and continues after per-repo failures. | `--workspace <path>`, `--manifest <path>`, `--dry-run`, `--apply`, `--yes` |
 | `basectl workspace setup` | Set up eligible repositories from a workspace manifest in manifest order by delegating to each repository's local `basectl setup` command. Skips ineligible repositories, continues after per-repo failures, and reports setup/skipped/failed counts. | `--workspace <path>`, `--manifest <path>`, `--dry-run`, `--yes` |
@@ -241,7 +241,7 @@ daily project loop commands from the local checkout.
 | `basectl gh branch stale` | Report stale local branches. Stable inspection JSON uses the shared v1 envelope. | `--days <days>`, `--format <text\|json>` |
 | `basectl gh branch prune` | Prune safe merged branches. Pass `--closed-unmerged` to include branches whose pull requests were closed without merging. | `--dry-run`, `--yes`, `--remote`, `--closed-unmerged` |
 | `basectl gh worktree prune` | Prune stale merged branch-attached worktrees. Pass `--closed-unmerged` to include clean worktrees tied to closed, unmerged pull requests; unmanaged detached worktree metadata remains an explicit `git worktree prune` operation. Use `gh review prune` for Base-owned review worktrees. | `--dry-run`, `--yes`, `--closed-unmerged` |
-| `basectl gh review fetch <number>` | Fetch a pull-request head into a Base-owned namespaced ref and create a detached review worktree. It never creates an ordinary local `pr-*` branch. | `--name <slug>`, `--repo <owner/name>`, `--root <path>`, `--refresh` |
+| `basectl gh review fetch <number>` | Fetch a pull-request head into a Base-owned namespaced ref and create a detached review worktree outside the repository. It never creates an ordinary local `pr-*` branch; an explicit `--root` inside the repository or one of its descendants is rejected before Git or GitHub mutation. | `--name <slug>`, `--repo <owner/name>`, `--root <path>`, `--refresh` |
 | `basectl gh review prune` | Preview or remove safe Base-owned detached review worktrees and their namespaced refs. The default is dry-run; open, dirty, changed, invalid, missing, and unowned checkouts are retained. | `--dry-run`, `--yes`, `--closed-unmerged`, `--pr <number>`, `--root <path>` |
 | `basectl gh project doctor` | Inspect GitHub Project metadata against the Base Project schema. | `--project <title>`, `--owner <login>`, `--schema base-project` |
 | `basectl gh project configure` | Create or repair Base-managed Project metadata. | `--project <title>`, `--owner <login>`, `--repo <owner/name>`, `--schema base-project`, `--config <path>`, `--copy-fields-from <title>`, `--replace-project`, `--initiative-option <name>`, `--dry-run` |
@@ -562,8 +562,8 @@ For uv-managed projects, Base delegates setup to `uv sync`, including any
 activation and project commands, and skips
 Base-managed `python-package` reconciliation. See
 [Python Manifest Section](python-manifest.md).
-Projects without a top-level `python:` section or any `python-package`
-artifacts are treated as shell-only for setup and diagnostics. Base parses and
+Projects without a top-level `python:` section, any `python-package`
+artifacts, or `test.requirements` are treated as shell-only for setup and diagnostics. Base parses and
 reconciles those manifests from its own runtime, does not create a project
 `.venv` for its control plane, and reports workspace venv state as
 `not_applicable`. An explicit `python: {}` keeps the existing Base-managed
@@ -700,8 +700,11 @@ across the existing repositories in manifest order, then run
 specific manifest repositories; the names are validated before any Git operation
 and output remains in manifest order. Update never clones, resets, or changes
 the workspace manifest. It continues after individual Git failures, reports
-updated/unchanged/skipped/failed counts, skips missing optional repositories,
-and treats missing required repositories as failures. If the manifest points at
+updated/unchanged/skipped/blocked/failed counts, skips missing optional
+repositories, and treats missing or unsafe required repositories as blocked.
+Git-registered linked worktrees nested under a primary checkout are excluded
+from that primary root's untracked-file check; arbitrary untracked files and
+real primary-root edits still block the update. If the manifest points at
 the active `BASE_HOME/base` checkout, that checkout is eligible for update after
 the same read-only preflight checks as other selected roots; a separate
 workspace checkout of `base` is eligible under the same policy. Text output uses a stable
@@ -725,6 +728,10 @@ manifest, Base scans discovered local Base-managed projects under the workspace
 root. This is the fastest way to roll out shared repo or Project schema repairs
 across a local repository set while keeping each repository's `repo configure`
 behavior idempotent.
+
+Workspace setup/test/update have fixed per-operation deadlines. See
+[Execution Deadlines And Cancellation](workspace-manifest.md#execution-deadlines-and-cancellation)
+for timeout, interruption, process-group, output-capture, and retry boundaries.
 
 Use `basectl workspace setup --dry-run` to preview project setup across the
 expected repositories, then run `basectl workspace setup` to execute it. Setup

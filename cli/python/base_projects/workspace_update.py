@@ -22,6 +22,7 @@ from base_version.checkout import git_checkout_marker
 
 WorkspaceUpdateAction = Literal["pull", "skip"]
 WorkspaceUpdateStatus = Literal["planned", "updated", "unchanged", "skipped", "failed"]
+WorkspaceUpdateGitStatus = tuple[tuple[bool, str | None, str | None], str]
 WorkspaceUpdatePreflightIssue = Literal[
     "dirty",
     "linked_worktree",
@@ -55,6 +56,7 @@ class WorkspaceUpdateCounts:
     updated: int = 0
     unchanged: int = 0
     skipped: int = 0
+    blocked: int = 0
     failed: int = 0
 
 
@@ -172,17 +174,18 @@ def workspace_update_command(
     if dry_run:
         print(
             "Workspace update plan complete: "
-            f"planned={counts.planned} skipped={counts.skipped} failed={counts.failed}."
+            f"planned={counts.planned} skipped={counts.skipped} "
+            f"blocked={counts.blocked} failed={counts.failed}."
         )
         print("[DRY-RUN] No repositories were modified.")
-        return base_cli.ExitCode.FAILURE if counts.failed else base_cli.ExitCode.SUCCESS
+        return base_cli.ExitCode.FAILURE if counts.failed or counts.blocked else base_cli.ExitCode.SUCCESS
 
     print(
         "Workspace update completed: "
         f"updated={counts.updated} unchanged={counts.unchanged} "
-        f"skipped={counts.skipped} failed={counts.failed}."
+        f"skipped={counts.skipped} blocked={counts.blocked} failed={counts.failed}."
     )
-    return base_cli.ExitCode.FAILURE if counts.failed else base_cli.ExitCode.SUCCESS
+    return base_cli.ExitCode.FAILURE if counts.failed or counts.blocked else base_cli.ExitCode.SUCCESS
 
 
 def select_workspace_update_repositories(
@@ -241,11 +244,12 @@ def render_workspace_update_json(
             "updated": counts.updated,
             "unchanged": counts.unchanged,
             "skipped": counts.skipped,
+            "blocked": counts.blocked,
             "failed": counts.failed,
         },
     }
     base_cli.render_document(payload, requested_format="json")
-    return base_cli.ExitCode.FAILURE if counts.failed else base_cli.ExitCode.SUCCESS
+    return base_cli.ExitCode.FAILURE if counts.failed or counts.blocked else base_cli.ExitCode.SUCCESS
 
 
 def workspace_update_repository_to_json(
@@ -339,6 +343,8 @@ def print_workspace_update_result(
 ) -> None:
     action = target.action.upper()
     outcome = result.status
+    if result.status == "skipped" and target.fatal:
+        outcome = "blocked"
     if result.exit_code is not None:
         outcome = f"{outcome} (exit {result.exit_code})"
     print(f"{target.name:<{name_width}}  {action:<6}  {outcome}")
@@ -357,8 +363,9 @@ def update_workspace_update_counts(
         planned=counts.planned + (result.status == "planned"),
         updated=counts.updated + (result.status == "updated"),
         unchanged=counts.unchanged + (result.status == "unchanged"),
-        skipped=counts.skipped + (result.status == "skipped"),
-        failed=counts.failed + (result.status == "failed" or fatal),
+        skipped=counts.skipped + (result.status == "skipped" and not fatal),
+        blocked=counts.blocked + (result.status == "skipped" and fatal),
+        failed=counts.failed + (result.status == "failed"),
     )
 
 
@@ -489,14 +496,40 @@ def workspace_update_git_directories(
 def workspace_update_git_status(
     target: WorkspaceUpdateTarget,
 ) -> tuple[bool, str | None, str | None] | WorkspaceUpdateResult:
+    target_root = target.root.resolve()
+    status_arguments = [
+        "status",
+        "--porcelain=v1",
+        "--branch",
+        "--untracked-files=all",
+    ]
+    status_result = workspace_update_git_status_for_arguments(target, status_arguments)
+    if isinstance(status_result, WorkspaceUpdateResult):
+        return status_result
+    checkout_status, status_output = status_result
+    if not checkout_status[0] or not any(line.startswith("??") for line in status_output.splitlines()):
+        return checkout_status
+
+    nested_worktrees = workspace_update_nested_worktree_paths(target)
+    if not nested_worktrees:
+        return checkout_status
+
+    filtered_status_arguments = [*status_arguments, "--", "."]
+    filtered_status_arguments.extend(
+        f":(exclude,literal){path.relative_to(target_root).as_posix()}" for path in nested_worktrees
+    )
+    filtered_status = workspace_update_git_status_for_arguments(target, filtered_status_arguments)
+    if isinstance(filtered_status, WorkspaceUpdateResult):
+        return checkout_status
+    return filtered_status[0]
+
+
+def workspace_update_git_status_for_arguments(
+    target: WorkspaceUpdateTarget,
+    arguments: list[str],
+) -> WorkspaceUpdateGitStatus | WorkspaceUpdateResult:
     try:
-        status = run_workspace_git_probe(
-            target.root,
-            "status",
-            "--porcelain=v1",
-            "--branch",
-            "--untracked-files=all",
-        )
+        status = run_workspace_git_probe(target.root, *arguments)
     except subprocess.TimeoutExpired:
         return workspace_update_preflight_result(
             ("preflight_failed",),
@@ -514,8 +547,50 @@ def workspace_update_git_status(
             ("preflight_failed",),
             f"could not inspect Git checkout '{target.root}': {detail}",
         )
+    return parse_workspace_git_status(status.stdout), status.stdout
 
-    return parse_workspace_git_status(status.stdout)
+
+def workspace_update_nested_worktree_paths(target: WorkspaceUpdateTarget) -> tuple[Path, ...]:
+    """Return registered linked worktrees nested inside a primary checkout."""
+    target_root = target.root.resolve()
+    try:
+        worktrees = run_workspace_git_probe(target.root, "worktree", "list", "--porcelain")
+    except (OSError, subprocess.TimeoutExpired):
+        return ()
+    if worktrees.returncode != 0:
+        return ()
+
+    nested: list[Path] = []
+    for path in parse_workspace_worktree_paths(worktrees.stdout):
+        if path == target_root:
+            continue
+        try:
+            path.relative_to(target_root)
+        except ValueError:
+            continue
+        nested.append(path)
+    return tuple(nested)
+
+
+def parse_workspace_worktree_paths(output: str) -> tuple[Path, ...]:
+    paths: list[Path] = []
+    block: list[str] = []
+    for line in (*output.splitlines(), ""):
+        if line.strip():
+            block.append(line)
+            continue
+
+        worktree_value = next(
+            (entry.removeprefix("worktree ").strip() for entry in block if entry.startswith("worktree ")),
+            "",
+        )
+        if worktree_value and not any(entry.startswith("prunable ") for entry in block):
+            path = Path(worktree_value).resolve()
+            if path.is_dir():
+                paths.append(path)
+        block = []
+
+    return tuple(paths)
 
 
 def workspace_update_preflight_state(

@@ -324,11 +324,10 @@ Python packages for Base commands live under:
 cli/python/<package>/
 ```
 
-Shared Python libraries live under:
-
-```text
-lib/python/<package>/
-```
+Base-owned shared helpers also live under `cli/python/` in the package that
+owns their responsibility, including `base_cli_adapters`. The reusable
+`base_cli` framework lives in the standalone `base-cli` repository. See
+[Python Package Ownership](docs/python-package-ownership.md).
 
 Bash should invoke these packages with:
 
@@ -511,8 +510,9 @@ and project activation scripts.
 
 ### 6.3 Python Packages
 
-Base Python command packages should live under `cli/python`. Shared Python
-libraries should live under `lib/python`.
+Base Python command packages and shared Base integration helpers live under
+`cli/python`. Keep helpers in the owning package; reusable CLI framework
+behavior belongs in the standalone `base-cli` repository.
 
 Keep package tests next to the package:
 
@@ -767,7 +767,7 @@ Before adding code, ask where it belongs:
 | Is this artifact reconciliation? | Python layer, invoked by Bash through `base-wrapper` |
 | Is this a public executable? | Small real launcher in `bin/` |
 | Is this a Bash helper used by multiple commands? | `lib/bash/<module>/` |
-| Is this a Python helper used by multiple CLIs? | `lib/python/<package>/` |
+| Is this a Python helper used by multiple CLIs? | Owning package under `cli/python/`; reusable CLI framework changes belong in `base-cli` |
 | Is this a project-owned Go CLI? | Project Go module under `cmd/<tool>/` and `internal/`, declared in `base_manifest.yaml` |
 | Is this repeated Go CLI boilerplate? | Document the convention first; consider a shared Go helper only after real repetition |
 | Is this command-specific behavior? | The command's module and tests |

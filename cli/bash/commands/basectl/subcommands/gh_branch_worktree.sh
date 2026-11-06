@@ -820,6 +820,104 @@ base_gh_resolve_physical_path() {
     (cd "$path" && pwd -P)
 }
 
+base_gh_normalize_absolute_path() {
+    local path="$1"
+    local component
+    local -a components=() normalized=()
+
+    [[ "$path" == /* ]] || return 1
+    local IFS='/'
+    read -r -a components <<< "$path"
+    for component in "${components[@]}"; do
+        case "$component" in
+            ''|.)
+                ;;
+            ..)
+                if ((${#normalized[@]} > 0)); then
+                    normalized=("${normalized[@]:0:${#normalized[@]}-1}")
+                fi
+                ;;
+            *)
+                normalized+=("$component")
+                ;;
+        esac
+    done
+
+    if ((${#normalized[@]} == 0)); then
+        printf '/\n'
+    else
+        (IFS=/; printf '/%s\n' "${normalized[*]}")
+    fi
+}
+
+base_gh_resolve_path_for_creation() {
+    local path="$1"
+    local candidate suffix physical_candidate
+
+    [[ -n "$path" ]] || return 1
+    if [[ "$path" != /* ]]; then
+        path="$PWD/$path"
+    fi
+
+    candidate="$path"
+    suffix=""
+    while [[ ! -e "$candidate" ]]; do
+        [[ "$candidate" != "/" ]] || return 1
+        suffix="/$(basename "$candidate")$suffix"
+        candidate="$(dirname "$candidate")"
+    done
+    [[ -d "$candidate" ]] || return 1
+
+    physical_candidate="$(cd "$candidate" && pwd -P)" || return 1
+    base_gh_normalize_absolute_path "$physical_candidate$suffix"
+}
+
+base_gh_path_is_within_physical_root() {
+    local path="$1"
+    local root="$2"
+    local candidate
+
+    candidate="$path"
+    while [[ ! -e "$candidate" ]]; do
+        [[ "$candidate" != "/" ]] || return 1
+        candidate="$(dirname "$candidate")" || return 1
+    done
+    [[ -d "$candidate" ]] || return 1
+    candidate="$(cd "$candidate" && pwd -P)" || return 1
+
+    while :; do
+        [[ "$candidate" -ef "$root" ]] && return 0
+        [[ "$candidate" == "/" ]] && return 1
+        candidate="$(cd "$candidate/.." && pwd -P)" || return 1
+    done
+}
+
+base_gh_validate_worktree_root() {
+    local requested="$1"
+    local label="${2:-worktree root}"
+    local repo_root resolved_root
+
+    repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+        base_gh_error "Unable to resolve the repository root before validating $label."
+        return 1
+    }
+    repo_root="$(base_gh_resolve_physical_path "$repo_root")" || {
+        base_gh_error "Unable to resolve the physical repository root before validating $label."
+        return 1
+    }
+    resolved_root="$(base_gh_resolve_path_for_creation "$requested")" || {
+        base_gh_error "Unable to resolve $label '$requested'."
+        return 1
+    }
+
+    if base_gh_path_is_within_physical_root "$resolved_root" "$repo_root"; then
+        base_gh_error "Refusing $label '$requested': it resolves inside repository root '$repo_root'. Use a peer directory outside the repository."
+        return 1
+    fi
+
+    printf '%s\n' "$resolved_root"
+}
+
 base_gh_list_worktree_branches() {
     base_git_list_worktree_branches .
 }

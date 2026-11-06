@@ -129,8 +129,9 @@ basectl release publish --version X.Y.Z --bom path/to/release-bom.json --dry-run
 basectl release publish --version X.Y.Z --bom path/to/release-bom.json --yes
 ```
 
-`publish` reuses the release checks and rechecks the repository, branch, and
-full commit SHA immediately before its first mutation. It creates an annotated
+For first-time publication, `publish` reuses the release checks and rechecks
+the repository, branch, and full commit SHA immediately before its first
+mutation. It creates an annotated
 tag, verifies the local peeled SHA, pushes the tag, verifies the remote peeled
 SHA, and creates a mutable GitHub draft through the REST API. It then verifies
 GitHub's annotated tag object, uploads only missing assets, downloads each
@@ -143,6 +144,44 @@ release. This ordering is required for immutable releases: never create an
 empty immutable release and attempt to upload the BOM afterward. It does not
 update the Homebrew tap; it prints the tap handoff checklist when
 `release.homebrew` is declared.
+
+### Recovering A Tagged Release After Main Advances
+
+Publication has a narrow recovery path for a release whose annotated tag was
+already pushed before publication tooling advanced the default branch. This
+is the accepted exception from [#2551](https://github.com/basefoundry/base/issues/2551),
+implemented in [#2552](https://github.com/basefoundry/base/pull/2552); it does
+not permit first-time tagging from an arbitrary historical checkout.
+
+| State | Publication authority and action |
+| --- | --- |
+| No readiness blockers, no existing release/tag conflict | Use the current remote default-branch commit and the normal guarded publication sequence. |
+| Tag already exists, main advanced, GitHub release absent or draft | Resume only when the original canonical, sidecar-verified BOM names the same commit as both local and remote annotated tags. Reuse that commit and those tags. |
+| GitHub release is already published | Recovery is not accepted; do not replace an immutable release. |
+| Any other readiness failure or mismatched/unverifiable BOM/tag | Stop and resolve the failure; do not retag or regenerate evidence to bypass it. |
+
+Recovery accepts readiness blockers only in the `bom`, `release_commit`,
+`local_tag`, and `remote_tag` categories, and then independently validates the
+original BOM and matching annotated tags. All other readiness requirements,
+including repository identity, branch, cleanliness, version, and changelog,
+still apply. `release check` may therefore report the advanced-HEAD/tag
+blockers even when `release publish` can safely resume this specific state.
+
+Retain the original reviewed BOM and checksum sidecar. From the clean tooling
+checkout, preview and then resume the same version:
+
+```bash
+basectl release publish --version X.Y.Z --bom path/to/original-release-bom.json --dry-run
+basectl release publish --version X.Y.Z --bom path/to/original-release-bom.json --yes
+```
+
+The preview identifies the reviewed commit and that the verified annotated tag
+will be reused. Recovery does not create or move that tag. The remaining draft,
+asset-upload, byte-readback, and immutable-publication checks are unchanged:
+upload only missing assets and reject conflicting existing bytes. Preserve the
+reviewed release notes in the version's changelog section; recovery is not an
+opportunity to change the release payload. If the prerequisites do not hold,
+leave the existing tag/draft intact and investigate the reported failure.
 
 ## Downstream Version-Bump Automation
 

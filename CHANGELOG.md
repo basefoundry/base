@@ -8,8 +8,17 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ## [Unreleased]
 
+### Changed
+
+- Clarify `basectl trust` help for workspace scope and approval actions, and make
+  workspace status reasons identify stale approval.
+- Make project-less terminal `basectl trust status` output a compact workspace
+  table with blocked projects first, short reasons, and an aggregate summary.
+
 ### Fixed
 
+- Run activation-source discovery with Base's interpreter while preserving the
+  selected project's manifest and activation context.
 - Use the same readable blocked-trust explanations in workspace test preflight,
   individual project command diagnostics, and `basectl trust status`.
 - Make `basectl workspace test` preflight manifest-command trust across the
@@ -18,9 +27,13 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 - Stability compatibility: publish workspace-test JSON schema version 2 so
   automation can distinguish trust-blocked and not-run projects from tests
   that actually executed.
+- Reconcile pinned Base runtime requirements after Homebrew upgrades even when
+  the formula version is unchanged, using the newly linked executable.
 
 ### Added
 
+- Upgrade clean, detached Base source checkouts to a reviewed later stable tag
+  with `basectl update --release <tag>`, including a preview and setup recovery.
 - Stability compatibility: enroll the new `basectl gh review fetch` and
   `basectl gh review prune` command contracts, including the migration path
   from ordinary local `pr-*` branches to namespaced detached review refs.

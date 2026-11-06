@@ -31,8 +31,8 @@ The current command surface covers:
   `project.languages` metadata and Python uv opt-in
 - project Python runtime requirements through `python.requires_python`
 - shell-only setup/check/doctor routing through the Base-owned runtime without
-  a control-plane-only project venv; explicit `python:` and `python-package`
-  manifests keep project Python ownership
+  a control-plane-only project venv; `python:`, `python-package` artifacts,
+  and `test.requirements` each request project Python ownership
 - cleanup, logs, local command history, and privacy-conscious history reports
 - local config inspection
 - guided project onboarding and read-only workspace onboarding summaries

@@ -82,7 +82,7 @@ For Python-only changes, run the focused pytest target with the standalone
 
 ```bash
 BASE_CLI_SOURCE_DIR=../base-cli/lib/python \
-PYTHONPATH=../base-cli/lib/python:lib/python:cli/python \
+PYTHONPATH=../base-cli/lib/python:cli/python \
 python -m pytest
 ```
 
@@ -128,8 +128,8 @@ Follow [STANDARDS.md](STANDARDS.md). In particular:
 
 - Keep Bash control flow explicit. Do not rely on `set -e`.
 - Keep command implementations under `cli/bash/commands/<command>/`.
-- Keep Base-owned Python package code under `cli/python/` or `lib/python/` as
-  appropriate. The reusable `base_cli` framework is maintained in the
+- Keep Base-owned Python packages and integration helpers under `cli/python/`,
+  following [Python Package Ownership](docs/python-package-ownership.md). The reusable `base_cli` framework is maintained in the
   standalone `base-cli` repository.
 - Put tests next to the command, library, or package they validate.
 - Keep public command launchers in `bin/` thin.

@@ -32,6 +32,11 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   environment and optional project artifacts. Project `--dry-run` previews run
   through Base's interpreter and work before the project virtualenv exists,
   without creating or recreating that environment.
+- `basectl update [project]` - update Base by default, or the named consumer
+  project. Current Homebrew updates always reconcile setup; ordinary Git
+  updates do so only when the revision changes. Stable Base source checkouts
+  can use `--release <tag>`. Consult `docs/upgrading.md` for version availability,
+  older-version fallback, explicit setup, trust, and recovery.
 - `basectl check [project]` - check Base readiness only by default; pass a
   project name or `--manifest` to also check manifest-declared project
   requirements. It does not install or repair prerequisites, modify project
@@ -41,8 +46,11 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   fixes.
 - `basectl test [project]` - run a project's declared test command. A
   manifest may declare `test.requirements` as a repository-relative direct
-  requirements file (package extras are unsupported); setup installs it, check/doctor report missing or
-  mismatched packages, and test preflights it before execution.
+  requirements file (package extras are unsupported); setup installs it.
+  Static check/doctor inspection reports package readiness as unverified;
+  `--verify-project-runtime` explicitly enables installed-package probes.
+  Test preflight checks requirements after manifest-command approval and before
+  executing the declared test command.
 - `basectl build [project] [target...]` - run declared build targets for the positional, explicit, or nearest project.
 - `basectl demo [project]` - run a declared interactive demo script.
 - `basectl run [project] <command>` - run a declared command for the positional, explicit, or nearest project.
@@ -52,13 +60,18 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   using a stable hash of the canonical project root to isolate same-named checkouts;
   `--output` explicitly selects another destination, including project directories.
   `--print` and `--list-files` do not write a bundle.
-- `basectl trust status [project]` - inspect one project's manifest command
-  trust or all discovered command-bearing projects.
+- `basectl trust status [project]` - read-only inspection of local trust. With
+  no project, show a compact, blocked-first summary of discovered
+  command-bearing projects; with a project, show detailed identity and review
+  guidance. Workspace selection uses `--workspace`, then `workspace.root`, then
+  the parent of `BASE_HOME`.
 - Generated onboarding trust commands include the canonical workspace and
   manifest digest; they retain their target when copied to another directory.
-- `basectl trust <allow|revoke> <project>` - add or remove local approval for
-  manifest-declared project commands. Revocation covers every approved contract
-  revision for that canonical checkout and manifest, preserving other checkouts.
+- `basectl trust <allow|revoke> <project>` - `allow` records local approval for
+  the current manifest command contract on this machine; `revoke` removes local
+  approval for that canonical checkout and manifest, covering every approved
+  contract revision while preserving other checkouts. `--workspace` resolves
+  the project using the same default.
 - `basectl prompt <list|name>` - list and render repo-owned Markdown prompts
   for AI-assisted Base workflows. `product-self-review` prints the periodic
   product assessment prompt with current Base metadata, and `--output <path>`
@@ -125,8 +138,13 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     skipped.
   - `workspace update --dry-run` previews the ordered Git pull plan; without
     `--dry-run`, it continues after per-repo failures and reports
-    updated/unchanged/skipped/failed counts. JSON dry runs perform the same
-    read-only Git preflight as apply runs and report `planned` results without
+    updated/unchanged/skipped/blocked/failed counts. Required roots that fail
+    read-only preflight are shown as blocked and keep a nonzero exit status;
+    actual Git pull errors are counted as failed. Git-registered linked
+    worktrees nested under a primary root are excluded from that root's
+    untracked-file check, while arbitrary untracked files and real primary-root
+    edits still block updates. JSON dry runs perform the same read-only Git
+    preflight as apply runs and report planned or blocked results without
     pulling or mutating a checkout.
 - `basectl repo <init|clone|check|configure|agent-guidance|installer-template>` -
   create repository baselines, clone GitHub repositories into the configured
@@ -190,6 +208,10 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   - `basectl gh worktree prune` previews safe merged-worktree cleanup by
     default; pass `--closed-unmerged` to include clean worktrees tied to
     closed, unmerged pull requests.
+  - `basectl gh review fetch <number>` creates a detached review worktree in
+    the peer `../<repo>-review-worktrees` root by default. An explicit
+    `--root` must resolve outside the repository; nested and symlinked nested
+    roots are rejected before GitHub or Git mutation.
   - `basectl gh project doctor --project <title>` - inspect Project metadata
     fields against the Base Project schema.
   - `basectl gh project configure --project <title>` - create or repair the
@@ -224,9 +246,6 @@ are documented in `docs/inspection-json.md`.
 - `basectl onboard` - guide a user through the first Base setup checklist.
 - `basectl update-profile` - create or update Base-managed Bash/Zsh startup
   snippets.
-- `basectl update [project]` - update Base or a named project using the
-  configured Git checkout or Homebrew-managed Base handoff, then run setup for
-  the selected project.
 - `basectl version` - show the installed Base version without provider bootstrap.
   `--all` reports selected Base/base-cli/base-bash-libs identity, paths, Git revision
   and dirty state; `--all --json` emits a v1 inspection envelope. Detailed

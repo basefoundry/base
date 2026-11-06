@@ -107,8 +107,9 @@ boundary.
   profiles
 - `basectl update-profile` for shell startup integration
 - `basectl projects list` to show discovered projects after setup
-- `basectl trust status` to show digest-bound command trust for discovered
-  projects without granting approval
+- `basectl trust status` to show read-only trust status for discovered
+  command-bearing projects without granting approval; use
+  `basectl trust status <project>` for detailed digest and review guidance
 - `basectl activate <project>` as the final suggested next step
 
 It does not duplicate Homebrew, Python, venv, manifest, or shell-profile logic.
@@ -141,8 +142,9 @@ The shipped flow is simple and checklist-oriented:
 8. Run `basectl doctor` to summarize the final state.
 9. Print discovered projects with `basectl projects list` when available.
 10. Run the read-only `basectl trust status` workspace view, which filters out
-   manifests without executable command surfaces and prints exact review and
-   digest-bound allow guidance for those that need it.
+   manifests without executable command surfaces and prints a compact,
+   blocked-first summary. Use `basectl trust status <project>` for exact
+   identity digests and digest-bound review and allow guidance.
 11. Suggest `basectl` or `basectl activate base` after any required trust
     review.
 

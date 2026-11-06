@@ -93,9 +93,9 @@ such command directories exist. Optional utility CLIs such as `caff` and
   history index and supports table, JSON, privacy-conscious reports, chronological
   ordering, and bounded time-window filters.
 - `basectl config path/show/doctor` inspects Base's machine-local user config at `~/.base.d/config.yaml`.
-- `basectl trust status [project]` inspects one project's manifest command
-  trust or all discovered command-bearing projects. `basectl trust
-  allow/revoke <project>` manages local approval under
+- `basectl trust status [project]` shows detailed trust guidance for one
+  project or a compact, blocked-first table for discovered command-bearing
+  projects. `basectl trust allow/revoke <project>` manages local approval under
   `~/.base.d/trust/manifest-commands/`.
 - `basectl doctor [project]` diagnoses the local Base environment and, when
   provided, project manifest artifacts with suggested fixes.
@@ -237,13 +237,14 @@ such command directories exist. Optional utility CLIs such as `caff` and
   an AI tool performs the review.
 - `basectl update-profile` creates, refreshes, or removes managed sections in
   Bash and Zsh dotfiles, backing up existing dotfiles before changes.
-- `basectl update [project]` updates the selected project checkout through Git
-  and then runs `basectl setup <project>`. Omitting the project selects `base`;
-  Homebrew-managed Base installs still hand off only the Base package to
-  `brew upgrade basefoundry/base/base`, then run setup against the newly linked
-  Homebrew executable. If Homebrew is run directly, follow it immediately with
-  `basectl setup`; the formula upgrade alone does not reconcile the managed
-  runtime or exact `base-cli` requirement.
+- `basectl update [project]` updates Base by default or the named project's Git
+  checkout. Git updates run `basectl setup <project>` only when the checkout
+  revision changes. For Homebrew-managed Base installs, it upgrades the Base
+  formula and reconciles setup against the newly linked executable; if Homebrew
+  is run directly, use `brew upgrade --no-ask basefoundry/base/base` and then
+  run `basectl setup`. Stable tagged Base source checkouts support
+  `basectl update --release <tag>`. See [Upgrade Contract](../../../../docs/upgrading.md)
+  for version availability, fallback, and recovery details.
 - `basectl projects list` scans `workspace.root` from `~/.base.d/config.yaml`
   when configured, otherwise `$BASE_HOME`'s parent, and prints discovered
   project names and paths. Source checkouts can run this read-only command
@@ -294,12 +295,12 @@ such command directories exist. Optional utility CLIs such as `caff` and
 - `basectl workspace update` preflights manifest roots, then runs
   `git pull --ff-only` serially across safe present repositories in manifest
   order. It supports `--dry-run` with the same read-only preflight,
-  continues after individual failures, skips
-  dirty, non-default, non-tracking, or linked-worktree roots with recovery
-  guidance, skips missing optional repositories, treats missing required
-  repositories as failures, and includes the active `BASE_HOME` checkout when
-  it is the manifest's `base` target. It never stashes, resets, switches, or
-  updates linked PR worktrees implicitly.
+  continues after individual failures, blocks required roots that fail
+  preflight, skips missing or unsafe optional repositories with recovery
+  guidance, and includes the active `BASE_HOME` checkout when it is the
+  manifest's `base` target. Registered linked worktrees nested under a primary
+  root are ignored only for that root's untracked-file check. It never stashes,
+  resets, switches, or updates linked PR worktrees implicitly.
 - `basectl workspace configure` previews the existing `basectl repo configure`
   repair path by default across discovered Base-managed projects, or across
   present Base-managed repositories from a configured or explicit workspace

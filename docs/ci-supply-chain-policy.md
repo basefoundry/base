@@ -44,7 +44,7 @@ this policy if the rule changes.
 
    ```bash
    BASE_CLI_SOURCE_DIR=../base-cli/lib/python \
-   PYTHONPATH=../base-cli/lib/python:lib/python:cli/python \
+   PYTHONPATH=../base-cli/lib/python:cli/python \
    python -m pytest cli/python/base_setup/tests/test_ci_supply_chain_policy.py -q
    ```
 
@@ -77,7 +77,14 @@ this policy if the rule changes.
 
 The security job must keep these checks:
 
-- Bandit over `cli/python` and `lib/python`
+- Bandit uses the command in `.github/workflows/tests.yml`:
+
+  ```bash
+  bandit -q -r cli/python -x '*/tests/*' --severity-level medium
+  ```
+
+  This scans Base-owned Python packages under `cli/python/`; the standalone
+  `base-cli` provider is managed as a separate dependency.
 - `pip-audit` over `requirements-dev.txt`
 - ShellCheck errors over tracked Bash entry points, scripts, and `.bash`
   helpers; managed Zsh startup and completion sources are checked with `zsh -n`.

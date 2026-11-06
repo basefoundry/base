@@ -333,18 +333,21 @@ Update walks the manifest in order and runs `git pull --ff-only` in each
 present repository. Use `--repos name[,name...]` to select a subset; selections
 are validated before any Git operation and output remains in manifest order. It
 continues after individual failures and reports updated, unchanged, skipped,
-and failed counts. Before pulling, each manifest root is checked for a clean
+blocked, and failed counts. Before pulling, each manifest root is checked for a clean
 working tree, its configured or remote default branch, and an upstream tracking
 branch. Dirty roots, detached or non-default branches, missing upstreams, and
-linked PR worktrees are reported as skipped preflight failures with the exact
+linked PR worktrees are reported as blocked preflight refusals with the exact
 checkout path and recovery guidance; Base never stashes, resets, switches, or
-pulls those checkouts. The JSON result includes a `preflight` reason array for
-machine-readable handling. Dry runs perform the same read-only preflight and
-show unsafe roots as skipped rather than presenting them as planned pulls; no
-pulls are performed. Missing optional repositories are skipped; missing
-required repositories are failures. Unsafe preflight skips for optional
-repositories are non-fatal; required repository skips contribute to the
-failure count. The command never clones, resets,
+pulls those checkouts. Git-registered linked worktrees nested under a primary
+checkout are excluded from that primary root's untracked-file check; arbitrary
+untracked files and real primary-root edits remain blocking. The JSON result
+includes a `preflight` reason array for machine-readable handling. Dry runs
+perform the same read-only preflight and show unsafe roots as blocked rather
+than presenting them as planned pulls; no pulls are performed. Missing optional
+repositories are skipped; missing required repositories are blocked. Unsafe
+preflight skips for optional repositories are non-fatal; required repository
+blocks preserve a nonzero exit status and contribute to `blocked`, not `failed`.
+Actual `git pull` errors contribute to `failed`. The command never clones, resets,
 force-updates, or refreshes the manifest. When the manifest's `base` path is the active
 `BASE_HOME` checkout, it is eligible for update after the same read-only preflight
 checks as other selected roots. A separate workspace checkout of `base` is also
@@ -412,6 +415,44 @@ conflicting origins as errors. Future mutating commands such as update need
 their own dry-run output and confirmation rules. A workspace manifest must not
 imply that Base can overwrite, pull, reset, or otherwise mutate existing
 checkouts.
+
+## Execution Deadlines And Cancellation
+
+Workspace orchestration uses fixed internal deadlines; the CLI and workspace
+manifest do not currently expose timeout overrides. These limits apply per
+operation, not to the entire workspace batch.
+
+| Operation | Deadline | On timeout |
+| --- | --- | --- |
+| Each delegated `workspace setup` | 1,800 seconds (30 minutes) | Count the repository as failed and continue to later eligible repositories. |
+| Each delegated `workspace test` | 1,800 seconds (30 minutes) | Report a failed execution attempt; continue unless `--fail-fast` stops later tests. |
+| Each `git pull --ff-only` in `workspace update` | 1,800 seconds (30 minutes) | Report that repository as failed and continue. |
+| Each Git subprocess in update preflight | 30 seconds | Report a preflight problem; skip mutation, failing the batch for a required target. |
+
+On supported POSIX hosts, setup and test run their delegated command in a new
+session. Timeout cleanup signals that process group with `SIGTERM`, waits up
+to one second, then escalates to `SIGKILL` with another bounded wait. Ordinary
+descendants in that group are included; a descendant that deliberately leaves
+the group is outside this guarantee. `SIGINT` and `SIGTERM` are forwarded to
+the active group before the parent follows its own signal handling. An
+interrupted parent is not guaranteed to emit a complete final report.
+
+Update uses its own direct-child subprocess timeout handling. It does not
+share setup/test's process-group cleanup guarantee. None of these details
+extend Base's native Windows support boundary.
+
+Setup/test capture child output and redact it before presenting completed
+results; they do not stream live output. Timeout reporting records the timeout
+but does not promise all partial child output. Update similarly captures and
+redacts Git output. Preserve available run evidence when diagnosing a failure.
+
+Timeout or interruption does not roll back completed repository updates,
+installed dependencies, or project test side effects. Inspect the failed
+project before retrying. Setup may be rerun after the cause is corrected;
+update and test can select only the affected repositories/projects. A test
+retry repeats project-owned behavior and is safe only when that project's
+test contract permits it. Workspace test still preflights trust for the whole
+selected set before starting any delegated test, as described below.
 
 ## Partial Failure
 

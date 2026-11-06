@@ -408,6 +408,13 @@ Issue work should use:
 ~/work/base-worktrees/<slug>
 ```
 
+Base-supported worktree creation keeps implementation and review roots next to
+the repository, never inside it. `basectl gh issue start` prints the canonical
+peer path, and `basectl gh review fetch` rejects an explicit root that resolves
+to the repository or any descendant of it, including through a symlink. This
+keeps worktrees out of the primary checkout so workspace synchronization can
+reason about the checkout independently of unmerged work.
+
 Before creating a worktree, check whether the current checkout is already a
 linked worktree for the intended issue:
 
@@ -526,8 +533,11 @@ refs/base-review/pr/<number>/<slug>
 The worktree is detached, the review ref is not an ordinary
 `refs/heads/pr-*` branch, and the default root is next to the repository root
 represented by the common Git directory. Use `--root <path>` when a different
-review workspace is needed. Use `--refresh` only to replace an existing clean
-review checkout with the current pull-request head.
+review workspace is needed; the path must resolve outside the repository and
+its descendants. Use `--refresh` only to replace an existing clean review
+checkout with the current pull-request head. Existing nested worktrees are not
+moved or deleted automatically; inspect and migrate them explicitly after
+preserving any local work.
 The optional `--repo <owner/name>` selector must match the checkout's `origin`
 repository; use a checkout of that repository when reviewing an upstream PR.
 

@@ -547,6 +547,12 @@ def test_copilot_setup_steps_are_bounded_to_cloud_agent_setup() -> None:
     assert set(jobs) == {"copilot-setup-steps"}
     assert setup_job["runs-on"] == "ubuntu-latest"
     assert setup_job["timeout-minutes"] == 15
+    validation_step = next(
+        step
+        for step in setup_job["steps"]
+        if isinstance(step, dict) and step.get("name") == "Run lightweight Base validation"
+    )
+    assert validation_step["env"]["PYTHONPATH"] == "cli/python"
 
     run_commands = "\n".join(
         step.get("run", "")
@@ -554,7 +560,7 @@ def test_copilot_setup_steps_are_bounded_to_cloud_agent_setup() -> None:
         if isinstance(step, dict)
     )
     assert "python -m pip install -r requirements-dev.txt" in run_commands
-    assert "python -m compileall -q cli/python lib/python tests" in run_commands
+    assert "python -m compileall -q cli/python tests" in run_commands
     assert (
         "python -m pytest tests/test_github_workflows.py "
         "tests/test_issue_branch_policy_workflow.py tests/test_bootstrap_docs.py -q"

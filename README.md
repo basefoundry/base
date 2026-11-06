@@ -33,6 +33,8 @@ inventory -> prepare -> verify -> trust -> onboard -> hand off
 
 For the canonical source-checkout install commands, see the
 [source checkout install recipe](docs/bootstrap.md#source-checkout-install-recipe).
+For an existing installation, use the [Upgrade Contract](docs/upgrading.md)
+to select the Homebrew, mutable-source, or stable-tag procedure.
 For the complete install-to-verified-project-PR journey, see the
 [adopter golden path](docs/adopter-golden-path.md).
 Then run the trust-conscious project proof:
@@ -481,19 +483,19 @@ Base's local runtime remains under `~/.base.d`; `basectl update` delegates
 Base upgrades to Homebrew and then reconciles the managed runtime. This is the
 preferred one-command upgrade path.
 
-If you run Homebrew directly, a formula upgrade alone does not reconcile the
-managed runtime. Immediately run the canonical post-upgrade setup sequence in
-the [Homebrew install recipe](docs/bootstrap.md#homebrew-install-recipe),
-which clears the complete inherited source-checkout environment before using
-the newly linked executable.
+If you run Homebrew directly, follow the [Homebrew upgrade
+procedure](docs/upgrading.md#homebrew). It runs setup through the newly linked
+executable with inherited Base and project variables cleared. A formula upgrade
+alone does not reconcile the managed runtime.
 
 Do not treat a successful `brew upgrade` without the follow-up `basectl setup`
 as a complete Base upgrade; the new release may declare a different exact
 `base-cli` requirement.
 
-See the [Homebrew install recipe](docs/bootstrap.md#homebrew-install-recipe) and
-[Remote Installer Policy](docs/remote-installer-policy.md) for the complete
-trust and upgrade contract.
+For a new installation, see the [Homebrew install
+recipe](docs/bootstrap.md#homebrew-install-recipe). For upgrade steps, see the
+[Homebrew upgrade procedure](docs/upgrading.md#homebrew) and
+[Remote Installer Policy](docs/remote-installer-policy.md).
 
 ### Source Checkout
 

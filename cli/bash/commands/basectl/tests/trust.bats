@@ -31,7 +31,7 @@ load ./basectl_helpers.bash
     [[ "$output" == *"--manifest-sha256 <sha256>"* ]]
     [[ "$output" == *"--test-requirements-sha256 <sha256>"* ]]
     [[ "$output" != *"--format"* ]]
-    [[ "$output" != *"basectl trust status"* ]]
+    [[ "$output" == *"basectl trust status <project>"* ]]
 
     run_basectl trust revoke --help
 

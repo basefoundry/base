@@ -650,18 +650,20 @@ base_gh_slug() {
 
 base_gh_issue_worktree_path() {
     local issue="$1" slug="$2"
-    local repo_root repo_name repo_parent slug_short
+    local repo_root repo_name repo_parent worktree_root slug_short
 
     repo_root="$(git rev-parse --show-toplevel)" || return 1
+    repo_root="$(base_gh_resolve_physical_path "$repo_root")" || return 1
     repo_name="$(basename "$repo_root")"
     repo_parent="$(dirname "$repo_root")"
+    worktree_root="$(base_gh_validate_worktree_root "$repo_parent/$repo_name-worktrees" "issue worktree root")" || return 1
     slug_short="${slug:0:40}"
     while [[ "$slug_short" == *- ]]; do
         slug_short="${slug_short%-}"
     done
     [[ -n "$slug_short" ]] || slug_short="work"
 
-    printf '%s/%s-worktrees/%s-%s\n' "$repo_parent" "$repo_name" "$issue" "$slug_short"
+    printf '%s/%s-%s\n' "$worktree_root" "$issue" "$slug_short"
 }
 
 base_gh_issue_category() {

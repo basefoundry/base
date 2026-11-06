@@ -16,16 +16,14 @@ setup() {
 create_packaged_base_home() {
     mkdir -p \
         "$TEST_PACKAGE_HOME/bin" \
-        "$TEST_PACKAGE_HOME/cli/python" \
-        "$TEST_PACKAGE_HOME/lib/python"
+        "$TEST_PACKAGE_HOME/cli/python"
     cp "$BASE_REPO_ROOT/bin/base-test" "$TEST_PACKAGE_HOME/bin/base-test"
 }
 
 create_source_base_home_without_bash_libs() {
     mkdir -p \
         "$TEST_SOURCE_HOME/bin" \
-        "$TEST_SOURCE_HOME/cli/python" \
-        "$TEST_SOURCE_HOME/lib/python"
+        "$TEST_SOURCE_HOME/cli/python"
     cp "$BASE_REPO_ROOT/bin/base-test" "$TEST_SOURCE_HOME/bin/base-test"
     git -C "$TEST_SOURCE_HOME" init -q
 }

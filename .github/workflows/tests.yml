@@ -100,7 +100,7 @@ jobs:
       - name: Run Python tests
         env:
           BASE_CLI_SOURCE_DIR: ${{ github.workspace }}/.dependencies/base-cli/lib/python
-          PYTHONPATH: .dependencies/base-cli/lib/python:lib/python:cli/python
+          PYTHONPATH: .dependencies/base-cli/lib/python:cli/python
         run: |
           python -m pytest \
             --cov=cli/python \
@@ -461,7 +461,7 @@ jobs:
 
       - name: Run Bandit
         run: |
-          bandit -q -r cli/python lib/python -x '*/tests/*' --severity-level medium
+          bandit -q -r cli/python -x '*/tests/*' --severity-level medium
 
       - name: Run pip-audit
         run: |

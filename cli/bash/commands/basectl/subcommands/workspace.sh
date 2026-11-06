@@ -89,9 +89,11 @@ Options:
   -h, --help          Show this help text.
 
 Preflight manifest roots, then run git pull --ff-only across safe existing
-repositories in manifest order. Dirty, non-default, non-tracking, and linked
-worktree roots are skipped with recovery guidance; no checkout is modified
-implicitly. Dry runs perform the same read-only preflight without pulling.
+repositories in manifest order. Required roots that fail preflight are blocked;
+optional roots are skipped with recovery guidance. Registered linked worktrees
+nested under a primary root are ignored only for that root's untracked-file
+check; no checkout is modified implicitly. Dry runs perform the same read-only
+preflight without pulling.
 EOF
 }
 
