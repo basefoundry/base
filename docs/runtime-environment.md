@@ -210,6 +210,11 @@ readonly by Base.
 | `BASE_SETUP_NOTIFY` | `basectl setup` | Enables or disables setup completion notifications. |
 | `BASE_SETUP_NOTIFY_MIN_SECONDS` | `basectl setup` | Minimum setup duration before completion notification. |
 | `BASE_SETUP_PYTHON_FORMULA` | `basectl setup` | Overrides the Homebrew Python formula. |
+| `BASE_SETUP_ALLOW_SYSTEM_PYTHON` | macOS `basectl setup` and readiness checks | Defaults to `false`; literal `true` allows falling back to `python3` on `PATH` when the configured Homebrew Python is unavailable. `--ci` enables this fallback internally. Use only when the host Python is acceptable instead of the Homebrew-managed Python. |
+| `BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL` | macOS `basectl setup` | Defaults to `false`; literal `true` allows Base to launch `xcode-select --install` without an interactive terminal. `--ci` resets this to `false`. This bypasses Base's terminal check only; macOS installer and license prompts may still require user action. |
+| `BASE_SETUP_XCODE_COMMAND_LINE_TOOLS_DIR` | macOS setup/readiness checks | Defaults to `/Library/Developer/CommandLineTools`; overrides the directory Base checks for `usr/bin/clang`. It does not change the active `xcode-select` path or Apple's installer destination. |
+| `BASE_SETUP_XCODE_WAIT_TIMEOUT_SECONDS` | macOS `basectl setup` | Defaults to `1800`; sets how long setup waits for Command Line Tools to appear after launching the installer, in seconds. |
+| `BASE_SETUP_XCODE_WAIT_INTERVAL_SECONDS` | macOS `basectl setup` | Defaults to `5`; sets the interval between Command Line Tools readiness checks, in seconds. |
 | `BASE_SETUP_UPGRADE_PIP` | `basectl setup --upgrade-pip` | Internal setup flag requesting an explicit pip upgrade in the selected Base-managed or pip-managed virtual environment. |
 | `BASE_INSTALL_DIR` | `install.sh` | Overrides the default source install directory. |
 | `BASE_BOOTSTRAP_MODE` | `bootstrap.sh` | Selects bootstrap mode when no command-line mode overrides it. |
@@ -220,8 +225,11 @@ The clean-slate ownership boundary and implemented run-oriented layout for
 the runtime contract for the owner-aware cache tree.
 
 Additional setup and bootstrap `BASE_SETUP_*`, `BASE_BOOTSTRAP_*`, and
-`BASE_INSTALL_*` variables exist for tests, CI, and narrow command overrides.
-Those are command-specific inputs, not shell runtime contract variables.
+`BASE_INSTALL_*` variables exist for tests, CI, and command-internal handoffs.
+Treat only the knobs listed here as supported user inputs. `BASE_SETUP_TEST_*`
+and private `_BASE_*` values remain test-only or internal and are not public
+configuration. These command-specific inputs are not shell runtime contract
+variables.
 
 ### Activated Shell Contract
 
