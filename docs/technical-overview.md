@@ -176,6 +176,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | `basectl setup [project] [--profile dev\|sre\|ai\|linux-lab]` | Install / reconcile prerequisites |
 | `basectl update-profile [--defaults]` | Wire shell startup files |
 | `basectl update [project] [--dry-run] [--release <tag>]` | Upgrade Base through Homebrew or Git, or update a project; `--release` selects a stable source tag. See [Upgrading Base](upgrading.md). |
+| `basectl uninstall <project>|--all` | Preview or remove selected Base-managed state. See [Uninstall And Retention](uninstall.md). |
 | `basectl onboard [project]` | Guided first-run checklist |
 
 ### Daily Loop
@@ -239,7 +240,7 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | Profile | Installs |
 |---|---|
 | `dev` | BATS, GitHub CLI, ShellCheck |
-| `sre` | kubectl, helm, k9s, jq, yq, httpie, nmap, mtr |
+| `sre` | kubectl, helm, k9s, jq, yq, httpie, nmap, mtr, grpcurl |
 | `ai` | Codex CLI, Claude Code |
 | `linux-lab` | Multipass for local Ubuntu lab VMs on macOS hosts |
 

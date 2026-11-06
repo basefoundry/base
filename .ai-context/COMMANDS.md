@@ -37,6 +37,9 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   updates do so only when the revision changes. Stable Base source checkouts
   can use `--release <tag>`. Consult `docs/upgrading.md` for version availability,
   older-version fallback, explicit setup, trust, and recovery.
+- `basectl uninstall <project>|--all` - preview or remove selected
+  Base-managed state; see `docs/uninstall.md` for the removal and retention
+  contract.
 - `basectl check [project]` - check Base readiness only by default; pass a
   project name or `--manifest` to also check manifest-declared project
   requirements. It does not install or repair prerequisites, modify project
