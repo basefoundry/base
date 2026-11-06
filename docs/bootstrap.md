@@ -127,8 +127,13 @@ Check the developer-tool boundary separately:
 
 If either command reports that the Command Line Tools or Xcode license is
 missing, complete Apple's interactive installation or license-acceptance flow
-as the target user and rerun the read-only checks. Do not hide that prompt in a
-non-interactive bootstrap pipeline.
+as the target user and rerun the read-only checks. By default, `basectl setup`
+will not launch the Command Line Tools installer without an interactive
+terminal. In a controlled environment that intentionally needs this, set
+`BASE_SETUP_ALLOW_NONINTERACTIVE_XCODE_INSTALL=true` for setup. This bypasses
+Base's terminal check only; it does not accept Apple's license or suppress
+macOS installer prompts. See the [runtime environment reference](runtime-environment.md#user-tunable-command-knobs)
+for this and the other advanced macOS setup overrides.
 
 After selecting an architecture-compatible `brew`, inspect prefix ownership
 and the lock directory before `brew install`:

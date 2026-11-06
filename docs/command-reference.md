@@ -66,6 +66,9 @@ full compatibility contract.
 `basectl setup` deliberately pins its default Homebrew Python formula so setup is
 reproducible across machines. The current default is `python@3.13`. Override it
 with `BASE_SETUP_PYTHON_FORMULA` when a workspace needs a different formula.
+Advanced macOS Python fallback and Xcode Command Line Tools overrides, including
+their defaults and consent boundaries, are documented in the [runtime
+environment reference](runtime-environment.md#user-tunable-command-knobs).
 After this Bash bootstrap layer creates Base's own Python environment, setup
 installs Base bootstrap Python packages into that environment. Shell-only
 project reconciliation runs from that Base runtime and does not copy those
