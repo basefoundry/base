@@ -176,7 +176,6 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | `basectl setup [project] [--profile dev\|sre\|ai\|linux-lab]` | Install / reconcile prerequisites |
 | `basectl update-profile [--defaults]` | Wire shell startup files |
 | `basectl update [project] [--dry-run] [--release <tag>]` | Upgrade Base through Homebrew or Git, or update a project; `--release` selects a stable source tag. See [Upgrading Base](upgrading.md). |
-| `basectl uninstall <project>|--all` | Preview or remove selected Base-managed state. See [Uninstall And Retention](uninstall.md). |
 | `basectl onboard [project]` | Guided first-run checklist |
 
 ### Daily Loop
@@ -204,7 +203,13 @@ and their own build systems. See [Setup Hooks Boundary](setup-hooks.md).
 | `basectl history [--format json]` | Inspect structured local command history with ordering and time-window filters |
 | `basectl history --report [--format json]` | Summarize local command history and log metadata without raw log dumps |
 | `basectl config path\|show\|doctor` | Machine-local config |
+
+### Cleanup
+
+| Command | What it does |
+|---|---|
 | `basectl clean [--older-than\|--keep-last] [--yes]` | Preview completed-run/cache pruning; require `--yes` to delete and retain active runs |
+| `basectl uninstall <project>\|--all` | Preview or remove selected Base-managed state. See [Uninstall And Retention](uninstall.md). |
 
 ### Workspace
 
