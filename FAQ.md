@@ -273,6 +273,12 @@ setup step. `update-profile` refreshes shell integration and does not upgrade
 Base. The upgrade guide distinguishes current-main features from v1.10.5 and
 explains runtime verification and trust re-review.
 
+### How do I uninstall Base-managed project state?
+
+See [Uninstall And Retention](docs/uninstall.md) for the preview/apply commands
+and the full resource scope. Uninstall removes project run bundles while
+retaining Base-level execution history.
+
 ### What is the difference between basectl setup and basectl update-profile?
 
 `basectl setup` prepares Base and project prerequisites: Homebrew artifacts,

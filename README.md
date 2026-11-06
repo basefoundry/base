@@ -497,6 +497,11 @@ recipe](docs/bootstrap.md#homebrew-install-recipe). For upgrade steps, see the
 [Homebrew upgrade procedure](docs/upgrading.md#homebrew) and
 [Remote Installer Policy](docs/remote-installer-policy.md).
 
+To remove selected Base-managed project state, see [Uninstall And
+Retention](docs/uninstall.md). Uninstall removes project run bundles while
+retaining Base-level execution history; the guide lists the complete removal
+and retention scope.
+
 ### Source Checkout
 
 Use a source checkout for contribution or dogfooding. The canonical recipe
