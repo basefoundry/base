@@ -262,7 +262,7 @@ YAML
     [ "$status" -eq 0 ]
     [[ "$output" == *"Would create project virtual environment at '$TEST_PROJECT_ROOT/.venv'"* ]]
     [[ "$output" == *"-r $TEST_PROJECT_ROOT/requirements.txt"* ]]
-    [[ "$output" == *"Project 'demo' setup is complete."* ]]
+    [[ "$output" == *"[DRY-RUN] Setup plan for project 'demo' is complete."* ]]
     [ ! -e "$TEST_PROJECT_ROOT/.venv" ]
 }
 
