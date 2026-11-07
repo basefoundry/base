@@ -77,7 +77,13 @@ def reconcile_manifest(
 
     reconcile_test_requirements(ctx, effective_manifest, dry_run=dry_run)
 
-    ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
+    if dry_run:
+        ctx.log.info(
+            "[DRY-RUN] Setup plan for project '%s' is complete.",
+            effective_manifest.project_name,
+        )
+    else:
+        ctx.log.info("Project '%s' setup is complete.", effective_manifest.project_name)
 
 
 def reconcile_bootstrap_artifacts(
