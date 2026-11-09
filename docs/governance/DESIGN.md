@@ -54,7 +54,7 @@ From the Memo and the working notes:
 
 ### 1.2 Scope — DECIDED
 
-- **Phase 1 (this design's main subject):** Base's own governance across the ten active Base Foundry product and ecosystem repositories: `base`, `base-cli`, `base-bash-libs`, `base-demo`, `base-bash-libs-demo`, `base-cli-demo`, `base-workspace`, `base-platform-tools`, `banyanlabs`, and `homebrew-base`. The rollout inventory verifies which repositories have a Project and which shared defaults apply; the organization-level `.github` repository is not a product repository.
+- **Phase 1 (this design's main subject):** governance across every repository in the `basefoundry` organization: the nine Base ecosystem repositories `base`, `base-cli`, `base-bash-libs`, `base-demo`, `base-bash-libs-demo`, `base-cli-demo`, `base-workspace`, `base-platform-tools`, and `homebrew-base`, plus `banyanlabs`, a Base-supported project. `banyanlabs` participates in Phase 1 using the consumer defaults (`fresh-session` reviewer and no required `governance/` directory), so the rollout tests both profiles. The inventory verifies which repositories have a Project and which shared defaults apply; the organization-level `.github` repository is not a product repository.
 - **Phase 2 (DEFERRED, §19):** governance offered as a product to Base-managed projects, through `basectl repo configure`.
 - GitHub is the only platform supported for now. The method is written so that GitLab or Bitbucket would need adapters, not a new method (§15.4).
 
@@ -194,8 +194,7 @@ Use one planned-work form with the same sections in the same order for every iss
 | **Expected behavior** | Numbered, observable acceptance criteria; use “When …, then …” where it clarifies the contract. |
 | **Scope and non-goals** | Intended boundaries and explicit exclusions. |
 | **Affected areas** | Each product area touched, with a short explanation. |
-| **Documentation impact** | For every canonical category in §12.10, name the expected file/section or state “No impact” with a specific reason. “Unknown: reason” is allowed only before Ready. |
-| **Validation impact** | Tests and acceptance checks mapped to criteria, plus evidence-based reasons for exclusions. |
+| **Impact and evidence** | For every canonical category in §12.10, name the expected file/section or state “No impact” with a specific reason. Category 6 records tests and acceptance checks mapped to criteria, plus evidence-based reasons for exclusions. “Unknown: reason” is allowed only before Ready. |
 | **Open questions** | Questions blocking Ready; do not guess. |
 | **Plan** | Delivery slices, approach, exact file/section changes, decision impact, validation, risks, and maintainer questions. |
 
@@ -209,9 +208,9 @@ The plan names delivery slices `S1`, `S2`, … and the outcome of each. A slice 
 
 ### 4.4 Readiness and issue approval — PROPOSED
 
-The future readiness command validates the common section order, non-empty Problem and Expected behavior, current Type-specific requirements, affected areas, all documentation dispositions, test/acceptance mapping, delivery slices, and open questions. A Bug requires reproduction steps or a documented reason testing is impossible. A proposed Risk tier must be present when the field is introduced; area floors are deferred until the field and pilot exist.
+The future readiness command validates the common section order, non-empty Problem and Expected behavior, current Type-specific requirements, affected areas, all impact dispositions, test/acceptance mapping in category 6, delivery slices, and open questions. A Bug always requires reproduction steps in the issue. The test-impossibility exception applies only to the failing-test rule for the implementation PR (§17.2). A proposed Risk tier must be present when the field is introduced; area floors are deferred until the field and pilot exist.
 
-A Ready verdict cites a fingerprint of the contract-bearing issue sections and the current Type, excluding comments and machine-owned metadata. Editing those inputs or changing Type invalidates approval. A Ready issue older than the configured 30 days is returned for review; `governance.ready_approval_max_age_days` stores the value. A maintainer can return an issue to Triage when new evidence changes the plan.
+A Ready verdict cites a fingerprint of Problem, Expected behavior, Scope and non-goals, delivery-slice outcomes, and the current Type, excluding comments and machine-owned metadata. Editing those inputs or changing Type invalidates approval. A Ready issue older than the configured 30 days is returned for review; `governance.ready_approval_max_age_days` stores the value. New affected areas or documentation destinations found during implementation are recorded in the PR's actual-impact matrix and verified by its reviewer; they do not invalidate Ready by themselves. A maintainer can return an issue to Triage when new evidence materially changes the approved contract or plan.
 
 ### 4.5 Issue Type, category labels, and branch policy — DECIDED
 
@@ -254,7 +253,7 @@ An issue is closed as completed only after every slice meets §5.2. New work dis
 
 ### 5.4 Returning to Triage — DECIDED
 
-A changed problem statement, expected behavior, scope, affected areas, documentation disposition, delivery-slice outcome, or current Type invalidates Ready approval and returns the issue to Triage. Machine-owned activity and comment replies do not change the contract fingerprint. A maintainer can also return a Ready issue to Triage when new evidence materially changes its assumptions.
+A changed problem statement, expected behavior, scope/non-goals, delivery-slice outcome, or current Type invalidates Ready approval and returns the issue to Triage. If implementation has started, associated PRs return to draft while the revised issue contract is reviewed; they may resume review only after the issue is Ready again. Newly discovered affected areas or documentation destinations are routine implementation evidence: record them in the PR impact matrix and have the reviewer verify them without changing issue status. Machine-owned activity, comment replies, and those impact-matrix additions do not change the contract fingerprint. A maintainer can also return a Ready issue to Triage when new evidence materially changes its assumptions.
 
 ## 6. Issue review loop
 
@@ -262,7 +261,7 @@ A changed problem statement, expected behavior, scope, affected areas, documenta
 
 An issue author/planner and reviewer are separate agents. The reviewer starts a genuinely new session with no access to the author's transcript, session state, or persistent authoring memory. It reads only the issue, the repository and code relevant to the issue, the active decisions, and the repository's review rules. A fork or subagent inheriting the author's context is not independent.
 
-`governance.reviewer_independence` controls whether the tools must also differ: `fresh-session` or `different-tool`. Base's own repositories default to `different-tool`; Base-supported projects default to `fresh-session` so a single-tool team can participate. Every verdict records author and reviewer tool, model, and session identifiers. If `different-tool` is configured and that tool is unavailable, the review waits or escalates to a maintainer; it never falls back to the same tool. A fresh session reduces anchoring on the author's reasoning; a different model can also reduce shared model blind spots.
+`governance.reviewer_independence` controls whether the tools must also differ: `fresh-session` or `different-tool`. The nine Base ecosystem repositories listed in §1.2 default to `different-tool`; `banyanlabs` uses the Base-supported-project default, `fresh-session`, so a single-tool team can participate. Every verdict records author and reviewer tool, model, and session identifiers. If `different-tool` is configured and that tool is unavailable, the review waits or escalates to a maintainer; it never falls back to the same tool. A fresh session reduces anchoring on the author's reasoning; a different model can also reduce shared model blind spots.
 
 ### 6.2 Issue loop — DECIDED
 
@@ -276,7 +275,7 @@ An issue author/planner and reviewer are separate agents. The reviewer starts a 
 
 ### 6.3 Verdicts and staleness — DECIDED
 
-The verdict names the contract fingerprint, reviewed issue Type, result, findings, author/reviewer provenance, and date. It becomes stale when a contract-bearing section, current Type, or relevant source evidence changes. The Ready freshness period defaults to 30 days and is configurable in the repository manifest. Pure metadata/comment edits do not stale it.
+The verdict names the contract fingerprint, reviewed issue Type, result, findings, author/reviewer provenance, and date. It becomes stale when a fingerprinted contract section or current Type changes. Source evidence is not part of the fingerprint: a reviewer or maintainer records whether new evidence materially changes the approved contract or plan, and §5.4 governs a return to Triage. The Ready freshness period defaults to 30 days and is configurable in the repository manifest. Pure metadata/comment edits do not stale it.
 
 ### 6.4 Ready approval — DECIDED
 
@@ -312,7 +311,7 @@ A draft PR is implementation in progress. It does not count toward In Review. Th
 
 ### 8.4 Pull request template — DECIDED
 
-Use one PR template with these sections: Summary; linked issue and slice; plan/acceptance trace; validation; documentation impact using the exact §12.10 categories; risk, rollback and notes; and a release-note entry (or a reasoned “none”). Decision records, demos/examples, docs and `.ai-context/` transition are handled inside the common impact matrix, not duplicated in separate impact sections. The template does not ask for project fields already present on the linked issue.
+Use one PR template with these sections: Summary; linked issue and slice; plan/acceptance trace; the impact-and-evidence matrix using the exact §12.10 categories; risk, rollback and notes; and a release-note entry (or a reasoned “none”). Category 6 records validation commands/results and any test exclusions as well as test/CI impact, avoiding a second validation section. Decision records, demos/examples, docs and `.ai-context/` transition are handled inside the common matrix, not duplicated in separate impact sections. The template does not ask for project fields already present on the linked issue.
 
 Until the generated-context feature ships and checked-in `.ai-context/` files are removed in their own repository trains, the PR must include an AI-context impact disposition under the current matrix. Keep the existing `.ai-context/` maintenance checklist during that transition; do not let those files become silently stale.
 
@@ -320,7 +319,7 @@ Until the generated-context feature ships and checked-in `.ai-context/` files ar
 
 The reviewer posts actionable findings as review threads. The author responds to every thread with a commit/evidence or a challenge and rationale. The reviewer verifies the response and resolves the thread only when addressed or correctly challenged; unresolved disputes go to the maintainer. New findings in follow-up changes start the next bounded round. Neither author nor reviewer may silently resolve a finding to satisfy a gate.
 
-Agents currently post as the same GitHub account, so GitHub cannot enforce which agent replied or resolved a thread. During Stage 1, the maintainer audits the responses and the reviewer's thread resolutions. The reviewer verdict includes the exact line `Verdict: Approved at <full-head-SHA>` plus author/reviewer tool, model and session. A new code push requires a new review against the new head. A base-only update may be re-verified without consuming a review round if `git range-diff` confirms the PR's own commits are unchanged; any changed PR commit is a new review round.
+Agents currently post as the same GitHub account, so GitHub cannot enforce which agent replied or resolved a thread. During Stage 1, the maintainer audits the responses and the reviewer's thread resolutions. The reviewer verdict includes the exact line `Verdict: Approved at <full-head-SHA>` plus author/reviewer tool, model and session. A new code push requires a new review against the new head. A base-only update may receive a fresh, full-head-SHA re-verification without consuming a review round only when all checks pass: (1) `git range-diff`, using the recorded old/new base and head SHAs, shows every non-merge PR commit unchanged; (2) every merge commit introduced is a base-update merge on the PR first-parent chain, and its second parent is an ancestor of the updated base head; and (3) `git show --remerge-diff <merge-commit>` is empty for every such merge. Any other merge, unavailable/uncertain evidence, or change—including hand-written conflict resolution—requires a full review round. The reviewer records the re-verification and its evidence separately from the round ledger.
 
 ### 8.6 Merge gate — DECIDED
 
@@ -328,7 +327,7 @@ Required approving reviews remain **0** while author and reviewer agents share o
 
 ### 8.7 Project fields and linked PRs — DECIDED
 
-Issues are the canonical Project items for Status, Priority, Size, Area, Risk tier, Initiative, and Milestone. Do not create PR Project items or copy issue fields onto PRs. Use GitHub's native linked-pull-request view and issue relationships. A PR retains its title, author, branch, checks, review state, slice identifier and release evidence.
+Issues are the canonical Project items for Status, Priority, Size, Area, Risk tier, and Initiative. Milestone is native issue metadata, not a Project field to copy. Do not create PR Project items or copy issue fields onto PRs. Use GitHub's native linked-pull-request view and issue relationships. A PR retains its title, author, branch, checks, review state, slice identifier and release evidence.
 
 ## 9. Reviewer rule sets
 
@@ -369,7 +368,7 @@ Existing language-specific and architectural rules remain in their canonical sta
 | **Status** | Current Project field; target order changes | Work lifecycle defined in §5. |
 | **Priority** | Current Project field; target P1–P4 migration | Scheduling urgency, independent of risk. |
 | **Size** | Current Project field | Relative implementation effort. |
-| **Area** | Current Project field | Product/ownership surface; value list remains in the current Project configuration until a separately planned consolidation. |
+| **Area** | Current Project field | Product/ownership surface; shared defaults are defined in `project_model.py` and repository-specific additions in `.github/base-project.yml`. |
 | **Initiative** | Current Project field | A multi-milestone effort with a durable initiative document. |
 | **Risk tier** | **Does not exist today; proposed new Project field** | Low/Medium/High review and safety intensity. |
 | **Milestone** | Native issue milestone | Target release or planning window. |
@@ -379,7 +378,7 @@ Priority and Risk have no combined scale. Project fields remain canonical. The o
 
 ### 10.3 Areas, labels, and views — DECIDED
 
-Until a migration issue establishes a single replacement, `.github/base-project.yml` remains the canonical source for the Base Project's areas, initiatives, defaults and current options. Do not introduce `governance/areas.yaml` or `initiatives.yaml` as duplicate authorities. The `security` label is a valid category label, not a native Issue Type; vulnerability disclosure remains private. GitHub's exact community label names are `good first issue` and `help wanted` (spaces, no hyphens).
+Today, `cli/python/base_github_projects/project_model.py` defines the shared default Project fields and options, including the default Area options. Each repository's `.github/base-project.yml` adds repository-specific areas and initiatives and supplies issue defaults; those extra areas are merged with the shared defaults. Live GitHub Projects are inventoried before migration rather than assumed to match either source. Do not introduce duplicate catalogs in `governance/areas.yaml` or `initiatives.yaml`. The `security` label is a valid category label, not a native Issue Type; vulnerability disclosure remains private. GitHub's exact community label names are `good first issue` and `help wanted` (spaces, no hyphens).
 
 Project **statuses** are not Project **views**. Standard views may include a full board, Backlog, Triage/analysis queue, current milestone, and review queue; each view filters canonical issue fields and does not create another status system. The Area inventory and eventual path mapping are separate from GitHub label names.
 
@@ -535,7 +534,7 @@ The issue and PR templates use this one ordered list. Each item records the cano
 3. **User guidance:** README, getting-started guide, FAQ and task guides.
 4. **CLI/API and reference:** commands, options, manifest/config schema, generated reference and compatibility notes.
 5. **Operations and safety:** security, privacy, trust, release, migration, support and rollback procedures.
-6. **Validation:** tests, fixtures, acceptance checks and CI policy.
+6. **Validation and testing:** tests and fixtures, acceptance checks mapped to criteria, test/CI policy, validation commands and results, plus evidence-based reasons for exclusions.
 7. **Examples and downstream use:** demos, samples and Base-supported consumer guidance.
 8. **Governance and contributor process:** issue/PR templates, contribution/review instructions, maintainer procedures and AI-context transition while it exists.
 9. **Decision records:** new, changed or superseded ADRs and their index.
@@ -586,8 +585,8 @@ Rules enforced this way include: Done with an open linked PR; a Done issue with 
 
 ### 14.2 Warn first, revert later — DECIDED
 
-- **Stage 1: warn only.** The Action comments that a change breaks a rule; it doesn't revert.
-- Reverting is switched on **per rule**, once that rule's warnings have proved accurate. A rule whose warnings turn out noisy stays warn-only until fixed.
+- The first automated enforcement rollout is **warn only**: the Action reports a rule violation and records the evidence; it does not revert or block.
+- A rule may be promoted **per rule** only after its warnings prove accurate and the check runs from a pinned, released Base version (§14.4). A noisy rule stays warn-only until fixed.
 - Why: automatically reverting a person's change goes beyond common practice and can feel heavy-handed; rules must earn it.
 
 ### 14.3 Override — DECIDED
@@ -596,7 +595,7 @@ An override is an explicit maintainer decision with a reason, scope, expiry or r
 
 ### 14.4 Pinned enforcement — DECIDED (Stage 2)
 
-- Enforcement checks (readiness, PR checks, status rules) run a **pinned, released** version of Base, not whatever just merged to `main`. A bad merge can't break its own gate.
+- Enforcement checks (readiness, PR checks, status rules) run a **pinned, released** version of Base from their first automated use, not whatever just merged to `main`. A bad merge can't break its own gate. The first rollout remains warn-only; blocking or reverting is a separate, evidence-backed promotion for each rule under §14.2.
 - The pin is upgraded deliberately, after a release proves itself.
 - Same idea as the second laptop running only released Base: the checker isn't the thing being changed.
 
@@ -629,18 +628,17 @@ base_manifest.yaml             repository contract and small runtime settings
 .github/
   ISSUE_TEMPLATE/               GitHub's fixed-path issue intake surface
   pull_request_template.md      GitHub's fixed-path PR intake surface
-  base-project.yml              current Project schema/options and issue defaults
+  base-project.yml              repository-specific areas/initiatives and issue defaults
   base-review-policy.yml        legacy path during the documented migration window
 governance/                     optional first-party policy content
   rules/                        issue and PR reviewer rule sets
-  standards/                     language and architecture rules
   prompts/                       read-only audit/reviewer prompts
 docs/governance/                human-readable design and rollout documentation
 docs/decisions/                 proposed ADR home, pending inventory confirmation
 docs/design/                    proposed area design docs
 ```
 
-The `governance:` entry in `base_manifest.yaml` is actual configuration, not a pointer to another file. It holds small operational settings such as the independent loop limits, review freshness, reviewer independence and review-policy values. The existing `github.pr.required_sections` stays under `github.pr` because it is GitHub PR behavior. `.github/base-project.yml` remains the one canonical source for current Project options, areas, initiatives and issue defaults; do not duplicate these as `governance/areas.yaml` or `initiatives.yaml`.
+The `governance:` entry in `base_manifest.yaml` is actual configuration, not a pointer to another file. It holds small operational settings such as the independent loop limits, review freshness, reviewer independence and review-policy values. The existing `github.pr.required_sections` stays under `github.pr` because it is GitHub PR behavior. `cli/python/base_github_projects/project_model.py` defines shared default Project fields/options; `.github/base-project.yml` supplies repository-specific areas and initiatives plus issue defaults. The repository's extra areas extend the default Area list. These are distinct existing sources; do not duplicate them as `governance/areas.yaml` or `initiatives.yaml`.
 
 For Base ecosystem repositories, use `governance/` to keep detailed human-maintained rules modular; GitHub-required files remain at their fixed paths and are hand-maintained until a separately justified generator exists. For Base-supported projects, a `governance/` directory is optional and not part of the minimum repository contract; ordinary settings can live in their existing `base_manifest.yaml`. Defaults arrive through an explicit versioned Base configure/upgrade PR, never live inheritance.
 
@@ -672,7 +670,7 @@ governance:
   issue_loop_round_limit: 3
   pr_loop_round_limit: 3
   ready_approval_max_age_days: 30
-  reviewer_independence: different-tool # Base-supported projects default to fresh-session
+  reviewer_independence: different-tool # Ecosystem default; Base-supported projects use fresh-session
   review_policy:
     required_approving_reviews: 0
 ```
@@ -717,7 +715,7 @@ A second laptop runs **only released Base from Homebrew**, never a source checko
   - author/reviewer tool and model outcomes, from verdict records (not GitHub usernames or footers);
   - number and proportion of user-found bug fixes using the test-impossibility exception, with reasons;
   - rules that never caught anything (monthly).
-- **Baseline, captured now** so later results mean something: about 60% of Codex PRs had real review findings; the count of disconnects found by hand testing; the counts from the docs-vs-code drift audits.
+- **Pre-pilot baseline:** package 17 captures available measures before the manual pilot, using a declared historical sample. The current estimate is that about 60% of Codex PRs had real review findings; record the source and sample limits, along with available counts of disconnects found by hand testing and docs-vs-code drift audits. Mark unavailable measures as unavailable rather than estimating them without evidence.
 
 ### 17.5 Self-assessment and self-healing — DECIDED
 
@@ -732,18 +730,18 @@ A second laptop runs **only released Base from Homebrew**, never a source checko
 
 ### 18.1 Two adoption phases — DECIDED
 
-- **Phase 1:** Base and the first-party Base Foundry repositories listed in §1.2 use and refine the governance process through separate repository trains.
+- **Phase 1:** Every repository in the `basefoundry` organization listed in §1.2 uses and refines the governance process through separate repository trains. The nine ecosystem repositories use ecosystem defaults; `banyanlabs` participates as a Base-supported project with consumer defaults.
 - **Phase 2:** Base-supported consumer projects may opt in through versioned defaults and their existing manifests. This phase is deferred until Phase 1 evidence identifies stable defaults and necessary exceptions.
 
 ### 18.2 Three stages and their implementation-plan mapping — DECIDED
 
 | Design stage | Intent | Implementation-plan work |
 |---|---|---|
-| **1. Foundation and manual operation** | Issue/PR contracts, ADR lifecycle, document-impact matrix, repository config, manual issue/PR loops, response/resolution runbook, maintainer audit. | Plan work packages 1–6; pilot on Base and a small set of first-party repositories. |
-| **2. Deterministic automation** | Readiness and contract-fingerprint checks, round/status ledger, slice-based lifecycle reconciliation, manifest validation and branch conversation-resolution setting. | Work packages 7–9, only after the manual pilot validates the rules. |
-| **3. Drift checks and guarded AI automation** | Per-kind documentation checks and later read-only review/limited fixes under §14.6 security controls. | Work packages 10–11; any AI fix automation is separately gated and may be deferred. |
+| **1. Foundation and manual operation** | Issue/PR contracts, ADR lifecycle, document-impact matrix, repository config, reviewer rules, baseline measures, manual readiness and review loops, response/resolution runbook, maintainer audit. | Plan stages B–C and work packages 1–6, 16–17. Pilot first in Base; rollout follows through separate repository trains. |
+| **2. Deterministic governance** | Readiness and contract-fingerprint checks, round/status ledger, slice-based lifecycle reconciliation, Project-schema migration, warn-only enforcement and overrides, pinned released checker, branch conversation-resolution setting. | Plan stages D–E and work packages 7–9, 19–20; Project migration package 8 is applied to each repository before its dependent checks are enabled. |
+| **3. Drift checks and guarded read-only review** | Per-kind documentation checks and a least-privilege, read-only reviewer under §14.6 security controls. Automated fixes remain separately gated and deferred. | Plan stage F and work packages 10–11, 21. |
 
-First-party repository adoption (work package 12) applies the accepted stage that each repository is ready to use; it is rollout, not a new automation stage. The context-export feature and subsequent `.ai-context/` removal (work packages 13–14) are a separate product-dependent train and are not a condition for beginning the manual pilot. Each stage exits only after its evidence and rollback path are recorded; no fixed two-week duration or release freeze is assumed.
+First-party repository adoption and open-title migration (work packages 12 and 18) apply the accepted stages to every organization repository, including the consumer profile for `banyanlabs`; they are rollout, not separate automation stages. Project schema changes (package 8) are piloted in Base and applied repo by repo before each repo enables dependent checks. The context-export feature and subsequent `.ai-context/` removal (work packages 13–14) are a separate product-dependent train and are not a condition for beginning the manual pilot. Each stage exits only after its evidence and rollback path are recorded; no fixed two-week duration or release freeze is assumed.
 
 ## 19. Phase 2: governance as a product — DEFERRED
 
@@ -785,18 +783,20 @@ Fork workflows receive no secrets and do not run auto-fix agents. Any later read
 | O3 | Which hosted AI providers, credentials, data-retention terms and network controls are acceptable for automated review/fixes? | Security review before any hosted-model workflow. |
 | O4 | What exact `basectl config` syntax and schema bounds should expose the repository governance settings? | Config implementation issue; preserve current local config behavior. |
 | O5 | Which provider CLIs and privacy/offline modes will `export-context` support? | Threat model and implementation issue before release. |
-| O6 | What is the final area list, ownership map and path mapping? | Inventory issue; preserve `.github/base-project.yml` as the sole current Project catalog until migration. |
+| O6 | What is the final area list, ownership map and path mapping? | Inventory issue; preserve the shared defaults in `project_model.py` and repository-specific area/initiative extras and issue defaults in `.github/base-project.yml` until migration. |
 | O7 | Confirm decision/design/initiative/guide locations against the documentation inventory. | Documentation migration issue. |
 | O8 | Should the `blocked` label be replaced by native issue dependency relationships? | Metadata migration issue after live-use review. |
 | O9 | Which governance defaults are stable enough for Base-supported projects? | Phase 2 design after first-party evidence. |
 | O10 | How should the public community-triage guide explain the relationship between contributor triage and the internal Triage status? | Separate docs issue; keep public contributor guidance unchanged until reviewed. |
-| O11 | Should native Issue Types replace any current category-label branch routing, and should `Feature` become `Enhancement`? | Dedicated migration decision; no type or branch-policy migration is implied here. |
+| O12 | Should native Issue Types replace any current category-label branch routing, and should `Feature` become `Enhancement`? | Dedicated migration decision; no type or branch-policy migration is implied here. |
+
+O11 is retired: it was used for the 1.x freeze question in an earlier review, which the maintainer resolved by confirming there is no freeze and the schedule is flexible (Appendix E, decision 13). Its identifier is not reused.
 
 ## Appendix A. Superseded positions
 
-This appendix lists every position that an earlier source held and a later source replaced. The body of this document states only the final position. "WN" means Working Notes; "Memo" means Base Direction Memo v12. Where a change happened in conversation without an explicit "supersedes" note, it is marked *(silent)*.
+This appendix is a historical record of consolidation-era positions; later changes and maintainer decisions are recorded in the current body and Appendices E–F. Its “position at consolidation” column is not current policy. “WN” means Working Notes; “Memo” means Base Direction Memo v12. Where a change happened in conversation without an explicit “supersedes” note, it is marked *(silent)*.
 
-| # | Topic | Earlier position | Final position | Changed by |
+| # | Topic | Earlier position | Position at consolidation | Changed by |
 |---|---|---|---|---|
 | A1 | Reviewer identity | Claude Code reviews as Ramesh's second GitHub account, set up as a machine account (Memo §4.1, §11; WN2 §4). | No machine account. Stage 1: agents act as Ramesh's account, with attribution through the provenance footer and Co-authored-by trailers. Stage 2: automated loops run as each tool's GitHub App bot. | WN29, WN30 |
 | A2 | Merge gate | Branch protection requires an approving review from an identity other than the author (Memo §4.1). | Stage 1: required checks plus resolved conversations; Ramesh merges. Required approval returns in Stage 2 only if bot approvals can satisfy branch protection. | Q4, 3 Nov 2026 |
@@ -837,9 +837,9 @@ This appendix lists every position that an earlier source held and a later sourc
 
 ## Appendix B. Reconciliations made during consolidation
 
-Two notes sometimes left a gap, or two decisions met in a way no conversation had settled. Each item below is how this document closes that gap. They are marked **NEW** in the body. Each one needs Ramesh's confirmation during the design review; any he rejects goes back to OPEN.
+These are the consolidation-era resolutions of gaps between source notes. They record what the draft proposed at that point, not a requirement for new approval now. Current disposition of B1–B18 is recorded in Appendix F and the current body; later maintainer clarifications are in Appendix E.
 
-| # | Gap | Resolution in this document | Why |
+| # | Gap | Resolution at consolidation | Why |
 |---|---|---|---|
 | B1 | Bugs needed reproduction steps (WN1), but every issue must keep the same sections (WN9). | Bug-type issues put reproduction steps and actual vs expected behavior inside **Problem**. The readiness check enforces this for type Bug only. | Keeps one layout for every issue while still requiring what a bug needs. |
 | B2 | "Every impact needs a reason" (WN1) vs Codex's 1.11 draft allowing "Unknown" at issue time. | "Unknown: reason" is allowed while an issue is in Backlog or In analysis. Ready requires every impact to be Yes or None, each with a reason. | Issue authors often can't know impacts before anyone reads the code; analysis is where they get resolved. |
@@ -965,6 +965,7 @@ These decisions are incorporated in the current body and supersede any inconsist
 13. There is no 1.x freeze. The release schedule is flexible; this plan uses relative order and S/M/L sizing, not fixed dates.
 14. D18: every user-found bug gets a failing test before the fix unless a test genuinely cannot capture it; the PR must explain why, and the pilot counts exceptions.
 15. D19: every issue/PR review uses a separate agent in a new session with no author-session transcript or persistent authoring memory. Whether the tool must also differ is configurable. Base defaults to `different-tool`; supported consumer projects default to `fresh-session`. Verdicts record both tools, models and sessions. If a configured different tool is unavailable, wait or escalate—never fall back to the same tool.
+16. Phase 1 includes every `basefoundry` repository. The nine Base ecosystem repositories use `different-tool`; `banyanlabs` is a Base-supported project and uses consumer defaults (`fresh-session`, no required `governance/` directory).
 
 ## Appendix F. Disposition of original B1–B18 items
 
