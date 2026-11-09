@@ -91,6 +91,11 @@ reference. The filename should answer "what is this about?"
   base.
 - [Team Review Governance](review-governance.md) defines the opt-in repository
   review policy boundary and its GitHub enforcement authority.
+- [Base Ecosystem Governance Design](governance/DESIGN.md) and its
+  [implementation plan](governance/IMPLEMENTATION-PLAN.md) describe the proposed
+  issue/PR lifecycle, review loops, documentation impact, decisions, and rollout.
+  The proposal is under independent review and is not current operating policy
+  until adopted.
 - [Engineering Self-Critique](engineering-self-critique.md) explains how the
   Base ecosystem separates product judgment, threat-model evidence, release
   provenance, and adoption claims in public writing.
