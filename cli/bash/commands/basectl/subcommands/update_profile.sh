@@ -47,7 +47,7 @@ base_update_profile_source_file_library() {
     base_std_assert_function_exists base_file_section_exists base_file_section_needs_update
 }
 
-base_update_profile_shell_double_quote() {
+base_update_profile_shell_double_quote_inner() {
     local value="$1"
     local escaped="$value"
 
@@ -55,6 +55,13 @@ base_update_profile_shell_double_quote() {
     escaped="${escaped//\"/\\\"}"
     escaped="${escaped//\$/\\$}"
     escaped="${escaped//\`/\\\`}"
+    printf '%s\n' "$escaped"
+}
+
+base_update_profile_shell_double_quote() {
+    local escaped
+
+    escaped="$(base_update_profile_shell_double_quote_inner "$1")" || return 1
     printf '"%s"\n' "$escaped"
 }
 
@@ -65,21 +72,13 @@ base_update_profile_source_line() {
     local quoted_relative_path
     local quoted_source_path
 
-    if [[ "$HOME" == "/" ]]; then
-        home_path="/"
-    fi
-
-    if [[ -n "$home_path" && "$source_path" == "$home_path" ]]; then
-        printf '%s\n' '# shellcheck source=/dev/null'
-        printf "source \"\$HOME\"\n"
-        return 0
-    fi
-
     if [[ -n "$home_path" && "$source_path" == "$home_path/"* ]]; then
         relative_path="${source_path#"$home_path"/}"
-        quoted_relative_path="$(base_update_profile_shell_double_quote "$relative_path")" || return 1
-        quoted_relative_path="${quoted_relative_path#\"}"
-        quoted_relative_path="${quoted_relative_path%\"}"
+        [[ -n "$relative_path" ]] || {
+            printf 'ERROR: Cannot render a shell source path relative to HOME when the path is HOME itself.\n' >&2
+            return 1
+        }
+        quoted_relative_path="$(base_update_profile_shell_double_quote_inner "$relative_path")" || return 1
         printf '%s\n' '# shellcheck source=/dev/null'
         printf "source \"\$HOME/%s\"\n" "$quoted_relative_path"
         return 0
