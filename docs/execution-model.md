@@ -346,6 +346,12 @@ The normal shell-startup snippets under `lib/shell/` do not source
 - loading simple user preferences from `~/.baserc`
 - enabling optional shell defaults when requested
 
+When `basectl update-profile` writes a managed source line, it renders a
+`$HOME`-relative path when the active Base checkout is below the user's home
+directory. Stable installation paths outside the home directory, such as the
+Homebrew `opt` path, remain unchanged. This keeps managed startup files
+portable without sacrificing the stable path used by packaged installations.
+
 The full Base runtime is loaded only through the `basectl` command path.
 
 ## Current Non-Goals

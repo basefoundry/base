@@ -60,7 +60,30 @@ base_update_profile_shell_double_quote() {
 
 base_update_profile_source_line() {
     local source_path="$1"
+    local home_path="${HOME%/}"
+    local relative_path
+    local quoted_relative_path
     local quoted_source_path
+
+    if [[ "$HOME" == "/" ]]; then
+        home_path="/"
+    fi
+
+    if [[ -n "$home_path" && "$source_path" == "$home_path" ]]; then
+        printf '%s\n' '# shellcheck source=/dev/null'
+        printf "source \"\$HOME\"\n"
+        return 0
+    fi
+
+    if [[ -n "$home_path" && "$source_path" == "$home_path/"* ]]; then
+        relative_path="${source_path#"$home_path"/}"
+        quoted_relative_path="$(base_update_profile_shell_double_quote "$relative_path")" || return 1
+        quoted_relative_path="${quoted_relative_path#\"}"
+        quoted_relative_path="${quoted_relative_path%\"}"
+        printf '%s\n' '# shellcheck source=/dev/null'
+        printf "source \"\$HOME/%s\"\n" "$quoted_relative_path"
+        return 0
+    fi
 
     quoted_source_path="$(base_update_profile_shell_double_quote "$source_path")" || return 1
     printf '%s\n' '# shellcheck source=/dev/null'
