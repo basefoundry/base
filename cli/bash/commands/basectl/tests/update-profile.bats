@@ -124,6 +124,66 @@ EOF
     [[ "$(cat "$TEST_HOME/.base.d/profile.conf")" == *"BASE_ENABLE_ZSH_DEFAULTS=false"* ]]
 }
 
+@test "update-profile renders home-relative source paths portably" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$TEST_BASH_BIN_DIR/bash" -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_update_profile_source_line "$HOME/work/base/lib/shell/bashrc"
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'# shellcheck source=/dev/null\nsource "$HOME/work/base/lib/shell/bashrc"' ]
+}
+
+@test "update-profile rejects an empty home-relative source path" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$TEST_BASH_BIN_DIR/bash" -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_update_profile_source_line "$HOME/"
+        '
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Cannot render a shell source path relative to HOME"* ]]
+}
+
+@test "update-profile keeps source paths absolute when HOME is root" {
+    local bash_libs_dir
+
+    bash_libs_dir="$(base_bash_libs_fixture_dir)"
+
+    run env \
+        HOME=/ \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_BASH_LIBS_DIR="$bash_libs_dir" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$TEST_BASH_BIN_DIR/bash" -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/update_profile.sh"
+            base_update_profile_source_line "/work/base/lib/shell/bashrc"
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'# shellcheck source=/dev/null\nsource "/work/base/lib/shell/bashrc"' ]
+}
+
 @test "basectl update-profile backs up existing dotfiles before changing them" {
     local backup_path
 
