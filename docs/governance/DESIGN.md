@@ -1,6 +1,6 @@
 # Base Governance Design
 
-**Version:** 1.4 (review draft), 19 November 2026
+**Version:** 1.4 (review draft), 20 November 2026
 **Owner:** Ramesh (codeforester)
 **Status:** Revised proposal for independent review; v1.3 remains accepted until v1.4 is approved and merged
 **Intended home:** `docs/governance/DESIGN.md` in `basefoundry/base`
@@ -33,9 +33,9 @@ This design describes how Base turns proposed work into a reviewed change, keeps
 2. **Implement the approved plan.** The default is one issue and one PR. When an issue needs several PRs, named slices keep them connected. A closed, unmerged PR does not finish a slice.
 3. **Review each change in a loop.** Issue and PR loops have separate repository settings, each initially limited to three rounds. Authors answer every finding. Reviewers verify the answer and identify the exact revision; authors resolve confirmed or withdrawn threads. Disputes and exhausted loops go to the maintainer.
 4. **Carry lasting facts into the repository.** Issues identify documentation and decision impacts. PRs update the relevant design, user guidance, reference, tests, examples, operations and release-note record before merge.
-5. **Give every status an owner.** Maintainers own Triage and Ready. During the Stage 1 pilot, Status changes are manual and existing GitHub writers are observed. Later, a reconciler may own implementation statuses after its writer and rollback rules are tested.
+5. **Give every status an owner.** Project Intake sets Backlog on open/reopen; the author agent records Triage when it starts the issue plan, In Progress after the maintainer authorizes work, and In Review when each slice has reviewable evidence. The maintainer owns Ready and Done, plus overrides and manual corrections. Stage 1 audits the agent transitions and observes existing writers; post-reconciler ownership remains open until its design and rollback are approved.
 6. **Use GitHub fields for distinct purposes.** Issue Type classifies the work; Project fields track it; labels remain flat cross-cutting tags; milestones plan releases; relationships express dependencies and decomposition. Issue fields are not copied to PRs.
-7. **Record who reviewed what.** Reviewers use a new session without the author's context. Verdicts identify tools, models, sessions and the reviewed issue fingerprint or PR head SHA. Account names alone are attribution, not proof.
+7. **Record who reviewed what.** Reviewers use a new session without the author's context. From Stage 1, the reviewer App has a distinct GitHub identity; the author agent and maintainer still use `codeforester`. Verdicts identify tools, models, sessions and the reviewed issue fingerprint or PR head SHA. Account names alone are attribution, not proof.
 8. **Roll out by evidence.** Base 1.11 is the foundation; governance stages ship in 1.12–1.15. Replacement AI-context export follows those stages, and tracked .ai-context files stay until replacement is released and proven.
 
 The contributor/agent map issue [#2681](https://github.com/basefoundry/base/issues/2681) should link here. Its current contract still requests a separate METHOD.md, so that issue must be reconciled in its own train to make the map link to this summary instead; no METHOD.md is planned. This plain-language summary is the method overview. This remains a proposal, not active policy, until v1.4 is approved and merged.
@@ -46,10 +46,10 @@ The contributor/agent map issue [#2681](https://github.com/basefoundry/base/issu
 
 From the Memo and the working notes:
 
-1. **Review gap.** Since Claude Code began reviewing Codex PRs, about 60% have had at least one real issue. Earlier PRs were often merged after a glance.
+1. **Review gap.** Since Claude Code began reviewing Codex PRs, the estimate is that about 60% had at least one real review finding. Earlier PRs were often merged after a glance; package 17 records the source and historical sample limits.
 2. **Drift.** Issues, PRs, design docs, user docs, tests, `demo.sh`, `base-demo` and `.ai-context/` fall out of sync. The nightly export of 2 Nov 2026 still described 1.10.5 as an active release line after it had shipped.
 3. **Hidden requirements.** Agents miss rules that live only in the maintainer's head. The `basectl workspace test` trust case: the command warned about trust, then kept running tests on previously trusted projects with no per-project output. The missing piece was a product-wide convention, not a feature spec.
-4. **Disconnect between intent and implementation.** Hand testing keeps finding gaps between what Ramesh meant and what was built, with no way to know how many remain.
+4. **Disconnect between intent and implementation.** Hand testing keeps finding gaps between what Ramesh meant and what was built. The pre-pilot baseline records the available historical count and source; if the count cannot be reconstructed, it is marked unavailable rather than estimated.
 5. **Incomplete and inconsistent metadata.** Issue Status transitions are skipped; Project field values accumulate with no retirement path; labels stand in for structured fields.
 6. **Decisions lost in conversation.** Long chats get compacted and decisions vanish. Agents don't read past issues on their own.
 7. **Human as glue.** Ramesh triggers agents and carries results between them by hand.
@@ -123,8 +123,8 @@ The normal path applies to behavior, public contracts, architecture, security, r
 
 1. **Conversation (free).** Ideas form in conversation. No form is imposed here.
 2. **Issue.** Record the problem, expected behavior, scope, approach, rejected alternative, risks, document impacts, decisions and named delivery slices.
-3. **Triage.** A planner prepares the issue contract. A genuinely separate reviewer checks it against relevant code, docs and standards. The maintainer resolves disputes and sets Ready only after the reviewer verdict is current.
-4. **Implementation.** Work proceeds from the approved issue and plan. Each PR declares one issue and one slice; work with no repository change records reviewable evidence on its issue.
+3. **Triage.** When the author agent starts the issue plan, it records Triage. A genuinely separate reviewer checks the contract against relevant code, docs and standards. The maintainer resolves disputes and sets Ready only after the reviewer verdict is current.
+4. **Implementation.** Only after the maintainer sets Ready and directs the work does the author agent run `basectl gh issue start <N>` without `--no-project` to record In Progress. Each PR declares one issue and one slice. When every planned slice has a non-draft PR or reviewable non-PR evidence, the author agent records In Review. A slice may omit a PR only if it changes no repository content; its evidence is attached to the issue, accepted by the maintainer, and the maintainer closes the issue as Done.
 5. **Review.** A separate reviewer examines the diff and relevant rules, tests, docs and decisions. The author responds to every finding. Review cycles repeat within the configured limit; the maintainer handles disputes and exhaustion.
 6. **Merge and release.** A human maintainer merges. The release process assembles reviewed PR release-note entries and checks completeness.
 
@@ -198,8 +198,8 @@ The form migration preserves useful information in today's sources:
 - .github/ISSUE_TEMPLATE/feature_request.yml: User problem, Desired outcome, alternatives and context map to Problem, Expected behavior, Scope and Plan.
 - .github/ISSUE_TEMPLATE/implementation.yml: Goal, Background, Scope, Acceptance Criteria, Validation and Non-Goals map to the common contract.
 - .github/ISSUE_TEMPLATE/documentation.yml: location, reader problem and suggestion map to Problem, Expected behavior and documentation impact.
-- .github/ISSUE_TEMPLATE/support.yml and config.yml: remain separate support and private-security entry paths; support is not internal Triage.
-- Existing bug:, feature: and docs: title prefixes are removed by the separately planned title policy. A category label is not a native Issue Type.
+- .github/ISSUE_TEMPLATE/support.yml and config.yml: remain separate support and private-security entry paths; support questions route to the organization Discussions forum and support is not internal Triage.
+- Existing `bug:`, `feature:`, `docs:`, `[Implementation]:`, and `support:` title prefixes are removed by the separately planned title policy. A category label is not a native Issue Type.
 
 | Section | Required by Ready |
 |---|---|
@@ -217,7 +217,7 @@ At Ready, the checker evaluates the issue's current native Type. Changing Type a
 
 The planner writes the plan in the issue body during Triage, not in a comment. It contains the approach and rejected alternative, scope, confirmed documentation impact, acceptance-to-validation mapping, decision impact, risk, and maintainer questions.
 
-The plan names delivery slices `S1`, `S2`, … and the outcome of each. A slice is the unit of completion; it does not name a permanent PR number. Each PR declares its slice. One PR per issue is the default. A slice without a PR names its reviewable completion evidence and the maintainer who will accept it. A replacement PR may deliver the same slice after the earlier PR is explicitly marked superseded; changing a slice's outcome or acceptance criteria is a material plan change and returns the issue to Triage.
+The plan names delivery slices `S1`, `S2`, … and the outcome of each. A slice is the unit of completion; it does not name a permanent PR number. Each PR declares its slice. One PR per issue is the default. A slice may omit a PR only if it changes no repository content; the plan names its reviewable completion evidence and the maintainer who will accept it. The author attaches evidence and records In Review; the maintainer accepts it and closes the issue as Done. A replacement PR may deliver the same slice after the earlier PR is explicitly marked superseded; changing a slice's identifier, outcome or acceptance criteria is a material plan change and returns the issue to Triage.
 
 ### 4.4 Readiness and issue approval — PROPOSED
 
@@ -233,7 +233,7 @@ The Ready fingerprint covers the exact text of:
 
 File lists, validation commands, comments and machine-owned metadata are outside the fingerprint. A change to any fingerprint input, including Rejected alternative, invalidates Ready, returns the issue to Triage and returns associated PRs to draft (§5.4). The verdict line is exactly “Verdict: Ready at <fingerprint>” or “Verdict: Changes needed at <fingerprint>”; the verdict body records reviewer evidence, findings, Type, author/reviewer provenance and date (§6.3).
 
-The Ready freshness period defaults to 30 days and is configurable in repository governance settings. New affected areas or document destinations discovered during implementation are recorded in the PR's actual-impact matrix and verified by its reviewer; they do not stale the issue fingerprint by themselves. A maintainer returns an issue to Triage when new evidence materially changes a fingerprinted contract or its assumptions.
+The Ready freshness period defaults to 30 days and is configurable in repository governance settings. The maintainer sets Ready for every issue until the Risk field exists. When that field is introduced, whether an author agent may set Ready for a Low-risk issue after a current Ready verdict remains open (§21). New affected areas or document destinations discovered during implementation are recorded in the PR's actual-impact matrix and verified by its reviewer; they do not stale the issue fingerprint by themselves. A maintainer returns an issue to Triage when new evidence materially changes a fingerprinted contract or its assumptions.
 
 ### 4.5 Issue Type, category labels, and branch policy — DECIDED
 
@@ -253,7 +253,7 @@ The intended order is **Backlog → Triage → Ready → In Progress → In Revi
 
 ### 5.2 Status derivation and ownership — DECIDED
 
-The approved issue plan is authoritative for delivery slices. Each PR names one slice; the latest non-superseded PR for that slice is current. Status derivation starts only after an explicit work start. Before implementation, Backlog, Triage and Ready are queue and approval decisions, not derived from PR activity.
+The approved issue plan is authoritative for delivery slices. Each PR names one slice; the latest non-superseded PR for that slice is current. Status is not inferred from silence. Project Intake writes Backlog on open/reopen; the author agent records Triage when it starts the issue plan, In Progress only after the maintainer has set Ready and directed the work, and In Review when every planned slice has reviewable evidence. The maintainer owns Ready and Done, plus every override and manual Status correction. Existing automation may also write Status as described below; during Stage 1, the maintainer audits agent transitions and the pilot records unexpected automation changes.
 
 **Current writers and evidence.** During the Stage 1 pilot, account for every existing writer and record unexpected transitions:
 
@@ -269,16 +269,16 @@ The owner of each transition is:
 
 | Status | Owner and authorization |
 |---|---|
-| **Backlog** | Project Intake sets it on opened or reopened issues. The maintainer owns queue placement and confirms that the issue is genuinely deferred or awaiting analysis. |
-| **Triage** | A maintainer or explicitly delegated human triager sets it when analysis is accepted into the internal queue. Agents may prepare analysis but cannot approve this transition. |
-| **Ready** | The maintainer sets it only after a current reviewer Ready verdict, answered blocking questions, resolved findings, and a matching contract fingerprint. |
-| **In Progress** | The maintainer authorizes the start. During Stage 1, run basectl gh issue start; if an agent must invoke it, use --no-project and have the maintainer make the Status handoff. If github-project-automation sets In Progress after a linked PR opens, the Stage 1 pilot records a process miss: the start step was skipped. |
-| **In Review** | During Stage 1, the maintainer sets it after every planned slice has a non-draft PR or reviewable non-PR evidence. A possible but unobserved edge case is a new linked PR moving an already In Review issue back to In Progress; the maintainer restores In Review when the evidence still satisfies this rule. |
+| **Backlog** | Project Intake sets it on opened or reopened issues. In the lifecycle, only a Triage issue may return to Backlog, when the maintainer defers its analysis; it never returns from Ready, In Progress or In Review. A reopen-triggered write from another status is automation behavior, not authorization, and the maintainer corrects it under this rule. |
+| **Triage** | The author agent records it with `basectl gh project issue set-fields --status` when it starts the issue plan. The maintainer resolves disputes and owns any manual correction. |
+| **Ready** | The maintainer sets it only after a current reviewer Ready verdict, answered blocking questions, resolved findings, and a matching contract fingerprint. The maintainer sets Ready for all issues until the Risk field exists; whether the author agent may set it for Low-risk issues after that field is introduced remains open (§7.1, §21). |
+| **In Progress** | After the maintainer has set Ready and directed work, the author agent runs `basectl gh issue start <N>` without `--no-project`. If evidence later regresses while that work remains authorized (for example, a PR returns to draft), the author agent records In Progress with the manual `set-fields --status` command. If `github-project-automation` sets In Progress after a linked PR opens before the issue-start command ran, the Stage 1 pilot records a process miss: the start step was skipped. |
+| **In Review** | The author agent records it with `basectl gh project issue set-fields --status` when every planned slice has a non-draft PR or reviewable non-PR evidence. A possible but unobserved edge case is a new linked PR moving an already In Review issue back to In Progress; the maintainer restores In Review when the evidence still satisfies this rule. |
 | **Done** | The maintainer closes the issue only after every slice is merged or has an explicitly approved terminal disposition and required evidence is recorded. Since close-trigger automation can set Done regardless of close reason, the maintainer verifies the reason and resulting Status. |
 
-**Work without a PR.** A slice may omit a PR only if it changes no repository content. The issue plan names the reviewable evidence and its acceptance owner. The maintainer authorizes the start and sets In Progress. The author attaches the evidence to the issue and answers reviewer findings through the same bounded review loop. The maintainer sets In Review when every slice has reviewable evidence and closes the issue as Done after accepting that evidence or recording an approved terminal disposition. Any repository change requires a PR.
+**Work without a PR.** A slice may omit a PR only if it changes no repository content. The issue plan names the reviewable evidence and its acceptance owner. After the maintainer sets Ready and directs the work, the author agent runs `basectl gh issue start <N>` to record In Progress. The author attaches the evidence to the issue, answers reviewer findings through the same bounded review loop, and records In Review when every planned slice has reviewable evidence. The maintainer accepts the evidence and closes the issue as Done, or records an approved terminal disposition. Any repository change requires a PR.
 
-**After the reconciler exists.** Proposed: the maintainer remains the only owner of Triage and Ready; the Stage 2 reconciler becomes the sole automatic writer of derived In Progress, In Review and Done. The start command records a start event/request instead of competing to write Status. Once the reconciler is verified, disable project-intake.yml Status writes and each built-in Project workflow verified to write Status; retain non-Status actions such as Auto-add sub-issues. Keep manual set-fields --status as a maintainer-only, audited override. The post-reconciler disposition of each built-in workflow is a required design decision; no writer is disabled until its behavior, migration and rollback are verified. If Stage 2 Status reconciliation is rolled back, restore the manual process with project-intake.yml and the built-in Project workflows running, then audit their transitions against the manual ownership table.
+**After the reconciler exists — PROPOSED; writer ownership remains open.** The reconciler may become the sole automatic writer of derived In Progress, In Review and Done, but design v1.4 must decide the owner of each transition and the disposition of each current writer before implementation. Triage and Ready continue under the manual ownership rules above, subject to the open Low-risk Ready question. The start command may record a start event/request instead of writing Status if that design is approved. No `project-intake.yml` Status write or built-in Project workflow is disabled until its behavior, migration and rollback are verified and the maintainer approves the writer map. Keep manual `set-fields --status` as a maintainer-only, audited override. If Stage 2 Status reconciliation is rolled back, restore the manual process with `project-intake.yml` and the built-in Project workflows running, then audit their transitions against the manual ownership table.
 
 | Evidence across all planned slices after implementation starts | Derived issue Status |
 |---|---|
@@ -286,7 +286,7 @@ The owner of each transition is:
 | Every slice has a non-draft PR or reviewable non-PR evidence, and no slice is blocked by an unresolved closed-unmerged PR | **In Review** |
 | Every slice is merged or has an explicit maintainer-approved terminal disposition and all required evidence is recorded | **Done** |
 
-A closed-unmerged PR does not complete its slice. The maintainer records superseded, replanned or cancelled. If replacement work is planned, the issue stays In Progress until the replacement PR is ready or its non-PR evidence is reviewable. A Done issue whose PRs merged is never reopened or moved back; later work gets a new linked issue.
+A closed-unmerged PR does not complete its slice. The maintainer records superseded, replanned or cancelled. If replacement work is planned, the author agent records In Progress with `basectl gh issue start <N>` while the original maintainer Ready authorization remains current, until the replacement PR is ready or its non-PR evidence is reviewable. An issue may return to Backlog only from Triage when the maintainer defers analysis; it never returns from Ready, In Progress or In Review. Abandoned work is closed as Not planned. A Done issue whose PRs merged is never reopened or moved back; later work gets a new linked issue.
 
 ### 5.3 Completion and later work — DECIDED
 
@@ -294,7 +294,7 @@ An issue is closed as completed only after every slice meets §5.2. New work dis
 
 ### 5.4 Returning to Triage — DECIDED
 
-Changing Problem, Expected behavior, Scope and non-goals, Approach, Rejected alternative, Risks, a delivery-slice outcome or current Type invalidates Ready and returns the issue to Triage. If implementation has started, associated PRs return to draft while the revised issue contract is reviewed; they resume only after a maintainer restores Ready. New affected areas or document destinations are recorded in the PR impact matrix and verified without changing the fingerprint. Comment replies and machine-owned activity also do not change it. A maintainer may return an issue to Triage when evidence materially changes the approved contract.
+Changing Problem, Expected behavior, Scope and non-goals, Approach, Rejected alternative, Risks, a delivery-slice identifier or outcome, or current Type invalidates Ready and returns the issue to Triage. If implementation has started, associated PRs return to draft while the revised issue contract is reviewed; they resume only after a maintainer restores Ready. New affected areas or document destinations are recorded in the PR impact matrix and verified without changing the fingerprint. Comment replies and machine-owned activity also do not change it. A maintainer may return an issue to Triage when evidence materially changes the approved contract.
 
 ## 6. Issue review loop
 
@@ -320,13 +320,13 @@ The verdict names the contract fingerprint, reviewed issue Type, result, finding
 
 ### 6.4 Ready approval — DECIDED
 
-A maintainer is accountable for the Ready transition during the manual pilot. Agents provide the verdict and evidence but do not set Project Status. Later automation may apply the same deterministic gate. A changed contract or expired approval returns to Triage; being Ready is never inferred from the absence of comments.
+A maintainer owns the Ready transition during the manual pilot and sets it for every issue until the Risk field exists. Agents record Triage, In Progress and In Review only as authorized by §5.2; they do not set Ready, Done or overrides. Whether an author agent may set Ready for Low-risk work after the Risk field is introduced remains open (§7.1, §21). Later automation may apply the same deterministic gate after its writer is decided. A changed contract or expired approval returns to Triage; being Ready is never inferred from the absence of comments.
 
 ## 7. Risk tiers and priority
 
 ### 7.1 Risk tiers — PROPOSED
 
-Use **Low, Medium, High** to choose review intensity and maintainer involvement. A new Project Risk tier field is required; it does not exist today. The initial field proposal has plain-language descriptions and examples, and the planner proposes a tier from blast radius and reversibility. Reviewers may raise it; only a maintainer may lower it. Do not add per-area minimum tiers until the field is live and pilot data shows those floors are useful. The new field and its migration are a separately sized package.
+Use **Low, Medium, High** to choose review intensity and maintainer involvement. A new Project Risk tier field is required; it does not exist today. The initial field proposal has plain-language descriptions and examples, and the planner proposes a tier from blast radius and reversibility. Reviewers may raise it; only a maintainer may lower it. The maintainer sets Ready for every issue until the Risk field exists. When it is introduced, whether the author agent may set Ready for Low-risk work after a current Ready verdict is an open decision (§21). Do not add per-area minimum tiers until the field is live and pilot data shows those floors are useful. The new field and its migration are a separately sized package.
 
 ### 7.2 Priority — DECIDED
 
@@ -348,7 +348,7 @@ For a single-PR issue, use `Fixes #N`. For a multi-PR issue, every PR uses `Part
 
 ### 8.3 Draft and review state — DECIDED
 
-A draft PR is implementation in progress. It does not count toward In Review. The issue moves to In Review only when every planned slice has a non-draft PR or reviewable non-PR evidence, or is already merged. If a PR is converted back to draft, the issue returns to In Progress. The separate Project queue remains the canonical maintainer view; PRs are not Project items.
+A draft PR is implementation in progress. It does not count toward In Review. The issue moves to In Review only when every planned slice has a non-draft PR or reviewable non-PR evidence, or is already merged. If a PR is converted back to draft or its evidence otherwise regresses, the author agent records In Progress under §5.2 while the maintainer's original Ready authorization remains current. The separate Project queue remains the canonical maintainer view; PRs are not Project items.
 
 ### 8.4 Pull request template — DECIDED
 
@@ -360,11 +360,11 @@ The current .github/pull_request_template.md already asks for issue linkage, val
 
 The reviewer posts actionable findings as review threads. The author responds to every thread with a fix/evidence or a challenge and rationale. Once the reviewer verifies a fix, the reviewer replies exactly: Fixed at <full-head-SHA>. Only after that confirmation may the author agent resolve the thread. The author must not resolve an unconfirmed finding. If the reviewer withdraws a finding, the reviewer replies: Withdrawn at <full-head-SHA>: <reason>. The author may resolve it after that explicit withdrawal. The maintainer resolves directly only when overriding a finding and records the rationale. Unresolved disputes go to the maintainer.
 
-Agents currently share one GitHub account, so GitHub cannot enforce which agent replied or resolved a thread. During Stage 1, the maintainer audits reviewer confirmation before author resolution. The reviewer verdict includes Verdict: Approved at <full-head-SHA> plus author/reviewer tool, model and session. A new code push needs fresh review at the new head. A base-only update may get full-head re-verification without consuming a round only when all checks pass: (1) git range-diff, using recorded old/new base and head SHAs, shows each non-merge PR commit unchanged; (2) each introduced merge commit is a base-update merge on the PR's first-parent chain and its second parent is an ancestor of the updated base; and (3) git show --remerge-diff <merge-commit> is empty for each such merge. Any other merge, uncertainty, hand-written conflict resolution or code change requires a full review round. Record re-verification and evidence separately from the round ledger.
+During the 1.11 foundation pilot, author and reviewer agents act through the shared maintainer account `codeforester`; GitHub cannot distinguish which agent replied or resolved a thread. Beginning in Stage 1, the reviewer App has a distinct identity, while the author agent and maintainer still use `codeforester`. GitHub can therefore attribute reviewer confirmations to the App, but it cannot distinguish an author resolution from a maintainer override. The maintainer audits that each author resolution follows the App's `Fixed at` or `Withdrawn at` confirmation. The reviewer verdict includes `Verdict: Approved at <full-head-SHA>` plus author/reviewer tool, model and session. A new code push needs fresh review at the new head. A base-only update may get full-head re-verification without consuming a round only when all checks pass: (1) `git range-diff`, using recorded old/new base and head SHAs, shows each non-merge PR commit unchanged; (2) each introduced merge commit is a base-update merge on the PR's first-parent chain and its second parent is an ancestor of the updated base; and (3) `git show --remerge-diff <merge-commit>` is empty for each such merge. Any other merge, uncertainty, hand-written conflict resolution or code change requires a full review round. Record re-verification and evidence separately from the round ledger.
 
 ### 8.6 Merge gate — DECIDED
 
-Required approving reviews remain **0** while author and reviewer agents share one GitHub identity. The maintainer checks the current-head verdict, every finding response/resolution, required checks, documentation impact and any escalations, then performs the merge. No agent merges or enables auto-merge. Required conversation resolution should be enabled through a separate, reviewed branch-policy change; until that change is live, it is a manual gate rather than an asserted GitHub enforcement. The required approval count must not be raised as a substitute.
+Required approving reviews remain **0** during Stage 1 because the reviewer App is comment-only. Do not use formal App APPROVE or REQUEST_CHANGES reviews until a ruleset test and a new maintainer decision establish their behavior. The maintainer checks the current-head verdict, every finding response/resolution, required checks, documentation impact and any escalations, then performs the merge. No agent merges or enables auto-merge. Required conversation resolution should be enabled through a separate, reviewed branch-policy change; until that change is live, it is a manual gate rather than an asserted GitHub enforcement. The required approval count must not be raised as a substitute.
 
 ### 8.7 Project fields and linked PRs — DECIDED
 
@@ -415,7 +415,7 @@ Existing language-specific and architectural rules remain in their canonical sta
 | **Milestone** | Native issue milestone | Repository-local release or planning window. |
 | **Issue Type** | Native issue Type: Task, Bug, Feature | Classifies work; it is not a category label. |
 
-The Base Project migration order is package 8: inventory the Base Project template and live items; the independent Priority/Risk slice may happen first. Complete package 25 (#2671) before changing Status order in #2672. Package 22 later redefines Area options and maps values from existing shared/repository catalogs. For each migration, record a reversible before-state and counts; never copy issue fields to PRs. The organization-level Issue Fields feature is not a duplicate source for Project fields.
+Package 22 remaps Area options in the 1.11 foundation before package 8 migrates the Base Project schema in 1.12. Package 8 inventories the Base Project template and live items; the independent Priority/Risk slice may happen first. Complete package 25 (#2671) before changing Status order in #2672. For each migration, record a reversible before-state and counts; never copy issue fields to PRs. The organization-level Issue Fields feature is not a duplicate source for Project fields.
 
 ### 10.3 Areas, labels, and views — DECIDED
 
@@ -429,7 +429,7 @@ Project field-option retirement is separate: first move every open item carrying
 
 Dependabot's generated python:uv label is not an exception to the flat-label rule. Override it in base-cli/.github/dependabot.yml with the existing plain dependencies label; verify that config in its own migration.
 
-**Escalation label and view.** Use the plain needs decision label only for maintainer escalation. Issue-loop exhaustion/dispute applies it to the issue. PR-loop escalation applies it to the PR and linked issue. Remove it when the maintainer decides. The shared Project template includes a view filtered to this label and showing Status; basectl setup adds the view to existing Projects, including Base Project #10. The current GitHub GraphQL ProjectV2ViewConfigurationInput exposes visible field IDs but no label-filter input. Therefore setup creates/ensures the view and reports that its label filter must be set through the Project UI; it then reads the view back for a maintainer to verify. Do not claim API automation created a filter it cannot express.
+**Escalation label and view — PROPOSED.** Use the plain `needs decision` label only for maintainer escalation. Issue-loop exhaustion/dispute applies it to the issue. PR-loop escalation applies it to the PR and linked issue. Remove it when the maintainer decides. The shared Project template includes a view filtered to this label and showing Status; `basectl setup` adds the view to existing Projects, including Base Project #10. GraphQL `CreateProjectV2ViewInput` has no filter field, but `UpdateProjectV2ViewInput` accepts `filter` and `ProjectV2View` exposes it for readback. Setup should create the view, set `label:"needs decision"` with `updateProjectV2View`, then read the filter back. The implementing package tests this sequence on a scratch Project before changing Project #10; use the Project UI only if testing shows the API update does not take effect.
 
 **Relationships and hierarchy.** Use native blocked-by relationships for dependencies and sub-issues only for real decomposition. Base Foundry guidance permits at most one parent/child level and no grandchildren; this is guidance only, with no enforcement check and no Base-supported-project default. Public support intake remains distinct from the internal Triage status.
 
@@ -459,7 +459,7 @@ When a conversation reaches a durable product or governance decision, the agent 
 
 ### 11.5 Existing decision material — DECIDED
 
-Package 23 (#2675, in the 1.11 foundation) inventories document locations and durable-decision candidates; it does not perform the ADR migration and does not depend on #2666. Package 1 (#2666, Stage 1 in 1.12) establishes the ADR template/index and migrates maintainer-approved durable decisions with source links and status. Until that migration is accepted and merged, keep .ai-context/DECISIONS.md maintained as the current decision list. Preserve provenance and do not turn transient discussion into policy. Other tracked .ai-context files remain until the replacement export ships and is proven (§12.9).
+Package 10 (#2675, in the 1.11 foundation) inventories document locations. Package 23, a new Step 5 issue, reorganizes the documents and identifies durable-decision candidates; it does not perform the ADR migration and does not depend on #2666. Package 1 (#2666, Stage 1 in 1.12) establishes the ADR template/index and migrates maintainer-approved durable decisions with source links and status. Until that migration is accepted and merged, keep .ai-context/DECISIONS.md maintained as the current decision list. Preserve provenance and do not turn transient discussion into policy. Other tracked .ai-context files remain until the replacement export ships and is proven (§12.9).
 
 ## 12. Documentation design
 
@@ -621,7 +621,7 @@ Whether users of an older release see the docs for their version. Revisit when B
 
 ### 12.13 Interim document homes and ownership — DECIDED
 
-Until package 23 (#2675) completes the 1.11 inventory and approved reorganization, existing files remain the canonical homes. Update the current home in the same PR; do not move or duplicate content just because a target home is proposed.
+Until package 10 (#2675) completes the 1.11 inventory and package 23's approved reorganization, existing files remain the canonical homes. Update the current home in the same PR; do not move or duplicate content just because a target home is proposed.
 
 | Document kind | Current/interim home | Ownership and next step |
 |---|---|---|
@@ -641,7 +641,7 @@ Until package 23 (#2675) completes the 1.11 inventory and approved reorganizatio
 
 ### 13.1 Human-operated pilot — DECIDED
 
-During 1.11, reviews continue through the shared maintainer account codeforester and declare author/reviewer provenance. Beginning in Stage 1 (1.12), a dedicated GitHub App identifies the reviewer role; Stage 3's hosted reviewer reuses it. The App identity does not identify the model or session. Verdicts record author and reviewer tool, model and fresh-session identifiers, plus the issue fingerprint or full PR head SHA. A GitHub username is attribution only, not proof of which agent acted.
+During the 1.11 foundation, reviews use the shared maintainer account `codeforester` and declare author/reviewer provenance. Beginning in Stage 1 (1.12), a dedicated GitHub App identifies the reviewer role and posts comment-only reviews; the author agent and maintainer continue to use `codeforester`. Stage 3's hosted reviewer reuses the App. The App identity does not identify the model or session. Verdicts record author and reviewer tool, model and fresh-session identifiers, plus the issue fingerprint or full PR head SHA. A GitHub username is attribution only, not proof of which agent acted.
 
 ### 13.2 Git history and GitHub activity — DECIDED
 
@@ -649,7 +649,7 @@ Git author/committer identity follows repository contribution rules. GitHub comm
 
 ### 13.3 Verdict provenance — DECIDED
 
-Every verdict records author tool/model/session, reviewer tool/model/session, date, reviewed contract fingerprint or full PR head SHA, result and findings. The reviewer session is new and has no author transcript or persistent authoring memory; configured different-tool policy adds a distinct-tool requirement. Verdicts are declared evidence, not cryptographic attestation. During the shared-account pilot, the maintainer audits provenance and the thread-resolution sequence.
+Every verdict records author tool/model/session, reviewer tool/model/session, date, reviewed contract fingerprint or full PR head SHA, result and findings. The reviewer session is new and has no author transcript or persistent authoring memory; configured different-tool policy adds a distinct-tool requirement. Verdicts are declared evidence, not cryptographic attestation. During the 1.11 shared-account pilot, the maintainer audits provenance and the thread-resolution sequence. From Stage 1, the App identity separates the reviewer from the author/maintainer account, but GitHub still cannot distinguish author-agent activity from maintainer activity through `codeforester`.
 
 ## 14. Enforcement
 
@@ -671,7 +671,7 @@ Rules enforced this way include: Done with an open linked PR; a Done issue with 
 
 ### 14.3 Override — DECIDED
 
-An override is an explicit maintainer decision with a reason, scope, expiry or recheck condition, and linked issue/PR. During the manual stage the maintainer records it in the review thread or issue. Agents may explain a proposed exception but must not create, approve, or post an override as if it were a maintainer decision. GitHub's shared account cannot enforce this distinction, so maintainers audit the actor and evidence. Do not use an `override` label.
+An override is an explicit maintainer decision with a reason, scope, expiry or recheck condition, and linked issue/PR. During the manual stage the maintainer records it in the review thread or issue. Agents may explain a proposed exception but must not create, approve, or post an override as if it were a maintainer decision. Because the author agent and maintainer act through `codeforester`, GitHub cannot distinguish author-thread resolutions from maintainer overrides; the maintainer audits the actor sequence and evidence. The reviewer App is a separate identity from Stage 1 onward. Do not use an `override` label.
 
 ### 14.4 Pinned enforcement — DECIDED (Stage 2)
 
@@ -681,27 +681,31 @@ An override is an explicit maintainer decision with a reason, scope, expiry or r
 
 ### 14.5 Branch protection — DECIDED
 
-On `main`: required status checks (Tests, Security scanners, `base/issue-branch-policy`, governance checks as they arrive); require conversation resolution after the separate branch-policy train enables it; no direct pushes; squash merge; required approving reviews remain 0 under the shared agent identity. A human maintainer verifies the current-head verdict and resolved threads under §8.6.
+On `main`: required status checks (Tests, Security scanners, `base/issue-branch-policy`, governance checks as they arrive); require conversation resolution after the separate branch-policy train enables it; no direct pushes; squash merge; required approving reviews remain 0 during Stage 1 because reviewer App reviews are comment-only. Formal App reviews require a ruleset test and a new maintainer decision. A human maintainer verifies the current-head verdict and resolved threads under §8.6.
 
-### 14.6 Automated review and fix security — PROPOSED
+### 14.6 Automated review and fix security — DECIDED baseline; proposed implementation architecture
 
-Review content is untrusted by default. Issue text, PR descriptions, comments, diffs, test output, artifacts and generated context may contain prompt injection. No reviewer job executes PR-controlled code or gives the model general-purpose credentials. Automated fixes remain deferred under #2581; this design does not authorize them.
+Review content is untrusted by default. Issue text, PR descriptions, comments, diffs, test output, artifacts and generated context may contain prompt injection. No reviewer job executes PR-controlled code or gives the model general-purpose credentials. Never use `pull_request_target` or another privileged event to check out, execute, install or evaluate untrusted PR content. Security-sensitive changes and disputed findings require maintainer review; findings still unresolved at the configured round limit escalate to the maintainer. Automated fixes remain deferred under #2581; this design does not authorize them.
 
 **Reviewer App baseline and observed limits.** The tested App is owned by basefoundry; the baseline is repository Contents read, Issues write and Pull requests write, plus GitHub's implicit Metadata read and no other granted permission. The tested installation was limited to private basefoundry/app-scratch, with webhooks off. Its installation token was limited to one repository and expired after one hour; the test could read public repositories and public Project #10 as an anonymous reader but could not write Project fields because it lacked Projects permission. See [Claude's scratch-App results on #2698](https://github.com/basefoundry/base/issues/2698#issuecomment-6973635209). These facts describe the test installation, not untested production setup.
 
 With that baseline, the App can post issue/PR comments, edit its own comments, submit COMMENT reviews with inline findings, reply to review threads, and add/remove needs decision. It cannot resolve or unresolve review threads with these permissions. GraphQL viewerCanResolve returned false even when resolution succeeded after broader access; do not rely on this field. Adding Contents write allowed resolution, but also allowed code pushes and converting a PR to draft; therefore Contents stays read-only.
 
-The App must not resolve findings. After it replies Fixed at <full-head-SHA>, the author agent resolves. After it replies Withdrawn at <full-head-SHA>: <reason>, the author may resolve. The maintainer resolves directly only when overriding a finding and records the rationale (§8.5). This is the maintainer-approved thread-resolution rule; it replaces the accepted-design sentence that gave the reviewer a pull-request permission to resolve threads.
+Reviewer credentials are not authorized to push code, change branch protection, approve the reviewer's own work, merge, release, or access deployment secrets. These are policy boundaries to test in addition to the observed App permissions; do not infer an untested capability from the scratch installation.
 
-The permission grants also technically permit editing issue/PR bodies, other users' comments, arbitrary labels, and opening/closing items. These are policy prohibitions, not GitHub permission boundaries. A narrow broker exposes only approved actions (comments, COMMENT review threads and needs decision add/remove), rejects all other mutations, and emits an audit record. The maintainer reviews that audit. Baseline tests refused merge and push; merge with broader permissions was not tested.
+Any future automated-fix agent is also prohibited from approving its PR, resolving its own review threads, merging or releasing. Its patch must be reviewed independently at the exact patched head SHA; every new push invalidates the prior verdict and requires fresh review.
 
-Formal APPROVE, REQUEST_CHANGES and dismissal of the App's own review worked in the scratch test, but required-review/ruleset behavior was not tested. Proposal: keep the pilot comment-only. Do not use formal approval or request-changes until a separate ruleset test and explicit maintainer decision establish their effect. This is a proposal in v1.4, not an accepted maintainer policy.
+The App must not resolve findings. After it replies `Fixed at <full-head-SHA>`, the author agent resolves. After it replies `Withdrawn at <full-head-SHA>: <reason>`, the author may resolve. The author never resolves an unconfirmed finding. The maintainer resolves directly only when overriding a finding and records the rationale (§8.5). This is the maintainer-approved thread-resolution rule; it replaces the accepted-design sentence that gave the reviewer a pull-request permission to resolve threads.
 
-The App operates as a dedicated reviewer for issue and PR loops beginning in 1.12, and is reused for the Stage 3 hosted reviewer. Installation is limited to the repository being reviewed. Until then, 1.11 review uses codeforester with declared provenance. If the App or a configured different review tool is unavailable, pause for it or escalate to the maintainer; do not fall back to the author session, a general workflow token, or a shared machine-user credential. The App is preferred to GITHUB_TOKEN or a machine-user account because it identifies the reviewer role and issues short-lived, repository-scoped tokens without Contents write. The scratch test did not compare operational security of these alternatives; that remains a rationale, not a measured result.
+**Proposed action broker.** The permission grants also technically permit editing issue/PR bodies, other users' comments, arbitrary labels, and opening/closing items. These are policy prohibitions, not GitHub permission boundaries. A narrow broker would expose only approved actions (comments, COMMENT review threads and `needs decision` add/remove), reject all other mutations, and emit an audit record for maintainer review. Baseline tests refused merge and push; merge with broader permissions was not tested.
 
-**Credential boundaries.** The App private key is not present in the model/analysis job, repository, PR-controlled code, prompt, output or logs. Stage 1 local token minting is a maintainer operation through a narrowly scoped helper using protected local storage. For Stage 3, a separate trusted publisher job obtains the key from protected Actions secret storage, mints a one-repository short-lived token, and passes it only to the action broker. The untrusted analysis job never receives the App key or write token. This storage/publisher architecture is a security requirement, not something established by the scratch test; threat review, publisher permissions and token-delivery tests are required before Stage 3.
+**Stage 1 review mode — DECIDED.** The reviewer App posts comment-only reviews in Stage 1. Formal `APPROVE`, `REQUEST_CHANGES` or dismissal of the App's own review are not used until a ruleset test and a new maintainer decision establish their effect. The scratch test showed these formal operations are technically possible but did not test required-review/ruleset behavior.
 
-Hosted-model credentials are distinct from GitHub/App credentials. Provider keys remain in a trusted provider gateway or protected secret store and are not passed to PR code, arbitrary tools, test commands, artifacts or logs. The analysis agent invokes a narrow model-call broker with least-privilege access; the broker enforces provider, data-disclosure and retention policy and records usage without logging credentials. Fork PRs receive no secrets. If the approved provider cannot serve a fork without exposing credentials, skip automated review and wait for maintainer review or a safe explicitly configured provider; do not weaken isolation to avoid delay.
+The App operates as a dedicated reviewer for issue and PR loops beginning in 1.12, and is reused for the Stage 3 hosted reviewer. Installation is limited to the repository being reviewed. Until then, 1.11 review uses `codeforester` with declared provenance. If the App or a configured different review tool is unavailable, pause for it or escalate to the maintainer; do not fall back to the author session, a general workflow token, or a shared machine-user credential. The App is preferred to `GITHUB_TOKEN` or a machine-user account because it identifies the reviewer role and issues short-lived, repository-scoped tokens without Contents write. The scratch test did not compare operational security of these alternatives; that remains a rationale, not a measured result.
+
+**Proposed credential and publisher architecture.** The App private key must not be present in the model/analysis job, repository, PR-controlled code, prompt, output or logs. Stage 1 local token minting is a maintainer operation through a narrowly scoped helper using protected local storage. For Stage 3, a separate trusted publisher job would obtain the key from protected Actions secret storage, mint a one-repository short-lived token, and pass it only to the action broker. The untrusted analysis job never receives the App key or write token. This storage/publisher architecture is not established by the scratch test; threat review, publisher permissions and token-delivery tests are required before Stage 3.
+
+**Proposed provider gateway.** Hosted-model credentials are distinct from GitHub/App credentials. Provider keys would remain in a trusted provider gateway or protected secret store and would not be passed to PR code, arbitrary tools, test commands, artifacts or logs. The analysis agent would invoke a narrow model-call broker with least-privilege access; the broker would enforce provider, data-disclosure and retention policy and record usage without logging credentials. Fork PRs receive no secrets. If the approved provider cannot serve a fork without exposing credentials, skip automated review and wait for maintainer review or a safe explicitly configured provider; do not weaken isolation to avoid delay.
 
 The scratch test did not establish required-review-rule behavior, private-key storage, Stage 3 publishing, provider credentials, fork behavior, the unavailable-App fallback, or a comparative test against GITHUB_TOKEN/machine-user accounts. Treat these as open implementation security gates, not verified capabilities. Pin workflow actions/tools where possible; cap usage; record actor, tool/model, commit SHA, prompt/rule version and outcome without storing secrets or unnecessary private data. No automated fix runs until a separate trusted trigger, isolated environment, no-secret/no-network policy (unless reviewed), patch validation, independent review and maintainer gate are approved.
 
@@ -745,7 +749,7 @@ Move `.github/base-review-policy.yml` values into `base_manifest.yaml` `governan
 
 ### 15.3 AGENTS.md — DECIDED
 
-AGENTS.md is a map, not a manual. It points to the issue-first process, plain titles, the active area design and decisions, the documentation-impact categories, coding standards, issue/PR reviewer rules, and the decision-capture prompt (§11.4). It states that agents do not set Project Status, grant overrides, merge PRs, or silently choose an AI provider. It does not rely on a provenance footer.
+AGENTS.md is a map, not a manual. It points to the issue-first process, plain titles, the active area design and decisions, the documentation-impact categories, coding standards, issue/PR reviewer rules, and the decision-capture prompt (§11.4). It states that agents record Triage, In Progress and In Review only as authorized in §5.2; they do not set Ready, Done or overrides, merge PRs, or silently choose an AI provider. It does not rely on a provenance footer.
 
 ### 15.4 Tracker neutrality — DECIDED
 
@@ -797,7 +801,7 @@ A second laptop runs **only released Base from Homebrew**, never a source checko
 - **Metrics:** drift incidents per month; post-merge rework; follow-up issues linked to Done issues; spec-gap rate; small-change misclassification; maintainer interventions; share of PRs with real findings; reviewer/author tools and outcomes; user-found bug fixes using the test-impossibility exception and reasons; and rules that never caught anything.
 - **Token economy:** use deterministic scripts and linters for mechanical checks. Reviewers inspect the diff and only relevant rules/standards. Loops stay capped. Eligible base-only updates are re-verified without another full round; light-path changes use one pass and less impact detail. Stage 1 records reported token use per issue/PR and per review round; if a CLI does not report it, mark it unavailable rather than estimate. The restored metrics-report issue owns ongoing data; it is not package 17's pre-pilot baseline or #2585's retrieval-eval baseline.
 - Stage 2 derives a comparable-work warning threshold from Stage 1 observations (for example, above twice the median). It warns only; it never gates, cuts off or changes the review loop.
-- **Pre-pilot baseline:** package 17 records available measures from a declared historical sample before pilots, including the source/sample limits and manual docs-vs-code drift evidence. Unavailable measures remain explicitly unavailable.
+- **Pre-pilot baseline:** package 17 records available measures from a declared historical sample before pilots, including the source/sample limits, the starting estimate that about 60% of Codex PRs had real review findings, and counts of disconnects found by hand testing and docs-vs-code drift audits. If a historical count cannot be reconstructed from source records, mark it unavailable rather than estimate it.
 
 ### 17.5 Self-assessment and self-healing — DECIDED
 
@@ -818,7 +822,7 @@ There is no feature freeze and no fixed calendar schedule. Base 1.11 is the foun
 
 | Release | Stage | Intent and work |
 |---|---|---|
-| **1.12** | Stage 1: manual loops | Establish ADR/document contracts and templates, repository config, reviewer rules, baseline, manual readiness and issue/PR review loops. Use the dedicated reviewer App; run real issue and PR pilots. |
+| **1.12** | Stage 1: manual loops | Establish ADR/document contracts and templates, repository config, reviewer rules, baseline, manual readiness and issue/PR review loops. Migrate the Base Project schema (package 8), enable conversation resolution, and use the dedicated reviewer App for comment-only reviews. Run real issue and PR pilots. |
 | **1.13** | Stage 2: deterministic checks | Implement readiness, PR contract, slice Status reconciliation and round ledger; dry-run, then warn-only rules and audited override. |
 | **1.14** | Stage 3: drift checks and read-only review | Pin the released checker, run per-kind drift checks and the least-privilege read-only reviewer after security gates. Demonstrate rollback. |
 | **1.15** | Stage 4: organization adoption | Adopt Base profile, organization templates and repository-local profiles across all basefoundry repositories, including consumer defaults in banyanlabs; migrate open titles after prerequisites. Each repository uses its own release system. |
@@ -849,9 +853,10 @@ Fork workflows receive no secrets and do not run auto-fix agents. Any later read
 
 ## 20. Later and out of scope
 
-- **MCP server, retrieval and RAG:** separate product work outside governance releases 1.11–1.15. Keep #2585–#2591 and #2600–#2602 on their own release/milestone tracks; generated context export does not replace retrieval or MCP.
-- **Controller authoring, durable event ledger, replay and crash recovery:** preserve the original #2555 roadmap scope as separate work. Human issue/PR loops, the read-only reviewer, a review-round ledger, and baseline metrics do not implement those controllers or event stores.
-- **Base-supported consumer configurability:** after 1.15, offer a small set of light/standard/full presets plus independent switches. Document interactions, reject incoherent combinations in plain language, and keep Stage 1–3 components separable. Do not implement these consumer presets in this rollout.
+- **Current GitHub platform baseline:** Dependabot and CodeQL are enabled; Discussions is the public home for questions and ideas; reusable workflows are called at pinned versions. These platform features remain part of the operating context for the governance rules.
+- **MCP server, retrieval and RAG:** separate product work outside governance releases 1.11–1.15. Keep #2585–#2591 and #2600 on their own release/milestone tracks. #2601 belongs to matrix/test-bed evidence and #2602 to the durable event ledger described below; generated context export does not replace retrieval or MCP.
+- **Controller authoring, manifest agent policy, durable event ledger, replay and crash recovery:** preserve the original #2555 roadmap scope as separate work. Human issue/PR loops, the read-only reviewer, a review-round ledger, and baseline metrics do not implement those controllers or event stores. In particular, #2584's original `agent:` path/size/autonomy policy is not package 3's governance config or consumer defaults; keep it as a separate post-1.15 issue after a design names its scope and stage.
+- **Base-supported consumer configurability:** after 1.15, offer a small set of light/standard/full presets plus independent switches; #2584's current consumer-defaults scope belongs here only if it remains distinct from the original manifest agent-policy work. Document interactions, reject incoherent combinations in plain language, and keep Stage 1–3 components separable. Do not implement these consumer presets in this rollout.
 - **Other trackers:** adapters only on demand (§15.4).
 - **Untrusted external contributions:** no secrets or auto-fix agents in fork workflows.
 
@@ -860,7 +865,7 @@ Fork workflows receive no secrets and do not run auto-fix agents. Any later read
 | # | Question | When/how to settle |
 |---|---|---|
 | O1 | Which GitHub events expose Project field changes reliably, and which require scheduled reconciliation? | Read-only implementation spike before lifecycle automation. |
-| O2 | Can a GitHub App identity satisfy any future required-approval rule while preserving current-head freshness? | Do not change the current zero-approval policy; test only if distinct identities are adopted. |
+| O2 | Can GitHub rulesets safely enforce formal reviews from the reviewer App while preserving current-head freshness? | Stage 1 remains comment-only with zero required approvals. Test formal review/ruleset behavior and obtain a new maintainer decision before enabling it. |
 | O3 | Which hosted AI providers, credentials, data-retention terms and network controls are acceptable for automated review/fixes? | Security review before any hosted-model workflow. |
 | O4 | What exact `basectl config` syntax and schema bounds should expose the repository governance settings? | Config implementation issue; preserve current local config behavior. |
 | O5 | Which provider CLIs and privacy/offline modes will `export-context` support? | Threat model and implementation issue before release. |
@@ -870,6 +875,9 @@ Fork workflows receive no secrets and do not run auto-fix agents. Any later read
 | O9 | Which governance defaults are stable enough for Base-supported projects? | Phase 2 design after first-party evidence. |
 | O10 | Which public wording should distinguish community intake from internal Triage: (1) retain “triage” publicly and explain the difference, (2) call it “community support” and document its handoff to internal Triage (recommended), or (3) choose another plain-language term with the same handoff? | #2671 decides; keep public guidance unchanged until its disposition is approved. |
 | O12 | Should native Issue Types replace any current category-label branch routing, and should `Feature` become `Enhancement`? | Dedicated migration decision; no type or branch-policy migration is implied here. |
+| O13 | After the Risk field exists, may an author agent set Ready for a Low-risk issue after a current Ready verdict, or does the maintainer retain every Ready transition? | Decide with the Risk-field migration and pilot evidence; until then the maintainer sets Ready for every issue. |
+| O14 | How should the original #2555 controller work assign Status ownership, choose one or several ledgers, define controller levels and authoring authority, and stage MCP/retrieval? | Resolve each question in a reviewed issue/design amendment before assigning the affected original work to a release; see implementation plan §10. |
+| O15 | After the Status reconciler is introduced, which component owns each Status transition, and which current Project Intake or built-in Project writers remain enabled? | Decide in the reconciler design after every current writer has been behavior-tested; specify migration, rollback and manual override behavior before disabling any writer. |
 
 O11 is retired: it was used for the 1.x freeze question in an earlier review, which the maintainer resolved by confirming there is no freeze and the schedule is flexible (Appendix E, decision 13). Its identifier is not reused.
 
@@ -1027,13 +1035,13 @@ Public sources behind the choices in this document:
 
 Internal sources: Base Direction Memo v12; Base Working Notes Parts 1–37; Base Governance Implementation Plan (2 Nov 2026); Base Documentation Governance — Working Draft for 1.11 (Codex, 21 Oct 2026).
 
-## Appendix E. Maintainer clarifications recorded 8–19 November 2026
+## Appendix E. Maintainer clarifications recorded 8–20 November 2026
 
-These decisions are incorporated in the current body and supersede any inconsistent statement in the earlier 3 November appendices. Items 17–18 record later review-loop and Status-writer clarifications.
+These decisions are incorporated in the current body and supersede any inconsistent statement in the earlier 3 November appendices. Items 17–21 record later maintainer decisions.
 
 1. Keep Triage between Backlog and Ready, and use separate repository-owned issue and PR round limits, each initially three.
 2. Draft PRs keep the issue In Progress. Use delivery slices rather than fixed PR numbers. In Review requires reviewable evidence for every slice; Done requires every slice merged or an explicit maintainer-approved terminal disposition.
-3. Authors respond to every review finding. The reviewer verifies and confirms fixes at the current full head SHA; the author resolves only after Fixed confirmation or an explicit reviewer withdrawal. The maintainer resolves directly only when overriding, with rationale. Disputes and round-limit exhaustion go to the maintainer. PR verdicts bind to the current head SHA. Required approving reviews stay at 0 while agents share one GitHub account.
+3. Authors respond to every review finding. The reviewer verifies and confirms fixes at the current full head SHA; the author resolves only after Fixed confirmation or an explicit reviewer withdrawal. The maintainer resolves directly only when overriding, with rationale. Disputes and round-limit exhaustion go to the maintainer. PR verdicts bind to the current head SHA. During Stage 1, the reviewer App posts comment-only reviews and required approving reviews stay at 0; formal reviews require a ruleset test and a new maintainer decision.
 4. Keep issue Project fields canonical. Do not mirror them to PRs or add PR Project items to copy them. Native Type, Issue Fields, Project, labels, milestones and relationships have separate responsibilities (§10).
 5. Keep issue and PR titles plain. After adoption, rename every open issue and open PR, including drafts, through a tracked migration; retain closed/merged titles as history by default.
 6. Use explicit ADR acceptance in the implementation PR. This is a Base choice within common ADR practice, not a universal industry requirement.
@@ -1048,7 +1056,10 @@ These decisions are incorporated in the current body and supersede any inconsist
 15. D19: every issue/PR review uses a separate agent in a new session with no author-session transcript or persistent authoring memory. Whether the tool must also differ is configurable. Base defaults to `different-tool`; supported consumer projects default to `fresh-session`. Verdicts record both tools, models and sessions. If a configured different tool is unavailable, wait or escalate—never fall back to the same tool.
 16. Phase 1 includes every `basefoundry` repository. The nine Base ecosystem repositories use `different-tool`; `banyanlabs` is a Base-supported project and uses consumer defaults (`fresh-session`, no required `governance/` directory).
 17. The reviewer App does not resolve review threads. After the reviewer replies Fixed at <full-head-SHA>, the author resolves; after Withdrawn at <full-head-SHA>: <reason>, the author may resolve. The author never resolves an unconfirmed finding. Only the maintainer resolves directly when overriding, with a recorded rationale. The App grants and observed capabilities are limited to the evidence in the scratch test; untested behavior remains a security gate.
-18. During the Stage 1 pilot, the built-in Pull request linked to issue workflow stays enabled. If it sets an issue to In Progress, record that the issue-start step was skipped as a process miss. Whether Status-writing workflows stay enabled after a reconciler exists remains for the reconciler design decision.
+18. During the Stage 1 pilot, the built-in Pull request linked to issue workflow stays enabled.
+19. Status ownership: Project Intake sets Backlog on open/reopen. The author agent records Triage when it starts the issue plan, In Progress with `basectl gh issue start <N>` only after the maintainer sets Ready and directs work, and In Review when every planned slice has a non-draft PR or reviewable non-PR evidence. The maintainer owns Ready and Done, every override and manual Status correction, and audits the agent transitions during Stage 1. The maintainer sets Ready for every issue until the Risk field exists; whether the author agent may set it for Low-risk work after that field is introduced remains open (§7.1, §21). If the linked-PR workflow sets In Progress before issue start ran, that is a process miss recorded in §5.2.
+20. An issue may return to Backlog only from Triage, when the maintainer defers its analysis. It never returns to Backlog from Ready, In Progress or In Review. A changed contract returns the issue to Triage (§5.4), and abandoned work is closed as Not planned.
+21. The five new proposals in v1.4 are accepted as follows: §10.3's flat-label mapping and no-match handling are decided; base-cli overrides Dependabot's generated `python:uv` label with `dependencies` in its own migration; the reviewer App uses comment-only reviews in Stage 1, with formal reviews requiring a ruleset test and a new maintainer decision; §12.13's interim document-homes table is adopted after correcting package numbers; and a slice may omit a PR only when it changes no repository content, with the author attaching evidence and recording In Review and the maintainer accepting it and closing the issue as Done. Escalation-view implementation and post-reconciler ownership of each Status writer remain proposed pending verification or a separate decision.
 
 ## Appendix F. Disposition of original B1–B18 items
 
@@ -1067,7 +1078,7 @@ These decisions are incorporated in the current body and supersede any inconsist
 | B11 | Accept | Path-triggered specialist passes may produce one consolidated review; there is no AI-context reviewer pass. |
 | B12 | Retire | The ADR lifecycle in §11 is authoritative. |
 | B13 | Accept | Proposed document locations are confirmed through the inventory package. |
-| B14 | Reconcile | The maintainer merges and required approvals remain zero while agents share an identity. The reviewer verifies and replies Fixed or Withdrawn at the full head SHA; the author resolves afterward. The maintainer resolves directly only when overriding, with rationale. Do not claim branch protection enforces resolution until its separate policy change ships. |
+| B14 | Reconcile | The maintainer merges; Stage 1 reviewer App reviews are comment-only and required approvals remain zero. The reviewer verifies and replies Fixed or Withdrawn at the full head SHA; the author resolves afterward. The maintainer resolves directly only when overriding, with rationale. Do not claim branch protection enforces resolution until its separate policy change ships. |
 | B15 | Accept | Ready freshness defaults to 30 days, stored in manifest governance settings. |
 | B16 | Retire | No `.github/` generator is promised before a separate implementation and ownership design. |
 | B17 | Accept | Preserve GitHub's exact `good first issue` and `help wanted` names with spaces. |
@@ -1080,7 +1091,7 @@ The rows in Appendix A remain the verbatim consolidation-era record. This table 
 | Row | Current disposition | Current design or rationale |
 |---|---|---|
 | A1 | Revise | Reviewer App role and declared tool/model/session provenance: §§13–14.6. |
-| A2 | Retain | Maintainer merge; zero required approvals while agents share one identity: §8.6. |
+| A2 | Retain | Maintainer merge; zero required approvals during Stage 1 because reviewer App reviews are comment-only: §§8.6, 14.6. |
 | A3 | Supersede | Backlog, Triage, Ready, In Progress, In Review, Done and their owners: §5. |
 | A4 | Retain | Spec stays in the issue body: §3.3. |
 | A5 | Retain | Plan stays in the issue body and is completed during Triage: §§3.3, 4.3. |
@@ -1091,9 +1102,9 @@ The rows in Appendix A remain the verbatim consolidation-era record. This table 
 | A10 | Retire | PRs do not mirror issue planning fields or become Project items: §§8.7, 10.1. |
 | A11 | Retire | Issue remains the canonical source for planning fields; use native linked-PR navigation: §§8.7, 10.1. |
 | A12 | Revise | Keep useful current PR checks and map them into the one template: §8.4. |
-| A13 | Retire | No one-time PR copy or ongoing field synchronization: §§8.7, 10.1. |
+| A13 | Revise | PRs record actual impact in the matrix and the reviewer verifies it; issue planning fields are not copied or synchronized: §§4.4, 8.4, 8.7, 10.1. |
 | A14 | Supersede | AI-context is derived after 1.15; tracked files remain until replacement ships and is proven: §12.9. |
-| A15 | Revise | Done with merged PRs is never reopened; later work receives a new linked issue: §§5.2–5.3. |
+| A15 | Revise | Only a Triage issue may return to Backlog when the maintainer defers analysis; never from Ready, In Progress or In Review. Changed contracts return to Triage; abandoned work closes as Not planned: §§5.2–5.4. |
 | A16 | Supersede | Fingerprint edits return Ready to Triage and linked PRs to draft: §§4.4, 5.4. |
 | A17 | Supersede | Foundation 1.11 followed by governance releases 1.12–1.15: §18. |
 | A18 | Supersede | The accepted v4.2 implementation plan, not the old list, sequences work: §§18, 20. |
