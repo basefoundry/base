@@ -18,7 +18,7 @@ The rollout establishes a documented, evidence-based issue and PR lifecycle acro
 
 The rollout uses the lifecycle **Backlog → Triage → Ready → In Progress → In Review → Done**. Triage remains between Backlog and Ready. Implementation-stage Status follows the accepted design's §5.2; this plan does not restate that rule. Step 3 is complete; any further proposed design change requires its own issue and PR. A user-reported bug may be fixed when needed without waiting for its governance stage; it remains issue-first and follows the failing-test-first rule, review loop, and security boundaries. The maintainer decides the release timing for that fix.
 
-Each repository configures separate issue-loop and PR-loop limits, initially three rounds each. The initial review counts as round one. Finding responses, verification, thread resolution, freshness and escalation follow DESIGN §8.5. The merge gate and Stage 1 approval policy follow §8.6. The maintainer retains merge and release authority.
+Each repository configures separate issue-loop and PR-loop limits, initially three rounds each. The initial review counts as round one. Finding responses, verification, thread resolution and freshness follow DESIGN §8.5. Disputes, unavailable required reviewers, and unresolved findings at the limit go to the maintainer. The merge gate and Stage 1 approval policy follow §8.6. The maintainer retains merge and release authority.
 
 Issue and PR reviewer independence follows DESIGN §6.1. Stage-specific reviewer identity and provenance follow §13.3; attribution limits and override audits follow §14.3. This plan does not treat GitHub account attribution as proof of which agent acted.
 
