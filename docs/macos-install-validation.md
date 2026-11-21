@@ -13,6 +13,10 @@ The checklist has two goals:
 - keep the boundary between automated CI checks and manual macOS user testing
   explicit
 
+The reusable local runner and one-time account preparation contract are
+documented in [Local macOS Install Matrix](macos-install-matrix.md). Use that
+runner for the four-account scenario evidence described below.
+
 If a checklist step exposes a missing automated check, file a focused follow-up
 issue instead of expanding this checklist into a second test suite.
 
