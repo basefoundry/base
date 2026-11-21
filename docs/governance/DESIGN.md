@@ -1,8 +1,8 @@
 # Base Governance Design
 
-**Version:** 1.4 (review draft), 20 November 2026
+**Version:** 1.4, 20 November 2026
 **Owner:** Ramesh (codeforester)
-**Status:** Revised proposal for independent review; v1.3 remains accepted until v1.4 is approved and merged
+**Status:** Accepted through PR #2699; implementation proceeds through the companion plan's issue/PR trains
 **Intended home:** `docs/governance/DESIGN.md` in `basefoundry/base`
 **Companion:** `docs/governance/IMPLEMENTATION-PLAN.md`, which sequences the proposed work
 
@@ -38,7 +38,7 @@ This design describes how Base turns proposed work into a reviewed change, keeps
 7. **Record who reviewed what.** Reviewers use a new session without the author's context. From Stage 1, the reviewer App has a distinct GitHub identity; the author agent and maintainer still use `codeforester`. Verdicts identify tools, models, sessions and the reviewed issue fingerprint or PR head SHA. Account names alone are attribution, not proof.
 8. **Roll out by evidence.** Base 1.11 is the foundation; governance stages ship in 1.12–1.15. Replacement AI-context export follows those stages, and tracked .ai-context files stay until replacement is released and proven.
 
-The contributor/agent map issue [#2681](https://github.com/basefoundry/base/issues/2681) should link here. Its current contract still requests a separate METHOD.md, so that issue must be reconciled in its own train to make the map link to this summary instead; no METHOD.md is planned. This plain-language summary is the method overview. This remains a proposal, not active policy, until v1.4 is approved and merged.
+The contributor/agent map issue [#2681](https://github.com/basefoundry/base/issues/2681) should link here. Its current contract still requests a separate METHOD.md, so that issue must be reconciled in its own train to make the map link to this summary instead; no METHOD.md is planned. This plain-language summary is the method overview.
 
 ## 1. Purpose and scope
 
