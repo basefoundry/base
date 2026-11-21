@@ -1,26 +1,26 @@
 # Base Ecosystem Governance Implementation Plan
 
-**Version:** 4.2, 15 November 2026
+**Version:** 4.3, 21 November 2026
 **Status:** Plan; each implementation step requires its own issue/PR train and maintainer authorization.
 **Owner:** Ramesh (codeforester)
-**Companion:** [Base Governance Design](DESIGN.md), currently accepted as v1.3 by [PR #2664](https://github.com/basefoundry/base/pull/2664); Step 3 below proposes a separately reviewed v1.4 update.
+**Companion:** [Base Governance Design](DESIGN.md), v1.4, accepted through [PR #2699](https://github.com/basefoundry/base/pull/2699).
 **Implementation tracker:** [#2665](https://github.com/basefoundry/base/issues/2665)
-**Plan-review issues:** [#2691](https://github.com/basefoundry/base/issues/2691) (initial adoption in [PR #2692](https://github.com/basefoundry/base/pull/2692)); [#2695](https://github.com/basefoundry/base/issues/2695) (accepted follow-up)
+**Plan-review issues:** [#2691](https://github.com/basefoundry/base/issues/2691) (initial adoption through [PR #2692](https://github.com/basefoundry/base/pull/2692)); [#2695](https://github.com/basefoundry/base/issues/2695) (accepted follow-up through [PR #2696](https://github.com/basefoundry/base/pull/2696)); [#2700](https://github.com/basefoundry/base/issues/2700) (v4.3 design-alignment follow-up)
 **Design-review record:** [#2663](https://github.com/basefoundry/base/issues/2663), closed; it is not the implementation tracker.
 
-This plan replaces v3.1 after review. Version 4.1 was adopted through #2691/#2692; this v4.2 follow-up records the later accepted decisions without changing the companion design or live implementation issues. It incorporates the v4.0 draft, the accepted decisions recorded with the design review, and the pre-Triage findings on issues #2666–#2690. It separates the 1.11 foundation from four governance releases and preserves the original scope of earlier work while that work is crosswalked.
+This plan replaces v3.1 after review. Version 4.1 was adopted through #2691/#2692; version 4.2 through #2695/#2696. This v4.3 follow-up aligns the plan with the accepted companion design v1.4 and records Step 3's completion through #2698/PR #2699; #2700 tracks this update. It incorporates the v4.0 draft, the accepted decisions recorded with the design review, and the pre-Triage findings on issues #2666–#2690. It separates the 1.11 foundation from four governance releases and preserves the original scope of earlier work while that work is crosswalked.
 
-The first plan adoption was reviewed through #2691 and merged in #2692; this accepted follow-up is tracked in #2695 and one PR. Upon that PR's merge, plan adoption is complete. Subsequent work is tracked in #2665, requires its own issue/PR train, and needs maintainer direction. This plan does not itself authorize implementation.
+The first plan adoption was reviewed through #2691 and merged in #2692; the v4.2 follow-up was tracked in #2695 and merged through #2696. This v4.3 alignment is tracked in #2700 and its PR. Subsequent work is tracked in #2665, requires its own issue/PR train, and needs maintainer direction. This plan does not itself authorize implementation.
 
 ## 1. Purpose and operating rules
 
 The rollout establishes a documented, evidence-based issue and PR lifecycle across Base and Base-supported projects. Every implementation change remains issue-backed and reviewed. A package can have several implementation issues; an issue can have several delivery slices only when the plan names each slice and its acceptance outcome. The planned slices, not the history of PR numbers, determine completion.
 
-The rollout uses the lifecycle **Backlog → Triage → Ready → In Progress → In Review → Done**. Triage remains between Backlog and Ready. Derive implementation-stage Status from the approved delivery slices and evidence using the accepted design's §5.2 rules; this plan does not restate or redefine those rules. Any proposed change belongs in the separate design revision in §3, Step 3. A user-reported bug may be fixed when needed without waiting for its governance stage; it remains issue-first and follows the failing-test-first rule, review loop, and security boundaries. The maintainer decides the release timing for that fix.
+The rollout uses the lifecycle **Backlog → Triage → Ready → In Progress → In Review → Done**. Triage remains between Backlog and Ready. Implementation-stage Status follows the accepted design's §5.2; this plan does not restate that rule. Step 3 is complete; any further proposed design change requires its own issue and PR. A user-reported bug may be fixed when needed without waiting for its governance stage; it remains issue-first and follows the failing-test-first rule, review loop, and security boundaries. The maintainer decides the release timing for that fix.
 
-Each repository configures separate issue-loop and PR-loop limits, initially three rounds each. The initial review counts as round one. An author responds to every finding; the reviewer verifies and resolves findings that are addressed or correctly challenged. Disputes, unavailable required reviewers, and unresolved findings at the limit go to the maintainer. A PR verdict names the full head SHA. A new code push requires a fresh review; a narrowly verified base-only update can use the exception in the accepted design. Required approving reviews remain zero while author and reviewer share one GitHub identity. The maintainer retains merge and release authority.
+Each repository configures separate issue-loop and PR-loop limits, initially three rounds each. The initial review counts as round one. Finding responses, verification, thread resolution, freshness and escalation follow DESIGN §8.5. The merge gate and Stage 1 approval policy follow §8.6. The maintainer retains merge and release authority.
 
-A review uses a separate agent in a genuinely new session with no author transcript or persistent authoring memory. Repository configuration may require a different AI tool. Base ecosystem repositories default to `different-tool`; Base-supported projects default to `fresh-session`. If a configured different tool is unavailable, the work waits or escalates; it does not silently fall back to the author's tool. Verdicts record author and reviewer tool, model, and session. With one shared GitHub account, thread-resolution identity and overrides are manually audited; the plan does not claim GitHub enforces identities it cannot distinguish.
+Issue and PR reviewer independence follows DESIGN §6.1. Stage-specific reviewer identity and provenance follow §13.3; attribution limits and override audits follow §14.3. This plan does not treat GitHub account attribution as proof of which agent acted.
 
 Every issue and PR uses the ten documentation-impact categories in the design. Each category names a destination or an evidence-based no-impact reason. Each implementation PR supplies a release-note line or a reasoned `none`. Every user-found bug gets a failing test before its fix unless the PR explains why a test is not possible; the pilot counts these exceptions. Any meaningful process change updates all documents that describe that process in the same PR.
 
@@ -83,6 +83,8 @@ Use a separately reviewed design issue/PR to align `DESIGN.md` with this plan an
 - Keep the issue fingerprint and slice plan consistent with the approved contract; material edits or a changed Issue Type stale Ready approval.
 - Keep public community-support intake distinct from the internal Triage status.
 - Keep the accepted ADR lifecycle. Package 23 inventories documents and identifies durable-decision candidates; package 1 (#2666, Stage 1) establishes the ADR template/index and performs the approved migration. `.ai-context/DECISIONS.md` remains maintained until then.
+
+Step 3 complete: #2698 was implemented through PR #2699. The accepted DESIGN v1.4 governs where this brief differs, including thread resolution.
 
 ### Step 4: redefine Base areas — package 22
 
@@ -289,9 +291,9 @@ Base-supported projects do not need a new `governance/` folder and do not inheri
 
 1. The PR links one issue and names one planned slice. A single-PR train may use `Fixes #N`; a slice uses `Part of #N`. Draft PRs keep the issue In Progress.
 2. A separate reviewer reads the issue, slice, current PR diff, tests, documentation, and versioned rules in a new session. It records the full head SHA, author/reviewer tool, model and session, rules version, findings and round.
-3. The author responds to each finding with the fix or a challenge and evidence. The reviewer checks the response and resolves the thread if addressed or justified. A challenged finding that remains disputed goes to the maintainer. Changed code starts the next review round.
+3. Authors and reviewers follow DESIGN §8.5 for finding responses, verification, thread resolution and disputes. Changed code starts the next review round.
 4. A base-only update skips a round only under the exact verified `git range-diff` and merge-diff criteria in the accepted design; any uncertainty, conflict-resolution addition or changed non-merge commit requires a full review.
-5. When no actionable finding remains, the reviewer posts `Verdict: Approved at <full-head-SHA>`. The loop relies on this process verdict; design v1.4 decides whether the reviewer App also submits it as a formal GitHub review. Required approving reviews stay zero.
+5. When no actionable finding remains, the reviewer posts `Verdict: Approved at <full-head-SHA>`. Stage 1 App behavior and the formal review gate follow DESIGN §14.6 and Appendix E decision 21. Required approving reviews stay zero under §8.6.
 6. The maintainer checks the verdict SHA, checks, findings/resolutions, impact evidence, and release-note disposition, then merges. At the configured round limit, unresolved findings go to the maintainer; nothing approves by timeout.
 
 ### 7.3 Pilot evidence
@@ -352,10 +354,9 @@ The plan deliberately does not invent decisions that belong in the package contr
 - the path for the shared area-map artifact;
 - exact export provider CLIs, non-interactive flags, consent and data disclosure;
 - how the single work-item form and Triage set category labels while blank/API intake remains possible;
-- whether Dependabot-generated labels are exempt from the flat-label rule or overridden;
-- the `needs decision` Project view implementation after confirming label-filter support in `createProjectV2View`;
+- the proposed `needs decision` Project-view method in DESIGN §10.3, including scratch-Project verification before a change to Base Project #10;
 - the public support-to-Triage handoff and public term chosen by #2671;
-- the full #2555 disposition for controller Status ownership, one versus multiple ledgers, controller levels, authoring authority, MCP/retrieval timing, and the scope of agent-loop work included in governance;
+- the original #2555 controller and agent-loop scope, with open questions recorded in DESIGN §21 O14 (Status ownership, one or several ledgers, controller levels, authoring authority, and MCP/retrieval timing);
 - any issue-specific fields, dependency corrections, release note behavior and local milestone assignments identified in Claude's comments.
 
 No issue moves to Ready with an unresolved blocking question. No design change is smuggled into an implementation package; if the accepted design must change, it gets its own issue, decision record and PR.
