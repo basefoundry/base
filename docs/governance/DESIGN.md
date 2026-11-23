@@ -1,12 +1,12 @@
 # Base Governance Design
 
-**Version:** 1.4, 20 November 2026
+**Version:** 1.5, 24 November 2026
 **Owner:** Ramesh (codeforester)
-**Status:** Accepted through PR #2699; implementation proceeds through the companion plan's issue/PR trains
+**Status:** Proposed v1.5; v1.4 remains active until this PR is accepted and merged
 **Intended home:** `docs/governance/DESIGN.md` in `basefoundry/base`
 **Companion:** `docs/governance/IMPLEMENTATION-PLAN.md`, which sequences the proposed work
 
-**Sources consolidated:** Base Direction Memo v12 (19 Oct 2026); Base Working Notes Parts 1–37 (22 Oct–2 Nov 2026); the supplied governance drafts (3 Nov 2026); current Base workflow, configuration, review and documentation contracts; Ramesh's clarifications (7–19 Nov 2026); and accepted implementation plan v4.2.
+**Sources consolidated:** Base Direction Memo v12 (19 Oct 2026); Base Working Notes Parts 1–37 (22 Oct–2 Nov 2026); the supplied governance drafts (3 Nov 2026); current Base workflow, configuration, review and documentation contracts; Ramesh's clarifications (7–22 Nov 2026); and accepted implementation plan v4.4.
 
 ### How to read this document
 
@@ -34,7 +34,7 @@ This design describes how Base turns proposed work into a reviewed change, keeps
 3. **Review each change in a loop.** Issue and PR loops have separate repository settings, each initially limited to three rounds. Authors answer every finding. Reviewers verify the answer and identify the exact revision; authors resolve confirmed or withdrawn threads. Disputes and exhausted loops go to the maintainer.
 4. **Carry lasting facts into the repository.** Issues identify documentation and decision impacts. PRs update the relevant design, user guidance, reference, tests, examples, operations and release-note record before merge.
 5. **Give every status an owner.** Project Intake sets Backlog on open/reopen; the author agent records Triage when it starts the issue plan, In Progress after the maintainer authorizes work, and In Review when each slice has reviewable evidence. The maintainer owns Ready and Done, plus overrides and manual corrections. Stage 1 audits the agent transitions and observes existing writers; post-reconciler ownership remains open until its design and rollback are approved.
-6. **Use GitHub fields for distinct purposes.** Issue Type classifies the work; Project fields track it; labels remain flat cross-cutting tags; milestones plan releases; relationships express dependencies and decomposition. Issue fields are not copied to PRs.
+6. **Use GitHub fields for distinct purposes.** Issue Type classifies work. Organization-wide planning fields live on issues; Status and per-repository Area and Initiative remain Project fields. Labels are flat cross-cutting tags, milestones plan releases, and relationships express dependencies and decomposition. Issue fields are never copied to PRs.
 7. **Record who reviewed what.** Reviewers use a new session without the author's context. From Stage 1, the reviewer App has a distinct GitHub identity; the author agent and maintainer still use `codeforester`. Verdicts identify tools, models, sessions and the reviewed issue fingerprint or PR head SHA. Account names alone are attribution, not proof.
 8. **Roll out by evidence.** Base 1.11 is the foundation; governance stages ship in 1.12–1.15. Replacement AI-context export follows those stages, and tracked .ai-context files stay until replacement is released and proven.
 
@@ -191,7 +191,7 @@ Base-specific practices that need evidence in the pilot include required indepen
 
 ### 4.2 Single issue form and Ready contract — DECIDED
 
-Use one planned-work form with the same sections in the same order for every planned issue, regardless of Type or size. It is an intake aid, not the enforcement boundary: blank issues, CLI/API issue creation and connectors can bypass forms, so readiness validates the issue body and its current native Type. Keep public support intake and private security advisories separate from planned work.
+Use one planned-work form with the same sections in the same order for every planned issue, regardless of Type or size. It is an intake aid, not the enforcement boundary: blank issues, CLI/API issue creation and connectors can bypass forms, so readiness validates the issue body, its current native Type and the required native metadata. Keep public support intake and private security advisories separate from planned work.
 
 The form migration preserves useful information in today's sources:
 - .github/ISSUE_TEMPLATE/bug_report.yml: version/commit, environment, reproduction, expected/actual behavior and secret-redaction guidance move into Problem and evidence.
@@ -201,15 +201,18 @@ The form migration preserves useful information in today's sources:
 - .github/ISSUE_TEMPLATE/support.yml and config.yml: remain separate support and private-security entry paths; support questions route to the organization Discussions forum and support is not internal Triage.
 - Existing `bug:`, `feature:`, `docs:`, `[Implementation]:`, and `support:` title prefixes are removed by the separately planned title policy. A category label is not a native Issue Type.
 
-| Section | Required by Ready |
-|---|---|
-| **Problem** | What is missing or wrong, who is affected, and supporting evidence. A Bug includes reproduction steps and actual versus expected behavior. |
-| **Expected behavior** | Numbered, observable acceptance criteria; use “When …, then …” where it clarifies the contract. |
-| **Scope and non-goals** | Intended boundaries and explicit exclusions. |
-| **Affected areas** | Each product area touched, with a short explanation. |
-| **Impact and evidence** | For every canonical category in §12.10, name the expected file/section or state “No impact” with an evidence-based reason. Category 6 maps tests and acceptance checks to criteria and explains exclusions. “Unknown: reason” is allowed during Backlog and Triage, not at Ready. |
-| **Open questions** | Questions blocking Ready; do not guess. |
-| **Plan** | Fixed subheadings Approach, Rejected alternative and Risks, plus delivery slices, exact file/section changes, decision impact and validation. |
+| Section | At intake (reporter) | At Ready (planner) | Type-specific content |
+|---|---|---|---|
+| **Problem** | Required | Required | **Bug:** version or commit, environment, reproduction steps, and actual versus expected behavior, all required at intake. **Feature:** who needs it and why. |
+| **Expected behavior** | Optional | Numbered, observable criteria | **Bug:** running the reproduction gives the expected result, and the regression test is named. |
+| **Scope and non-goals** | Optional | Required | — |
+| **Affected areas** | — | Required | — |
+| **Impact and evidence** | — | All ten §12.10 categories | The light path keeps its reduced detail. |
+| **Open questions** | Optional | Required; “None” allowed, and nothing blocking | — |
+| **Plan** | — | Approach, Rejected alternative, Risks, slices, validation | **Bug:** failing-test-first evidence, or why a test can't capture the bug. **Feature:** a real rejected alternative. Bug and Task may write “None: reason” under Rejected alternative. |
+| **Assisted-by** | Optional | Required | One line per AI assistant, or `Assisted-by: none` for human-only work (§13.3). |
+
+The issue body has no separate **Project Fields** or **Agent Assignment** sections. At Ready, the checker reads the current native Type, Priority and Effort from the repository's configured source, Area, the native assignee, and the Assisted-by line. It also requires Risk tier whenever the repository's field-source setting is set (§§4.4, 10.2).
 
 At Ready, the checker evaluates the issue's current native Type. Changing Type after Ready is a substantive contract edit and makes the verdict stale. Every user-found bug gets a failing test before its fix unless a test genuinely cannot capture it; the implementation PR explains why, and the pilot counts these exceptions.
 
@@ -221,7 +224,7 @@ The plan names delivery slices `S1`, `S2`, … and the outcome of each. A slice 
 
 ### 4.4 Readiness and issue approval — PROPOSED
 
-The future readiness command validates the common section order, non-empty Problem and Expected behavior, current Type-specific requirements, affected areas, every impact disposition, test/acceptance mapping in category 6, delivery slices and open questions. A Bug always requires reproduction steps in the issue. The test-impossibility exception applies only to the failing-test rule for implementation PRs (§17.2). A proposed Risk tier must be present when the field is introduced; area floors remain deferred until the field and pilot exist.
+The future readiness command validates the common section order, non-empty Problem and Expected behavior, current Type-specific requirements, affected areas, every impact disposition, test/acceptance mapping in category 6, delivery slices, open questions and required native metadata. It reads Priority and Effort from the repository's configured field source, Area from its Project field, the native assignee, and the Assisted-by line. Risk tier is required whenever the repository's field-source setting is set (§10.2). A Bug always requires reproduction steps in the issue. The test-impossibility exception applies only to the failing-test rule for implementation PRs (§17.2); area floors remain deferred until the field and pilot exist.
 
 The Ready fingerprint covers the exact text of:
 - Problem;
@@ -244,6 +247,14 @@ Vulnerability reports go through private advisories, not public issues. Follow-u
 ### 4.6 Creating issues — DECIDED
 
 Conversation may produce an issue through the chosen AI tool or `basectl gh issue create`. Repository issue/PR operations do not invoke AI services. The explicit exception is the approved `basectl export-context` design: it may invoke a user-selected installed provider CLI under §12.9's privacy and security controls. The issue creator proposes no undocumented policy; the independent reviewer checks the issue against current docs and decisions.
+
+### 4.7 Existing issues — DECIDED
+
+- **Closed issues** keep their bodies. Their field values are copied once as part of the migration in §10.2.
+- **Open issues** convert to the §4.2 form when they are next prepared for Ready. Before rewriting a body, post the original text as a comment.
+- **Already-approved issues:** an issue at Ready or later when the form ships finishes under the contract it was approved with.
+- **Cleanup sweep:** before 1.13 ships, convert every remaining open old-format issue or close it as Not planned. After the sweep, readiness only needs to support the current form.
+- **Before #2667 ships:** 1.11 issues keep the headings the current readiness check requires, plus §4.2's content.
 
 ## 5. Lifecycle
 
@@ -326,15 +337,15 @@ A maintainer owns the Ready transition during the manual pilot and sets it for e
 
 ### 7.1 Risk tiers — PROPOSED
 
-Use **Low, Medium, High** to choose review intensity and maintainer involvement. A new Project Risk tier field is required; it does not exist today. The initial field proposal has plain-language descriptions and examples, and the planner proposes a tier from blast radius and reversibility. Reviewers may raise it; only a maintainer may lower it. The maintainer sets Ready for every issue until the Risk field exists. When it is introduced, whether the author agent may set Ready for Low-risk work after a current Ready verdict is an open decision (§21). Do not add per-area minimum tiers until the field is live and pilot data shows those floors are useful. The new field and its migration are a separately sized package.
+Use **Low, Medium, High** to choose review intensity and maintainer involvement. Risk tier is an organization-wide issue field, required at Ready in every repository whose field-source setting is set (§10.2). The field has plain-language descriptions and examples; the planner proposes a tier from blast radius and reversibility. Reviewers may raise it; only a maintainer may lower it. The maintainer sets Ready for every issue until the Risk field exists. When it is introduced, whether the author agent may set Ready for Low-risk work after a current Ready verdict remains an open decision (§21). Do not add per-area minimum tiers until the field is live and pilot data shows those floors are useful.
 
 ### 7.2 Priority — DECIDED
 
-Use **P1–P4** only for scheduling urgency: P1 urgent/highest, P2 high, P3 normal, and P4 lowest/opportunistic. These values create no response-time or service-level promise. The current Project uses P0–P3; package 8 migrates it one step (P0→P1, P1→P2, P2→P3, P3→P4), preserving meaning and recording before/after counts. The live Project field is authoritative; old Priority prose remains historical.
+Use **Urgent, High, Medium, Low** only for scheduling urgency; these values create no response-time or service-level promise. Package 8 maps the current Project values P0→Urgent, P1→High, P2→Medium and P3→Low, preserving meaning and recording before/after counts. The issue field is authoritative after a repository's migration; the repository's field-source setting governs the transition and rollback (§10.2).
 
 ### 7.3 Priority and risk are independent — DECIDED
 
-Priority describes when work should happen; Risk describes review and safety treatment. A P4 may still be High risk, and a P1 may be Low risk. Neither field is copied to PRs.
+Priority describes when work should happen; Risk describes review and safety treatment. Low priority may still be High risk, and Urgent priority may be Low risk. Neither field is copied to PRs.
 
 ## 8. Pull requests
 
@@ -352,7 +363,7 @@ A draft PR is implementation in progress. It does not count toward In Review. Th
 
 ### 8.4 Pull request template — DECIDED
 
-Use one PR template with these sections: Summary; linked issue and slice; plan/acceptance trace; the impact-and-evidence matrix using exact §12.10 categories; risk, rollback and notes; and a release-note entry or reasoned none. Category 6 carries validation commands/results and test exclusions, so it does not create a second validation section. Decision records, demos/examples, docs and the current .ai-context transition are handled in the common matrix. Do not ask authors to copy Project fields from the linked issue.
+Use one PR template with these sections: Summary; linked issue and slice; plan/acceptance trace; the impact-and-evidence matrix using exact §12.10 categories; Risk, rollback and reviewer notes; and a release-note entry or reasoned none with the breaking/action-required marker from §12.10. In Risk, rollback and reviewer notes, say where review should start and what was not verified; `Not verified: nothing` is valid when all relevant behavior was checked. Every PR body also carries one `Assisted-by` line per AI assistant, or `Assisted-by: none` for human-only work (§13.3). Category 6 carries validation commands/results and test exclusions, so it does not create a second validation section. Decision records, demos/examples, docs and the current .ai-context transition are handled in the common matrix. Do not ask authors to copy Project fields from the linked issue.
 
 The current .github/pull_request_template.md already asks for issue linkage, validation commands, tests, bug regression proof, documentation, AI-context disposition, demo impact and release-note linkage. Keep those useful checks in the revised sections; replace the old Closes-only wording with the single-issue Fixes #N or multi-PR Part of #N rule. Until the context replacement ships and tracked .ai-context is removed in separate trains, retain an explicit impact disposition for it. The generator/CLI PR-body contract in base_manifest.yaml must converge on the same required sections.
 
@@ -368,7 +379,7 @@ Required approving reviews remain **0** during Stage 1 because the reviewer App 
 
 ### 8.7 Project fields and linked PRs — DECIDED
 
-Issues are the canonical Project items for Status, Priority, Size, Area, Risk tier, and Initiative. Milestone is native issue metadata, not a Project field to copy. Do not create PR Project items or copy issue fields onto PRs. Use GitHub's native linked-pull-request view and issue relationships. A PR retains its title, author, branch, checks, review state, slice identifier and release evidence.
+Issues are the canonical records. Priority, Effort, Risk tier, Start date and Target date live in issue fields; Status, Area and Initiative remain Project fields. During migration or rollback, the repository's field-source setting controls which Priority and Effort values `basectl` and Project Intake use (§10.2). Milestone is native issue metadata, not a Project field to copy. Do not create PR Project items or copy issue fields onto PRs. Use GitHub's native linked-pull-request view and issue relationships. A PR retains its title, author, branch, checks, review state, slice identifier and release evidence.
 
 ## 9. Reviewer rule sets
 
@@ -395,8 +406,8 @@ Existing language-specific and architectural rules remain in their canonical sta
 | GitHub feature | Canonical purpose | Base use |
 |---|---|---|
 | **Issue Type** | Classifies the kind of work | Native `Task`, `Bug`, `Feature` today; assess any additional types only through a separate migration. |
-| **Project fields** | Operational tracking across issues | Status, Priority, Size, Area, Initiative, and proposed Risk tier. Issues remain the Project items. |
-| **Issue Fields** | Organization-level structured metadata, where configured | Not a second copy of Project fields. Revisit only through a dedicated migration with a source-of-truth and retirement plan. |
+| **Project fields** | Operational tracking and per-repository workflow | Status, Area and Initiative. Priority and Size remain here only while a repository's source setting is unset or as the one-release rollback fields in §10.2. |
+| **Issue Fields** | Organization-wide structured metadata on issues | Priority, Effort, Risk tier, Start date and Target date. All five fields are Public and pinned to every Issue Type. Each repository's `.github/base-project.yml` selects which source `basectl` and Project Intake use; see §10.2. |
 | **Labels** | Cross-cutting tags and repository workflow signals | Current category labels drive branch policy; other labels such as `good first issue` and `help wanted` remain plain labels. |
 | **Milestone** | Release planning | Native issue milestone; not copied to PR Project fields. |
 | **Relationships** | Work hierarchy and dependencies | Use sub-issues for real decomposition and native blocked-by relationships for dependencies; do not use labels as a substitute when native relationships fit. |
@@ -404,18 +415,29 @@ Existing language-specific and architectural rules remain in their canonical sta
 
 ### 10.2 Field meanings and current schema — DECIDED
 
-| Field | Current/target state | Meaning |
-|---|---|---|
-| **Status** | Current Project field; target order changes | Work lifecycle and ownership defined in §5. |
-| **Priority** | Current Project field; target P1–P4 migration | Scheduling urgency, independent of risk. |
-| **Size** | Current Project field | Relative implementation effort. |
-| **Area** | Current Project field; redesigned in package 22 | Product/ownership surface. Shared defaults are in cli/python/base_github_projects/project_model.py; repository-specific additions and issue defaults are in .github/base-project.yml. |
-| **Initiative** | Current Project field | A multi-milestone effort with a durable initiative document. |
-| **Risk tier** | Does not exist today; proposed new Project field | Low/Medium/High review and safety intensity. |
-| **Milestone** | Native issue milestone | Repository-local release or planning window. |
-| **Issue Type** | Native issue Type: Task, Bug, Feature | Classifies work; it is not a category label. |
+| Field | Home and source | Values and meaning | Required |
+|---|---|---|---|
+| **Priority** | Issue field after the repository selects it; Project field while unset or in rollback | Urgent, High, Medium, Low. Scheduling urgency, independent of risk. Migration: P0→Urgent, P1→High, P2→Medium, P3→Low. | At Ready after migration. |
+| **Effort** (replaces Size) | Issue field after the repository selects it; legacy Project field while unset or in rollback | Tiny, Small, Medium, Large. Relative implementation effort. Migration: T→Tiny, S→Small, M→Medium, L→Large. | At Ready after migration. |
+| **Risk tier** | Issue field | Low, Medium, High review and safety intensity. | At Ready whenever the repository's field-source setting is set. |
+| **Start date** | Issue field | Date; `basectl gh issue start` fills it only when empty. | No. |
+| **Target date** | Issue field | Date for a real commitment only. | No. |
+| **Status** | Project field | Work lifecycle and ownership defined in §5. | Per §5. |
+| **Area** | Project field | Product/ownership surface; redesigned in package 22. Shared defaults are in `cli/python/base_github_projects/project_model.py`; repository-specific additions and issue defaults are in `.github/base-project.yml`. | At Ready. |
+| **Initiative** | Project field | A multi-milestone effort with a durable initiative document. | No. |
+| **Milestone** | Native issue milestone | Repository-local release or planning window. | No. |
+| **Issue Type** | Native issue Type: Task, Bug, Feature | Classifies work; it is not a category label. | At Ready. |
 
-Package 22 remaps Area options in the 1.11 foundation before package 8 migrates the Base Project schema in 1.12. Package 8 inventories the Base Project template and live items; the independent Priority/Risk slice may happen first. Complete package 25 (#2671) before changing Status order in #2672. For each migration, record a reversible before-state and counts; never copy issue fields to PRs. The organization-level Issue Fields feature is not a duplicate source for Project fields.
+**Migration and source of truth (D2).** Package 8 migrates Base Project #10 and its template, Project #7. First export the before-state, then write issue-field values for every Project #10 item (open and closed), read them back and compare counts; test the procedure on `basefoundry/app-scratch` first. The issue field is the source of truth from each repository's migration onward. The unused Project `Target date` fields are deleted during migration. Keep the legacy Project Priority and Size fields for one release as rollback fields, renamed `Legacy priority` and `Legacy size` and hidden from views. A follow-up deletes them after that release using §10.3's export-first rule.
+
+Each repository's `.github/base-project.yml` field-source setting tells `basectl` and Project Intake which fields to use:
+- **Not set (default):** preserve current behavior. Priority and Size come from Project fields; no Risk tier or dates are read. Other `basefoundry` repositories remain here until their own migration.
+- **Issue fields:** Priority, Effort, Risk tier and dates come from issue fields.
+- **Project fields (rollback only):** Priority and Effort come from the legacy Project fields; Risk tier and dates continue to come from issue fields.
+
+Only Priority and Effort have homes in both systems. Risk tier and dates have no Project-field counterpart; whenever the setting is set, readiness requires Risk tier in both the issue-field and rollback states. `basectl repo configure` writes the issue-field setting for a new repository configured from the migrated template, whose Project has no Priority or Size fields. The Project-field path is temporary: after Stage 4, a later release removes it once all eleven repositories use issue fields; the preceding release carries the deprecation note. Until then, two code paths and their tests are accepted. Do not auto-detect organization fields, switch all repositories at once, or write both homes.
+
+Package 22 remaps Area options in the 1.11 foundation before package 8 migrates the Base Project schema in 1.12. Complete package 25 (#2671) before changing Status order in #2672. For each migration, record a reversible before-state and counts; never copy issue fields to PRs.
 
 ### 10.3 Areas, labels, and views — DECIDED
 
@@ -425,7 +447,7 @@ Today, cli/python/base_github_projects/project_model.py defines shared defaults 
 
 Map area: docs to the current Area Docs and area: runtime to Runtime. There is no current Area named Release or Community, so area: release and area: community have no automatic mapping. Keep those labels and current Area values on open items until package 22 supplies an approved active option or a maintainer selects an existing valid Area with a recorded rationale. Then remove the legacy label. Stop assigning retired labels, remove them from open issues after mapping, and preserve their associations on closed issues. Do not delete a repository label if that erases closed-issue history.
 
-Project field-option retirement is separate: first move every open item carrying the old option to an active option. Prefer keeping the unused option as retired; if deleting it is necessary, export and preserve the item/value mapping first, and state that GitHub clears the option from both open and closed items. A value remap such as P0→P1 is a migration, not retirement. Before deleting any Project option, verify the backup and rollback map.
+Project field-option retirement is separate: first move every open item carrying the old option to an active option. Keep the legacy Project Priority and Size fields, renamed `Legacy priority` and `Legacy size` and hidden from views, for one release as rollback; after that release, delete them in a follow-up using the export-first procedure. Prefer keeping other unused options as retired; if deleting one is necessary, export and preserve the item/value mapping first, and state that GitHub clears the option from both open and closed items. A value remap such as P0→Urgent is a migration, not retirement. Before deleting any Project option, verify the backup and rollback map.
 
 Dependabot's generated python:uv label is not an exception to the flat-label rule. Override it in base-cli/.github/dependabot.yml with the existing plain dependencies label; verify that config in its own migration.
 
@@ -590,7 +612,7 @@ The issue and PR use one ordered list. Each category names canonical destination
 7. **Examples and downstream use:** demos, samples and Base-supported consumer guidance.
 8. **Governance and contributor process:** issue/PR templates, contribution/review instructions, maintainer procedure and .ai-context while tracked.
 9. **Decision records:** new, changed or superseded ADRs and index.
-10. **Release notes:** a user-facing PR line or reasoned none; accepted lines are checked and assembled during release preparation.
+10. **Release notes:** a user-facing PR line or reasoned none; every entry states `Breaking / action required: yes` or `no`, and a `yes` entry names the user action. Accepted lines are checked and assembled during release preparation.
 
 Current-practice crosswalk for the planned migration:
 | Current source | Keep / revise / retire | Destination and useful requirement retained |
@@ -649,7 +671,20 @@ Git author/committer identity follows repository contribution rules. GitHub comm
 
 ### 13.3 Verdict provenance — DECIDED
 
-Every verdict records author tool/model/session, reviewer tool/model/session, date, reviewed contract fingerprint or full PR head SHA, result and findings. The reviewer session is new and has no author transcript or persistent authoring memory; configured different-tool policy adds a distinct-tool requirement. Verdicts are declared evidence, not cryptographic attestation. During the 1.11 shared-account pilot, the maintainer audits provenance and the thread-resolution sequence. From Stage 1, the App identity separates the reviewer from the author/maintainer account, but GitHub still cannot distinguish author-agent activity from maintainer activity through `codeforester`.
+Every issue and PR body carries one `Assisted-by: AGENT_NAME:MODEL_VERSION` line per AI assistant, or `Assisted-by: none` for human-only work.
+
+| Element | Rule | Example |
+|---|---|---|
+| `AGENT_NAME` | The assistant's product name, hyphenated | `Claude-Code`, `Codex` |
+| `MODEL_VERSION` | The exact model ID the tool reports or is configured with | `claude-opus-5-5` |
+| Optional tools | Space-separated analysis tools | `Assisted-by: Claude-Code:claude-opus-5-5 shellcheck` |
+| Several assistants | One line per AI assistant | — |
+| Human-only work | Use `none` | `Assisted-by: none` |
+| Location | Issue body and PR body | — |
+
+Session IDs remain in the verdict, not the body line. Commit trailers remain as each tool adds them. The reviewer checks the verdict's author tool and model against the line. The line and verdict are declared evidence, not cryptographic proof.
+
+Every verdict record includes author tool/model/session, reviewer tool/model/session, date, reviewed contract fingerprint or full PR head SHA, result and findings. The reviewer session is new and has no author transcript or persistent authoring memory; configured different-tool policy adds a distinct-tool requirement. Verdicts are declared evidence, not cryptographic attestation. During the 1.11 shared-account pilot, the maintainer audits the verdict record and thread-resolution sequence. From Stage 1, the App identity separates the reviewer from the author/maintainer account, but GitHub still cannot distinguish author-agent activity from maintainer activity through `codeforester`.
 
 ## 14. Enforcement
 
@@ -822,7 +857,7 @@ There is no feature freeze and no fixed calendar schedule. Base 1.11 is the foun
 
 | Release | Stage | Intent and work |
 |---|---|---|
-| **1.12** | Stage 1: manual loops | Establish ADR/document contracts and templates, repository config, reviewer rules, baseline, manual readiness and issue/PR review loops. Migrate the Base Project schema (package 8), enable conversation resolution, and use the dedicated reviewer App for comment-only reviews. Run real issue and PR pilots. |
+| **1.12** | Stage 1: manual loops | Establish ADR/document contracts and templates, repository config, reviewer rules, baseline, manual readiness and issue/PR review loops. Migrate Base issue fields (#2704; package 8) and change Status order and meaning (#2672), enable conversation resolution, and use the dedicated reviewer App for comment-only reviews. Run real issue and PR pilots. |
 | **1.13** | Stage 2: deterministic checks | Implement readiness, PR contract, slice Status reconciliation and round ledger; dry-run, then warn-only rules and audited override. |
 | **1.14** | Stage 3: drift checks and read-only review | Pin the released checker, run per-kind drift checks and the least-privilege read-only reviewer after security gates. Demonstrate rollback. |
 | **1.15** | Stage 4: organization adoption | Adopt Base profile, organization templates and repository-local profiles across all basefoundry repositories, including consumer defaults in banyanlabs; migrate open titles after prerequisites. Each repository uses its own release system. |
@@ -1035,9 +1070,9 @@ Public sources behind the choices in this document:
 
 Internal sources: Base Direction Memo v12; Base Working Notes Parts 1–37; Base Governance Implementation Plan (2 Nov 2026); Base Documentation Governance — Working Draft for 1.11 (Codex, 21 Oct 2026).
 
-## Appendix E. Maintainer clarifications recorded 8–20 November 2026
+## Appendix E. Maintainer clarifications recorded 8–22 November 2026
 
-These decisions are incorporated in the current body and supersede any inconsistent statement in the earlier 3 November appendices. Items 17–21 record later maintainer decisions.
+These decisions are incorporated in the current body and supersede any inconsistent statement in the earlier 3 November appendices. Items 17–21 record the November 2026 governance clarifications; items 22–29 record D1–D7 from 21 November and D2's rollback amendment from 22 November.
 
 1. Keep Triage between Backlog and Ready, and use separate repository-owned issue and PR round limits, each initially three.
 2. Draft PRs keep the issue In Progress. Use delivery slices rather than fixed PR numbers. In Review requires reviewable evidence for every slice; Done requires every slice merged or an explicit maintainer-approved terminal disposition.
@@ -1060,6 +1095,14 @@ These decisions are incorporated in the current body and supersede any inconsist
 19. Status ownership: Project Intake sets Backlog on open/reopen. The author agent records Triage when it starts the issue plan, In Progress with `basectl gh issue start <N>` only after the maintainer sets Ready and directs work, and In Review when every planned slice has a non-draft PR or reviewable non-PR evidence. The maintainer owns Ready and Done, every override and manual Status correction, and audits the agent transitions during Stage 1. The maintainer sets Ready for every issue until the Risk field exists; whether the author agent may set it for Low-risk work after that field is introduced remains open (§7.1, §21). If the linked-PR workflow sets In Progress before issue start ran, that is a process miss recorded in §5.2.
 20. An issue may return to Backlog only from Triage, when the maintainer defers its analysis. It never returns to Backlog from Ready, In Progress or In Review. A changed contract returns the issue to Triage (§5.4), and abandoned work is closed as Not planned.
 21. The five new proposals in v1.4 are accepted as follows: §10.3's flat-label mapping and no-match handling are decided; base-cli overrides Dependabot's generated `python:uv` label with `dependencies` in its own migration; the reviewer App uses comment-only reviews in Stage 1, with formal reviews requiring a ruleset test and a new maintainer decision; §12.13's interim document-homes table is adopted after correcting package numbers; and a slice may omit a PR only when it changes no repository content, with the author attaching evidence and recording In Review and the maintainer accepting it and closing the issue as Done. Escalation-view implementation and post-reconciler ownership of each Status writer remain proposed pending verification or a separate decision.
+22. (21 Nov) **D1, field homes.** Organization-wide Priority, Effort, Risk tier, Start date and Target date are issue fields; Status, Area and Initiative remain Project fields. This reverses item 4 for those fields. The five issue fields are Public and pinned to every Issue Type; issue fields are never copied to PRs.
+23. (21 Nov) **D2, migration and retirement.** Map Priority P0/P1/P2/P3 to Urgent/High/Medium/Low and Size T/S/M/L to Effort Tiny/Small/Medium/Large. Export, backfill every open and closed Base Project #10 item, read back and compare counts, testing first on `basefoundry/app-scratch`. Issue fields become the source of truth after each repository migrates. Keep renamed, hidden legacy Priority and Size Project fields for one release as rollback; delete them afterward through the export-first rule. Delete the unused Project Target date fields during Base migration.
+24. (22 Nov) **D2 amendment, repository field source.** `.github/base-project.yml` selects the source used by `basectl` and Project Intake: unset preserves current Project Priority/Size behavior and reads no Risk/dates; `issue fields` uses issue fields for Priority, Effort, Risk and dates; `Project fields` is rollback-only for Priority/Effort while Risk/dates remain issue fields. Risk is required at Ready in either configured state. New repositories configured from the migrated template use issue fields. Remove the Project-field code path in a later release after Stage 4 and all eleven migrations; the preceding release notes its deprecation.
+25. (21 Nov) **D3, assistant disclosure.** Every issue and PR body carries one `Assisted-by: AGENT_NAME:MODEL_VERSION` line per assistant or `Assisted-by: none`. The verdict remains the named provenance record and contains sessions; the reviewer checks the author tool/model against the line. The line is declared evidence, not proof.
+26. (21 Nov) **D4, breaking changes.** Each release-note entry says `Breaking / action required: yes` or `no`; a `yes` entry states the user action.
+27. (21 Nov) **D5, reviewer notes.** Rename the PR template section to “Risk, rollback and reviewer notes”; it includes where to start review and what was not verified, with “Not verified: nothing” allowed.
+28. (21 Nov) **D6, issue form and Ready metadata.** Keep one form and the same sections for every Type; Type changes section content, not section order. Do not add Project Fields or Agent Assignment body sections: readiness reads native Type, configured Priority/Effort sources, Area, assignee and Assisted-by, and requires Risk whenever the source setting is set.
+29. (21 Nov) **D7, existing issues.** Closed issue bodies remain unchanged and their field values are copied once. Open issues convert when next prepared for Ready, after their original body is preserved in a comment; issues already Ready or later keep their approved contract. Before 1.13 ships, convert remaining open old-format issues or close them as Not planned. Until #2667 ships, 1.11 issues keep current required headings plus §4.2 content.
 
 ## Appendix F. Disposition of original B1–B18 items
 
@@ -1082,7 +1125,7 @@ These decisions are incorporated in the current body and supersede any inconsist
 | B15 | Accept | Ready freshness defaults to 30 days, stored in manifest governance settings. |
 | B16 | Retire | No `.github/` generator is promised before a separate implementation and ownership design. |
 | B17 | Accept | Preserve GitHub's exact `good first issue` and `help wanted` names with spaces. |
-| B18 | Retire | Do not mirror Project values into organization Issue Fields or PR fields. |
+| B18 | Reverse | D1 moves Priority, Effort, Risk tier and dates to issue fields, with D2's per-repository source and retirement rules; Status, Area and Initiative remain Project fields. No issue fields are copied to PRs. |
 
 ## Appendix G. Current disposition of the historical A1–A36 positions
 
