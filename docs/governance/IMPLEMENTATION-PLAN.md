@@ -1,6 +1,6 @@
 # Base Ecosystem Governance Implementation Plan
 
-**Version:** 4.4, 21 November 2026
+**Version:** 4.4, 22 November 2026
 **Status:** Plan; each implementation step requires its own issue/PR train and maintainer authorization.
 **Owner:** Ramesh (codeforester)
 **Companion:** [Base Governance Design](DESIGN.md), v1.4, accepted through [PR #2699](https://github.com/basefoundry/base/pull/2699).
@@ -8,7 +8,7 @@
 **Plan-review issues:** [#2691](https://github.com/basefoundry/base/issues/2691) (initial adoption through [PR #2692](https://github.com/basefoundry/base/pull/2692)); [#2695](https://github.com/basefoundry/base/issues/2695) (accepted follow-up through [PR #2696](https://github.com/basefoundry/base/pull/2696)); [#2700](https://github.com/basefoundry/base/issues/2700) (v4.3 design-alignment follow-up); [#2702](https://github.com/basefoundry/base/issues/2702) (v4.4 plan-alignment follow-up)
 **Design-review record:** [#2663](https://github.com/basefoundry/base/issues/2663), closed; it is not the implementation tracker.
 
-This plan replaces v3.1 after review. Version 4.1 was adopted through #2691/#2692; version 4.2 through #2695/#2696. This v4.4 follow-up aligns the plan with the accepted companion design v1.4 and records Step 3's completion through #2698/PR #2699; #2702 tracks this update. It incorporates the v4.0 draft, the accepted decisions recorded with the design review, and the pre-Triage findings on issues #2666–#2690. It separates the 1.11 foundation from four governance releases and preserves the original scope of earlier work while that work is crosswalked.
+This plan replaces v3.1 after review. Version 4.1 was adopted through #2691/#2692; version 4.2 through #2695/#2696; and version 4.3, which aligned the plan with design v1.4 and recorded Step 3's completion through #2698/PR #2699, through #2700/PR #2701. This v4.4 follow-up aligns the remaining superseded plan lines with v1.4; #2702 tracks it. It incorporates the v4.0 draft, the accepted decisions recorded with the design review, and the pre-Triage findings on issues #2666–#2690. It separates the 1.11 foundation from four governance releases and preserves the original scope of earlier work while that work is crosswalked.
 
 The first plan adoption was reviewed through #2691 and merged in #2692; the v4.2 follow-up was tracked in #2695 and merged through #2696. The v4.3 alignment is tracked in #2700 and its PR; this v4.4 follow-up is tracked in #2702 and its PR. Subsequent work is tracked in #2665, requires its own issue/PR train, and needs maintainer direction. This plan does not itself authorize implementation.
 
