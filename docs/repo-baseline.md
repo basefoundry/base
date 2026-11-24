@@ -194,8 +194,9 @@ schema, and repeat `--initiative-option <name>` to seed repository-specific
 Initiative values. If `.github/base-project.yml` exists, Base reads repo-owned
 `Area` and `Initiative` options from that file and adds missing Project options
 without deleting or renaming existing options. Base also applies the file's
-`issue_defaults` to repo Project issue items when those field values are still
-blank.
+Project `issue_defaults` to repo Project issue items when those field values are
+still blank. `project.field_source: issue_fields` keeps Priority and Size out of
+the Project schema and stores Priority and Effort as organization issue fields.
 During migration from an older shared Project, pass
 `--copy-project-fields-from <title>` to copy missing Project item field values
 by issue, field name, and option name into the repo Project. Existing target
@@ -215,6 +216,7 @@ Repo Project taxonomy config uses this shape:
 
 ```yaml
 project:
+  field_source: issue_fields
   areas:
     - Demo App
     - Documentation
@@ -223,16 +225,53 @@ project:
     - Portfolio Dashboard
   issue_defaults:
     status: Backlog
-    priority: P2
+    priority: Medium
+    effort: Small
     area: Product
     initiative: Adoption Polish
-    size: S
 ```
 
-`areas` and `initiatives` are applied by `repo configure`. `issue_defaults` is
-validated by Project tooling, used by `basectl gh issue create` when it adds new
-issues to the repo Project, and applied by `repo configure` to existing Project
-issue items that are missing those field values.
+`project.field_source` has three states:
+
+- **Unset:** keep existing behavior. Priority (`P0`–`P3`) and Size (`T`, `S`,
+  `M`, `L`) are Project fields.
+- **`issue_fields`:** Priority (`Urgent`, `High`, `Medium`, `Low`), Effort
+  (`Tiny`, `Small`, `Medium`, `Large`), Risk tier, and dates use issue fields.
+  Status, Area, and Initiative remain Project fields. `basectl repo configure`
+  writes this state for new repositories.
+- **`project_fields` (rollback only):** Priority and Effort use the legacy
+  Project fields (`Legacy priority` and `Legacy size` when present); Risk tier
+  and dates remain issue fields.
+
+`areas` and `initiatives` are applied by `repo configure`. In the unset and
+`project_fields` states, `issue_defaults.priority` and `issue_defaults.size`
+use legacy Project option names. In `issue_fields` mode, use
+`issue_defaults.priority` and `issue_defaults.effort` with the issue-field
+option names. Project tooling validates defaults, `basectl gh issue create`
+uses them when adding an issue, and Project Intake fills missing Priority and
+Effort issue fields when an issue opens, reopens, or closes. Existing-item
+backfill applies the Project fields owned by the selected schema. The same
+config can set `project.issue_defaults.assignee` as a repo-local issue creation
+default.
+
+`basectl gh project issue copy-fields` prepares or applies the values migration
+in either direction. It defaults to a dry run and prints planned per-value
+counts without writing. To apply differences, pass `--write` and a new
+`--export <path>`; the command creates the before-state export exclusively
+before writing, skips values that already match, then reads the Project again
+and reports per-value counts and mismatches. An interrupted copy can be rerun
+with another export path because matching values are left untouched.
+
+```bash
+basectl gh project issue copy-fields --project base --owner basefoundry \
+  --direction project-to-issue
+basectl gh project issue copy-fields --project base --owner basefoundry \
+  --direction project-to-issue --write --export /secure/path/base-before.json
+basectl gh project issue copy-fields --project base --owner basefoundry \
+  --direction issue-to-project
+basectl gh project issue copy-fields --project base --owner basefoundry \
+  --direction issue-to-project --write --export /secure/path/base-rollback-before.json
+```
 When Project metadata is enabled, `repo configure` also creates missing
 repo-owned Project support files such as `.github/base-project.yml` and
 `.github/workflows/project-intake.yml` without overwriting existing files. This
@@ -297,11 +336,13 @@ not a replacement for project tests; it is the seed contract that lets
 
 The generated `.github/workflows/project-intake.yml` handles issue open,
 reopen, close, and manual dispatch events. It is a visible, advisory metadata
-fallback for issues
-created outside `basectl gh issue create`: the workflow idempotently adds the
-issue to the repo-named Project and sets `Status`, `Priority`, `Size`, `Area`,
-and `Initiative` from the generated defaults. Set a `BASE_PROJECT_TOKEN`
-Actions secret with Project write access. `basectl repo configure` checks for
+fallback for issues created outside `basectl gh issue create`: the workflow
+idempotently adds the issue to the repo-named Project. It always manages
+`Status`, `Area`, and `Initiative`; with the setting unset or `project_fields`,
+it also fills missing Project `Priority` and `Size`, and with `issue_fields` it
+fills missing issue-field `Priority` and `Effort`. Set a `BASE_PROJECT_TOKEN`
+Actions secret with Project access and, for `issue_fields`, the organization
+issue-field access needed to read and write issue metadata. `basectl repo configure` checks for
 `BASE_PROJECT_TOKEN` when Project support is enabled and reports the
 `gh secret set BASE_PROJECT_TOKEN` command if the secret is missing. Without
 that secret, Project Intake fails before running Project operations. During
@@ -327,19 +368,20 @@ first-party actions where actions are used. Existing workflow files are still
 left unchanged; rerun `repo init` or `repo configure` only creates missing
 baseline workflows.
 
-The generated `.github/base-project.yml` starts with the shared issue defaults
-and empty repo-specific taxonomy lists:
+The generated `.github/base-project.yml` starts with the issue-fields source,
+its shared issue-field defaults, and empty repo-specific taxonomy lists:
 
 ```yaml
 project:
+  field_source: issue_fields
   areas: []
   initiatives: []
   issue_defaults:
     status: Backlog
-    priority: P2
+    priority: Medium
+    effort: Small
     area: Product
     initiative: Adoption Polish
-    size: S
 ```
 
 Edit `areas`, `initiatives`, or the default `area`/`initiative` in the baseline
@@ -527,8 +569,8 @@ GitHub reports that rulesets are unavailable for a private repository's plan,
 `repo configure` leaves the supported settings and labels in place, logs a
 warning, and skips the unavailable Base-managed rulesets.
 
-The Project metadata schema creates or updates single-select Project fields on
-the repo Project:
+The unset-source Project schema creates or updates these single-select fields
+on the repo Project:
 
 - `Status`: `Triage`, `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`
 - `Priority`: `P0`, `P1`, `P2`, `P3`
@@ -540,9 +582,9 @@ the repo Project:
   `Contract Hardening`, `Agentic Coding Platform`, plus values passed with
   `--initiative-option`
 
-`T` means a tiny, obvious issue with no design decision or cross-module
-behavior. `S` remains the generated and fallback default because new issues are
-not always fully scoped at creation time. `basectl repo configure` and
+For legacy Project fields, `T` means a tiny, obvious issue with no design
+decision or cross-module behavior, and `S` remains the fallback when a new issue
+is not fully scoped. `basectl repo configure` and
 `basectl gh project configure` add missing shared Project options
 additively; existing item values are preserved.
 
@@ -550,6 +592,12 @@ additively; existing item values are preserved.
 source Project item has a value and the target repo Project item does not:
 `Status`, `Priority`, `Area`, `Initiative`, and `Size`. Values are skipped and
 reported when the repo Project does not have a matching option.
+
+In `issue_fields` mode, the Project schema omits Priority and Size. In
+`project_fields` mode, the rollback schema uses `Legacy priority` and `Legacy
+size` when present, with the old `Priority` and `Size` names accepted as a
+fallback. Base's own `.github/base-project.yml` can remain unset until its
+issue-field migration is complete.
 
 When Project V2 access is unavailable, `repo init` and `repo configure` log a
 warning that includes `gh auth refresh -h github.com -s project`, keep the

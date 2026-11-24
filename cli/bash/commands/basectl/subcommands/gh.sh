@@ -64,7 +64,8 @@ Usage:
   basectl gh pr merge [gh options...]
   basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
   basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] [--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]
-  basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [--allow-cross-repo] [field options...]
+  basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [--config <path>] [--allow-cross-repo] [field options...]
+  basectl gh project issue copy-fields --project <title> --direction <project-to-issue|issue-to-project> [--write --export <path>]
   basectl gh branch stale [--days <days>] [--format <text|json>]
   basectl gh branch prune [--dry-run] [--yes] [--remote] [--closed-unmerged]
   basectl gh worktree prune [--dry-run] [--yes] [--closed-unmerged]
@@ -422,7 +423,7 @@ EOF
 base_gh_project_issue_set_fields_usage() {
     cat <<'EOF'
 Usage:
-  basectl gh project issue set-fields <number> --project <title> --repo <owner/name> [--owner <login>] [--config <path>] [--allow-cross-repo] [--status <name>] [--priority <name>] [--area <name>] [--initiative <name>] [--size <T|S|M|L>] [--dry-run]
+  basectl gh project issue set-fields <number> --project <title> --repo <owner/name> [--owner <login>] [--config <path>] [--allow-cross-repo] [--status <name>] [--priority <name>] [--area <name>] [--initiative <name>] [--size <T|S|M|L>|--effort <name>] [--risk-tier <name>] [--start-date <date>] [--target-date <date>] [--dry-run]
 
 Purpose:
   Add or update Base Project field values for a GitHub issue.
@@ -431,14 +432,38 @@ Options:
   --project <title>     Project title to update.
   --repo <owner/name>   Repository containing the issue. Defaults to the origin remote when available.
   --owner <login>       Project owner. Defaults to the repository owner or Git remote owner.
-  --config <path>       Project intake config for issue defaults and repository-specific options.
+  --config <path>       Project intake config including the repository field-source setting.
   --allow-cross-repo    Explicitly allow updating a Project that is not linked to the issue repository.
   --status <name>       Status option, such as Backlog, In Progress, In Review, or Done.
-  --priority <name>     Priority option, such as P0, P1, P2, or P3.
+  --priority <name>     Priority option, from the configured Project or issue-field source.
   --area <name>         Area option.
   --initiative <name>   Initiative option.
-  --size <T|S|M|L>      Size option.
+  --size <T|S|M|L>      Legacy Project Size option; compatibility alias for Effort.
+  --effort <name>       Effort issue-field value (Tiny, Small, Medium, Large).
+  --risk-tier <name>    Risk tier issue-field value (when configured).
+  --start-date <date>   Start date issue-field value (YYYY-MM-DD, when configured).
+  --target-date <date>  Target date issue-field value (YYYY-MM-DD, when configured).
   --dry-run             Print the planned Project updates without applying them.
+  -h, --help            Show this help text.
+EOF
+}
+
+base_gh_project_issue_copy_fields_usage() {
+    cat <<'EOF'
+Usage:
+  basectl gh project issue copy-fields --project <title> --direction <project-to-issue|issue-to-project> [--owner <login>]
+    [--write --export <path>]
+
+Purpose:
+  Preview or copy Priority and Size/Effort values between Project items and issue fields.
+  The default is a dry run. Writes require a before-state export.
+
+Options:
+  --project <title>     Project to copy values for.
+  --owner <login>       Project owner. Defaults to the Git remote owner.
+  --direction <value>   project-to-issue or issue-to-project.
+  --write               Apply differing values. Without this flag, no values are changed.
+  --export <path>       Required JSON path for the before-state snapshot when writing.
   -h, --help            Show this help text.
 EOF
 }
@@ -853,13 +878,15 @@ base_gh_join_csv() {
 
 base_gh_project_field_summary() {
     local project_title="$1" config_path="$2" project_size="$3"
-    local status="" priority="" size="" area="" initiative=""
+    local status="" priority="" size="" effort="" area="" initiative="" field_source=""
     local fields=()
 
     if [[ -n "$config_path" ]]; then
+        field_source="$(base_gh_issue_default_from_config "$config_path" field_source || true)"
         status="$(base_gh_issue_default_from_config "$config_path" status || true)"
         priority="$(base_gh_issue_default_from_config "$config_path" priority || true)"
         size="$(base_gh_issue_default_from_config "$config_path" size || true)"
+        effort="$(base_gh_issue_default_from_config "$config_path" effort || true)"
         area="$(base_gh_issue_default_from_config "$config_path" area || true)"
         initiative="$(base_gh_issue_default_from_config "$config_path" initiative || true)"
     else
@@ -872,8 +899,12 @@ base_gh_project_field_summary() {
     fi
 
     [[ -n "$status" ]] && fields+=("Status=$status")
-    [[ -n "$priority" ]] && fields+=("Priority=$priority")
-    [[ -n "$size" ]] && fields+=("Size=$size")
+    [[ -z "$priority" ]] || fields+=("Priority=$priority")
+    if [[ "$field_source" == "issue_fields" ]]; then
+        [[ -z "$effort" ]] || fields+=("Effort=$effort")
+    else
+        [[ -z "$size" ]] || fields+=("Size=$size")
+    fi
     [[ -n "$area" ]] && fields+=("Area=$area")
     [[ -n "$initiative" ]] && fields+=("Initiative=$initiative")
 
@@ -922,7 +953,7 @@ base_gh_apply_project_issue_fields() {
 
 base_gh_set_issue_in_progress() {
     local issue_number="$1" github_repo="$2" project_title="${3:-}" project_owner="${4:-}"
-    local allow_cross_repo="${5:-0}" output status
+    local allow_cross_repo="${5:-0}" output status config_path field_source
     local -a field_args
 
     [[ -n "$project_title" ]] || project_title="$(base_gh_default_project_title "$github_repo")"
@@ -934,6 +965,12 @@ base_gh_set_issue_in_progress() {
         --repo "$github_repo"
         --status "In Progress"
     )
+    config_path="$(base_gh_project_config_path || true)"
+    if [[ -n "$config_path" ]]; then
+        field_args+=(--config "$config_path")
+        field_source="$(base_gh_issue_default_from_config "$config_path" field_source || true)"
+        [[ -z "$field_source" ]] || field_args+=(--start-date-today-if-empty)
+    fi
     ((allow_cross_repo)) && field_args+=(--allow-cross-repo)
     output="$(base_gh_project_issue_set_fields "${field_args[@]}" 2>&1)"
     status=$?
@@ -1009,6 +1046,10 @@ base_gh_do_project() {
 
     if [[ "${1:-}" == "issue" && "${2:-}" == "set-fields" ]] && base_gh_args_request_help "$@"; then
         base_gh_project_issue_set_fields_usage
+        return 0
+    fi
+    if [[ "${1:-}" == "issue" && "${2:-}" == "copy-fields" ]] && base_gh_args_request_help "$@"; then
+        base_gh_project_issue_copy_fields_usage
         return 0
     fi
     if [[ "${1:-}" == doctor || "${1:-}" == configure ]] && base_gh_args_request_help "$@"; then

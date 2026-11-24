@@ -322,6 +322,46 @@ jobs:
             return 77
           }
 
+          project_config_base64="$(project_intake_gh "read repository Project config" gh api \
+            "repos/$GITHUB_REPOSITORY/contents/.github/base-project.yml" --jq .content)" || exit $?
+          project_config_json="$(ruby -rbase64 -rjson -ryaml -e '
+            config = YAML.safe_load(Base64.decode64(STDIN.read), aliases: false) || {}
+            project = config.fetch("project", {})
+            abort("project must be a mapping") unless project.is_a?(Hash)
+            source = project["field_source"]
+            abort("project.field_source must be issue_fields or project_fields") unless
+              source.nil? || %w[issue_fields project_fields].include?(source)
+            defaults = project.fetch("issue_defaults", {}) || {}
+            abort("project.issue_defaults must be a mapping") unless defaults.is_a?(Hash)
+            pmap = {"Urgent" => "P0", "High" => "P1", "Medium" => "P2", "Low" => "P3"}
+            issue_priority = pmap.invert
+            emap = {"Tiny" => "T", "Small" => "S", "Medium" => "M", "Large" => "L"}
+            reverse_emap = emap.invert
+            if source == "issue_fields"
+              priority = defaults.fetch("priority", "Medium")
+              priority = issue_priority.fetch(priority, priority)
+              effort = defaults["effort"] || (defaults["size"] && reverse_emap[defaults["size"]]) || "Small"
+              size = "S"
+            else
+              priority = defaults.fetch("priority", "P2")
+              priority = pmap.fetch(priority, priority) if source == "project_fields"
+              size = defaults["size"] || (defaults["effort"] && emap[defaults["effort"]]) || "S"
+              effort = ""
+            end
+            puts JSON.generate({field_source: source || "unset", priority: priority, size: size, effort: effort,
+              area: defaults.fetch("area", "Product"), initiative: defaults.fetch("initiative", "Adoption Polish")})
+          ' <<<"$project_config_base64")" || {
+            echo "::error::Could not parse .github/base-project.yml for Project Intake."
+            exit 1
+          }
+          BASE_PROJECT_FIELD_SOURCE="$(jq -r '.field_source' <<<"$project_config_json")"
+          BASE_PROJECT_REPOSITORY_OWNER="${GITHUB_REPOSITORY%%/*}"
+          BASE_PROJECT_DEFAULT_PRIORITY="$(jq -r '.priority' <<<"$project_config_json")"
+          BASE_PROJECT_DEFAULT_SIZE="$(jq -r '.size' <<<"$project_config_json")"
+          BASE_PROJECT_DEFAULT_EFFORT="$(jq -r '.effort' <<<"$project_config_json")"
+          BASE_PROJECT_DEFAULT_AREA="$(jq -r '.area' <<<"$project_config_json")"
+          BASE_PROJECT_DEFAULT_INITIATIVE="$(jq -r '.initiative' <<<"$project_config_json")"
+
           if issue_json="$(project_intake_gh "view issue" gh api "repos/$GITHUB_REPOSITORY/issues/$issue_number")"; then
             :
           else
@@ -335,6 +375,67 @@ jobs:
           issue_url="$(jq -r '.html_url' <<<"$issue_json")"
           issue_id="$(jq -r '.id' <<<"$issue_json")"
           issue_title="$(jq -r '.title' <<<"$issue_json")"
+
+          project_intake_set_issue_field_defaults() {
+            [[ "$BASE_PROJECT_FIELD_SOURCE" == "issue_fields" ]] || return 0
+            local issue_fields_json current_values verified_values priority_id effort_id priority_value effort_value
+            local expected_priority expected_effort updates='[]' payload
+            if issue_fields_json="$(project_intake_gh "list organization issue fields" gh api \
+              -H 'X-GitHub-Api-Version: 2026-03-10' "orgs/$BASE_PROJECT_REPOSITORY_OWNER/issue-fields?per_page=100")"; then
+              :
+            else
+              return $?
+            fi
+            priority_id="$(jq -r '.[] | select(.name == "Priority") | .id' <<<"$issue_fields_json" | head -n 1)"
+            effort_id="$(jq -r '.[] | select(.name == "Effort") | .id' <<<"$issue_fields_json" | head -n 1)"
+            if [[ -z "$priority_id" || -z "$effort_id" ]]; then
+              echo "::error::Project Intake requires organization Priority and Effort issue fields when field_source is issue_fields."
+              return 1
+            fi
+            if current_values="$(project_intake_gh "read issue field defaults" gh api \
+              -H 'X-GitHub-Api-Version: 2026-03-10' \
+              "repos/$GITHUB_REPOSITORY/issues/$issue_number/issue-field-values")"; then
+              :
+            else
+              return $?
+            fi
+            priority_value="$(jq -r 'def rows: if type == "array" then . else (.issue_field_values // []) end; [rows[] | select(.issue_field_name == "Priority") | (.single_select_option.name // .value // "")][0] // ""' <<<"$current_values")"
+            effort_value="$(jq -r 'def rows: if type == "array" then . else (.issue_field_values // []) end; [rows[] | select(.issue_field_name == "Effort") | (.single_select_option.name // .value // "")][0] // ""' <<<"$current_values")"
+            expected_priority="$priority_value"
+            expected_effort="$effort_value"
+            if [[ -z "$priority_value" ]]; then
+              expected_priority="$BASE_PROJECT_DEFAULT_PRIORITY"
+              updates="$(jq -c --argjson id "$priority_id" --arg value "$BASE_PROJECT_DEFAULT_PRIORITY" \
+                '. + [{issue_field_id: $id, value: $value}]' <<<"$updates")"
+            fi
+            if [[ -z "$effort_value" ]]; then
+              expected_effort="$BASE_PROJECT_DEFAULT_EFFORT"
+              updates="$(jq -c --argjson id "$effort_id" --arg value "$BASE_PROJECT_DEFAULT_EFFORT" \
+                '. + [{issue_field_id: $id, value: $value}]' <<<"$updates")"
+            fi
+            if [[ "$(jq 'length' <<<"$updates")" != "0" ]]; then
+              payload="$(jq -cn --argjson fields "$updates" '{issue_field_values: $fields}')"
+              project_intake_gh "set missing issue-field defaults" gh api \
+                -H 'X-GitHub-Api-Version: 2026-03-10' --method POST \
+                "repos/$GITHUB_REPOSITORY/issues/$issue_number/issue-field-values" --input - \
+                <<<"$payload" >/dev/null || return $?
+              if verified_values="$(project_intake_gh "read back issue-field defaults" gh api \
+                -H 'X-GitHub-Api-Version: 2026-03-10' \
+                "repos/$GITHUB_REPOSITORY/issues/$issue_number/issue-field-values")"; then
+                :
+              else
+                return $?
+              fi
+              priority_value="$(jq -r 'def rows: if type == "array" then . else (.issue_field_values // []) end; [rows[] | select(.issue_field_name == "Priority") | (.single_select_option.name // .value // "")][0] // ""' <<<"$verified_values")"
+              effort_value="$(jq -r 'def rows: if type == "array" then . else (.issue_field_values // []) end; [rows[] | select(.issue_field_name == "Effort") | (.single_select_option.name // .value // "")][0] // ""' <<<"$verified_values")"
+              if [[ "$priority_value" != "$expected_priority" || "$effort_value" != "$expected_effort" ]]; then
+                echo "::error::Issue field validation failed after setting Priority and Effort defaults." >&2
+                return 1
+              fi
+            fi
+          }
+
+          project_intake_set_issue_field_defaults
 
           status_value="$BASE_PROJECT_DEFAULT_OPEN_STATUS"
           if [[ "$issue_state" == "CLOSED" ]]; then
@@ -461,10 +562,12 @@ jobs:
             if [[ "$(jq -r '.status // ""' <<<"$item_json")" != "$status_value" ]]; then
               graphql_set_single_select Status "$status_value" || return $?
             fi
-            [[ -n "$(jq -r '.priority // ""' <<<"$item_json")" ]] ||
-              graphql_set_single_select Priority "$expected_priority" || return $?
-            [[ -n "$(jq -r '.size // ""' <<<"$item_json")" ]] ||
-              graphql_set_single_select Size "$expected_size" || return $?
+            if [[ "$BASE_PROJECT_FIELD_SOURCE" != "issue_fields" ]]; then
+              [[ -n "$(jq -r '.priority // ""' <<<"$item_json")" ]] ||
+                graphql_set_single_select Priority "$expected_priority" || return $?
+              [[ -n "$(jq -r '.size // ""' <<<"$item_json")" ]] ||
+                graphql_set_single_select Size "$expected_size" || return $?
+            fi
             [[ -n "$(jq -r '.area // ""' <<<"$item_json")" ]] ||
               graphql_set_single_select Area "$expected_area" || return $?
             [[ -n "$(jq -r '.initiative // ""' <<<"$item_json")" ]] ||
@@ -477,14 +580,18 @@ jobs:
               command_status=$?
               return "$command_status"
             fi
+            if [[ "$BASE_PROJECT_FIELD_SOURCE" == "issue_fields" ]]; then
+              verify_filter='.status == $status and .area == $area and .initiative == $initiative'
+            else
+              verify_filter='.status == $status and .priority == $priority and .size == $size and .area == $area and .initiative == $initiative'
+            fi
             if ! jq -e \
               --arg status "$status_value" \
               --arg priority "$expected_priority" \
               --arg size "$expected_size" \
               --arg area "$expected_area" \
               --arg initiative "$expected_initiative" \
-              '.status == $status and .priority == $priority and .size == $size and
-               .area == $area and .initiative == $initiative' \
+              "$verify_filter" \
               <<<"$refreshed_item_json" >/dev/null; then
               echo "::error::Project field validation failed after the GraphQL update." >&2
               return 1
@@ -513,6 +620,9 @@ jobs:
             local expected_initiative
             local verified_item_json
             local command_status
+            local priority_field_name="Priority"
+            local size_field_name="Size"
+            local expected_project_field_count=5
 
             if owner_json="$(project_intake_gh "view REST Project owner" gh api "users/$BASE_PROJECT_OWNER")"; then
               :
@@ -557,14 +667,28 @@ jobs:
               command_status=$?
               return "$command_status"
             fi
-            field_ids_csv="$(
-              jq -r \
-                '[.[] | select(.name == "Status" or .name == "Priority" or .name == "Size" or
-                  .name == "Area" or .name == "Initiative") | .id] | join(",")' \
-                <<<"$fields_json"
-            )"
-            if [[ "$(awk -F, '{print NF}' <<<"$field_ids_csv")" != "5" ]]; then
-              echo "::error::Project field validation failed during the REST fallback: lookup did not resolve all five managed fields." >&2
+            case "$BASE_PROJECT_FIELD_SOURCE" in
+              issue_fields)
+                priority_field_name=""
+                size_field_name=""
+                expected_project_field_count=3
+                ;;
+              project_fields)
+                if jq -e '.[] | select(.name == "Legacy priority")' <<<"$fields_json" >/dev/null; then
+                  priority_field_name="Legacy priority"
+                fi
+                if jq -e '.[] | select(.name == "Legacy size")' <<<"$fields_json" >/dev/null; then
+                  size_field_name="Legacy size"
+                fi
+                ;;
+            esac
+            field_ids_csv="$(jq -r \
+              --arg priority "$priority_field_name" --arg size "$size_field_name" \
+              '[.[] | select(.name == "Status" or .name == "Area" or .name == "Initiative" or
+                ($priority != "" and .name == $priority) or ($size != "" and .name == $size)) | .id] | join(",")' \
+              <<<"$fields_json")"
+            if [[ "$(awk -F, '{print NF}' <<<"$field_ids_csv")" != "$expected_project_field_count" ]]; then
+              echo "::error::Project field validation failed during the REST fallback: lookup did not resolve all $expected_project_field_count managed fields." >&2
               return 1
             fi
 
@@ -662,21 +786,23 @@ jobs:
                 '. + [{id: $id, value: $value}]' <<<"$updates_json")"
             }
 
-            expected_priority="$(rest_field_value_for Priority)"
-            expected_size="$(rest_field_value_for Size)"
+            expected_priority=""
+            expected_size=""
+            [[ -z "$priority_field_name" ]] || expected_priority="$(rest_field_value_for "$priority_field_name")"
+            [[ -z "$size_field_name" ]] || expected_size="$(rest_field_value_for "$size_field_name")"
             expected_area="$(rest_field_value_for Area)"
             expected_initiative="$(rest_field_value_for Initiative)"
 
             if [[ "$(rest_field_value_for Status)" != "$status_value" ]]; then
               rest_queue_single_select Status "$status_value"
             fi
-            if [[ -z "$expected_priority" ]]; then
+            if [[ -n "$priority_field_name" && -z "$expected_priority" ]]; then
               expected_priority="$BASE_PROJECT_DEFAULT_PRIORITY"
-              rest_queue_single_select Priority "$expected_priority"
+              rest_queue_single_select "$priority_field_name" "$expected_priority"
             fi
-            if [[ -z "$expected_size" ]]; then
+            if [[ -n "$size_field_name" && -z "$expected_size" ]]; then
               expected_size="$BASE_PROJECT_DEFAULT_SIZE"
-              rest_queue_single_select Size "$expected_size"
+              rest_queue_single_select "$size_field_name" "$expected_size"
             fi
             if [[ -z "$expected_area" ]]; then
               expected_area="$BASE_PROJECT_DEFAULT_AREA"
@@ -706,14 +832,16 @@ jobs:
               --arg status "$status_value" \
               --arg priority "$expected_priority" \
               --arg size "$expected_size" \
+              --arg priority_field "$priority_field_name" \
+              --arg size_field "$size_field_name" \
               --arg area "$expected_area" \
               --arg initiative "$expected_initiative" \
               'def value_for($name):
                  [.fields[]? | select(.name == $name) |
                    (.value.name.raw // .value.name // "")][0] // "";
                value_for("Status") == $status and
-               value_for("Priority") == $priority and
-               value_for("Size") == $size and
+               ($priority_field == "" or value_for($priority_field) == $priority) and
+               ($size_field == "" or value_for($size_field) == $size) and
                value_for("Area") == $area and
                value_for("Initiative") == $initiative' \
               <<<"$verified_item_json" >/dev/null; then
@@ -722,7 +850,17 @@ jobs:
             fi
           }
 
-          if project_intake_graphql_reconcile; then
+          if [[ "$BASE_PROJECT_FIELD_SOURCE" == "project_fields" ]]; then
+            if project_intake_rest_reconcile; then
+              transport="REST Projects API (Project-fields rollback)"
+            else
+              rest_status=$?
+              if [[ "$rest_status" == "77" ]]; then
+                exit 0
+              fi
+              exit "$rest_status"
+            fi
+          elif project_intake_graphql_reconcile; then
             transport="GraphQL"
           else
             graphql_status=$?

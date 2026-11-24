@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from datetime import date
 
 import base_cli
 from base_cli_profile import base_cli_app
@@ -27,7 +28,7 @@ from .project_git import require_repo
 from .project_git import split_repo
 from .project_model import BASE_PROJECT_SCHEMA, DEFAULT_TEMPLATE_PROJECT
 from .project_model import ConfigureAction, FieldUpdate, Finding, OwnerInfo
-from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectItemState, ProjectSchema, ProjectView
+from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectIssueData, ProjectItemState, ProjectSchema, ProjectView
 from .project_model import SelectFieldSpec, SelectOption
 from .project_operations import ProjectOperations
 from .project_schema import ISSUE_DEFAULT_OUTPUT_ORDER  # pylint: disable=unused-import
@@ -51,6 +52,7 @@ from .project_schema import schema_with_project_config  # pylint: disable=unused
 from .project_errors import ProjectAuthError, ProjectError, ProjectTransportError
 # pylint: disable=unused-import
 from .project_graphql import GITHUB_GRAPHQL_TIMEOUT_SECONDS, is_project_scope_error, run_graphql
+from .issue_field_values import organization_issue_field_ids, read_issue_field_values, write_issue_field_values
 from .project_rest import RestIssueFieldRequest, RestProjectTransport, rest_doctor_command
 # pylint: enable=unused-import
 
@@ -111,6 +113,8 @@ def run_command(args: ProjectArguments) -> int:
         return configure_command(args)
     if args.command == "issue-set-fields":
         return issue_set_fields_command(args)
+    if args.command == "issue-copy-fields":
+        return copy_issue_fields_command(args)
     if args.command == "issue-defaults":
         return issue_defaults_command(args)
     raise ProjectUsageError(f"Unknown project command '{args.command}'.")
@@ -131,6 +135,8 @@ def project_operations() -> ProjectOperations:
         create_single_select_field=create_single_select_field,
         fetch_issue_id=fetch_issue_id,
         fetch_project_fields=fetch_project_fields,
+        fetch_project_issue_items=fetch_project_issue_items,
+        organization_issue_field_ids=organization_issue_field_ids,
         fetch_project_repository_names=fetch_project_repository_names,
         fetch_project_views=fetch_project_views,
         find_owner_and_project=find_owner_and_project,
@@ -141,12 +147,14 @@ def project_operations() -> ProjectOperations:
         missing_option_names=missing_option_names,
         project_config_for_args=project_config_for_args,
         project_field_defaults_for_config=project_field_defaults_for_config,
+        read_issue_field_values=read_issue_field_values,
         require_owner=require_owner,
         require_repo=require_repo,
         resolve_issue_field_updates=resolve_issue_field_updates,
         schema_for_args=schema_for_args,
         split_repo=split_repo,
         update_item_field=update_item_field,
+        write_issue_field_values=write_issue_field_values,
         update_project=update_project,
         update_single_select_field=update_single_select_field,
         verify_standard_template_views=verify_standard_template_views,
@@ -190,28 +198,98 @@ def issue_set_fields_command(args: ProjectArguments) -> int:
         return rest_issue_set_fields_command(args)
 
 
+def copy_issue_fields_command(args: ProjectArguments) -> int:
+    from .project_issue_field_copy_command import copy_issue_fields_command as command
+
+    return command(args, ops=project_operations())
+
+
 def rest_issue_set_fields_command(args: ProjectArguments) -> int:
     owner = require_owner(args)
     repo = require_repo(args)
     repo_owner, repo_name = split_repo(repo)
+    config = project_config_for_args(args)
     values = issue_field_values_for_args(args)
+
+    issue_field_names = {
+        "priority": "Priority",
+        "effort": "Effort",
+        "risk_tier": "Risk tier",
+        "start_date": "Start date",
+        "target_date": "Target date",
+    }
+    if config.field_source is None and any(
+        key in values for key in ("risk_tier", "start_date", "target_date")
+    ):
+        raise ProjectUsageError("Risk tier and date options require project.field_source to be set.")
+    issue_values = {
+        issue_field_names[key]: value
+        for key, value in values.items()
+        if key in issue_field_names and (key not in {"priority", "effort"} or config.field_source == "issue_fields")
+    }
+    if args.start_date_today_if_empty and config.field_source is not None and "start_date" not in values:
+        current_values = read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
+        if not current_values.get("Start date"):
+            issue_values["Start date"] = date.today().isoformat()
+    project_values = {
+        key: value
+        for key, value in values.items()
+        if key in {"status", "priority", "area", "initiative", "size"}
+        and not (config.field_source == "issue_fields" and key in {"priority", "size"})
+    }
+    if not project_values and not issue_values:
+        raise ProjectUsageError("At least one field option must be provided.")
 
     def resolve_updates(fields: tuple[ProjectField, ...], field_values: dict[str, str]) -> tuple[FieldUpdate, ...]:
         return resolve_issue_field_updates(fields, field_values, project_title=args.project_title or "")
 
-    return RestProjectTransport().reconcile_issue_fields(
-        RestIssueFieldRequest(
-            owner=owner,
-            repo_owner=repo_owner,
-            repo_name=repo_name,
-            issue_number=args.issue_number or 0,
-            project_title=args.project_title or "",
-            field_values=values,
-            resolve_updates=resolve_updates,
-            dry_run=args.dry_run,
-            allow_cross_repo=args.allow_cross_repo,
+    if project_values:
+        RestProjectTransport().reconcile_issue_fields(
+            RestIssueFieldRequest(
+                owner=owner,
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                issue_number=args.issue_number or 0,
+                project_title=args.project_title or "",
+                field_values=project_values,
+                resolve_updates=resolve_updates,
+                dry_run=args.dry_run,
+                allow_cross_repo=args.allow_cross_repo,
+            )
         )
-    )
+    else:
+        transport = RestProjectTransport()
+        owner_info = transport.find_owner_and_project(owner, args.project_title or "")
+        if owner_info.project is None:
+            raise ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'.")
+        if not args.allow_cross_repo and owner.casefold() != repo_owner.casefold():
+            raise ProjectUsageError(
+                f"Project '{args.project_title}' could not verify repository ownership for "
+                f"'{repo_owner}/{repo_name}' during REST recovery. The REST fallback only permits "
+                "same-owner repositories; pass --allow-cross-repo intentionally."
+            )
+
+    if issue_values:
+        field_ids = organization_issue_field_ids(owner)
+        missing_fields = sorted(set(issue_values) - set(field_ids))
+        if missing_fields:
+            raise ProjectError("Organization issue field(s) not found: " + ", ".join(missing_fields) + ".")
+        current_values = read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
+        pending = {name: value for name, value in issue_values.items() if current_values.get(name) != value}
+        if args.dry_run:
+            for name, value in pending.items():
+                print(f"[DRY-RUN] Would set issue field {name} to {value}.")
+        elif pending:
+            write_issue_field_values(
+                owner,
+                repo_name,
+                args.issue_number or 0,
+                pending,
+                field_ids=field_ids,
+                repository_owner=repo_owner,
+            )
+            print(f"✓ Updated issue fields for issue #{args.issue_number} (REST fallback)")
+    return base_cli.ExitCode.SUCCESS
 
 
 def find_owner_and_project(owner: str, title: str) -> OwnerInfo:
@@ -281,6 +359,52 @@ def fetch_project_fields(project_id: str) -> tuple[ProjectField, ...]:
         )
         fields.append(ProjectField(raw["id"], raw["name"], raw["dataType"], options))
     return tuple(fields)
+
+
+def fetch_project_issue_items(project_id: str) -> tuple[ProjectIssueData, ...]:
+    items_found: list[ProjectIssueData] = []
+    cursor: str | None = None
+    while True:
+        payload = run_graphql(
+            queries.FETCH_PROJECT_ISSUE_ITEMS_WITH_ISSUE_FIELDS,
+            {"projectId": project_id, "cursor": cursor},
+        )
+        node = payload["data"].get("node")
+        if node is None:
+            raise ProjectError("GitHub Project was not found.")
+        items = node["items"]
+        for item in items["nodes"]:
+            content = item.get("content") or {}
+            repository = (content.get("repository") or {}).get("nameWithOwner")
+            if not content.get("id") or not content.get("number") or not repository:
+                continue
+            project_values: dict[str, str] = {}
+            for raw in item.get("fieldValues", {}).get("nodes", []):
+                if raw.get("__typename") != "ProjectV2ItemFieldSingleSelectValue":
+                    continue
+                field_name = (raw.get("field") or {}).get("name")
+                if field_name and raw.get("name"):
+                    project_values[field_name] = raw["name"]
+            issue_values: dict[str, str] = {}
+            for raw in content.get("issueFieldValues", {}).get("nodes", []):
+                field_name = (raw.get("field") or {}).get("name")
+                value = raw.get("name") or raw.get("value")
+                if field_name and value is not None:
+                    issue_values[field_name] = str(value)
+            items_found.append(
+                ProjectIssueData(
+                    item_id=item["id"],
+                    issue_id=content["id"],
+                    repository=repository,
+                    number=int(content["number"]),
+                    title=str(content.get("title") or ""),
+                    project_values=project_values,
+                    issue_values=issue_values,
+                )
+            )
+        if not items["pageInfo"]["hasNextPage"]:
+            return tuple(items_found)
+        cursor = items["pageInfo"]["endCursor"]
 
 
 def fetch_project_views(project_id: str) -> tuple[ProjectView, ...]:

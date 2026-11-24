@@ -65,6 +65,17 @@ class ProjectItemState:
 
 
 @dataclass(frozen=True)
+class ProjectIssueData:
+    item_id: str
+    issue_id: str
+    repository: str
+    number: int
+    title: str
+    project_values: dict[str, str]
+    issue_values: dict[str, str]
+
+
+@dataclass(frozen=True)
 class ProjectInfo:
     project_id: str
     title: str
@@ -100,6 +111,10 @@ class ProjectArguments:
     replace_project: bool = False
     allow_cross_repo: bool = False
     dry_run: bool = False
+    write: bool = False
+    copy_direction: str | None = None
+    export_path: str | None = None
+    start_date_today_if_empty: bool = False
     issue_number: int | None = None
     field_values: dict[str, str] | None = None
 

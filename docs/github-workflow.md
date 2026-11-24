@@ -58,9 +58,10 @@ external PR. Starter issues should have:
 - clear acceptance criteria in the issue body
 - one primary category label, usually `documentation`, `ci`, or a very narrow
   `enhancement`
-- Project fields set before advertising the issue: `Status` `Ready`,
-  `Priority` `P3` or `P2`, a concrete `Area`, `Initiative`, and `Size` `T` or
-  `S`
+- Metadata set before advertising the issue: `Status` `Ready`, `Priority` `P3`
+  or `P2` for legacy Project fields (or `Low` or `Medium` in `issue_fields`
+  mode), concrete `Area` and `Initiative`, and Effort `Tiny` or `Small` (or
+  legacy Size `T` or `S`)
 - a validation path that can be run locally without credentials, paid services,
   or private repository state
 
@@ -94,10 +95,17 @@ basectl gh issue readiness <number> --repo <owner/name> --project-owner <login> 
 The readiness check is read-only. It verifies that the issue body has non-empty
 `Goal`, `Background`, `Scope`, `Acceptance Criteria`, `Validation`,
 `Non-Goals`, `Project Fields`, and `Agent Assignment` sections, reports label
-and assignee state, and checks `Status`, `Priority`, `Size`, `Area`, and
-`Initiative` when Project coordinates are provided. Omitting Project coordinates
-reports a partial result so maintainers do not mistake body-only validation for
-full assignment readiness.
+and assignee state, and checks the repository's configured metadata source when
+Project coordinates are provided. With no `project.field_source`, it checks
+Project `Status`, `Priority`, `Size`, `Area`, and `Initiative`. In `issue_fields`
+mode, it checks Project `Status`, `Area`, and `Initiative`, plus issue-field
+`Priority` and `Effort`. In `project_fields` rollback mode, it checks Project
+`Status`, `Priority`, `Effort`, `Area`, and `Initiative`, reading Priority and
+Effort from `Legacy priority` and `Legacy size` when those fields exist. In
+either configured mode, Risk tier is required once the organization has that
+issue field; S2 repositories can use the setting before S3 creates the field.
+Omitting Project coordinates reports a partial result so maintainers do not
+mistake body-only validation for full assignment readiness.
 JSON output follows the stable shared v1 envelope in
 [Inspection JSON](inspection-json.md). `gh branch stale --format json` uses the
 same envelope and returns an empty `branches` array when no refs meet the age
@@ -106,15 +114,21 @@ threshold.
 ## Issue Project Metadata
 
 When an issue is tracked in the repo-named Project, use the standard Base
-Project fields:
+Project metadata. Priority and effort locations depend on the repository's
+`.github/base-project.yml` `project.field_source` setting:
 
 - `Status`: `Triage`, `Backlog`, `Ready`, `In Progress`, `In Review`, `Done`
-- `Priority`: `P0`, `P1`, `P2`, `P3`
 - `Area`: repo-specific options declared in
   [`.github/base-project.yml`](../.github/base-project.yml)
-- `Size`: `T`, `S`, `M`, `L`
 - `Initiative`: repo-specific options declared in
   [`.github/base-project.yml`](../.github/base-project.yml)
+- **Unset:** preserve Project `Priority` (`P0`–`P3`) and `Size` (`T`, `S`, `M`,
+  `L`).
+- **`issue_fields`:** use issue-field `Priority` (`Urgent`, `High`, `Medium`,
+  `Low`), `Effort` (`Tiny`, `Small`, `Medium`, `Large`), Risk tier, and dates.
+  Status, Area, and Initiative remain Project fields.
+- **`project_fields` (rollback only):** Priority and Effort use the legacy
+  Project fields; Risk tier and dates continue to use issue fields.
 
 Use `Agentic Coding Platform` for work that makes GitHub-centered agentic
 implementation more repeatable: agent-ready repo baselines, agent-readiness
@@ -122,7 +136,9 @@ checks, issue-readiness gates, Copilot/cloud-agent readiness, and local
 handoff/context artifacts. Keep provider-specific runtime integrations out of
 this initiative unless the issue is about Base's GitHub-owned workflow contract.
 
-Use the smallest accurate `Size` when creating or triaging an issue:
+Use the smallest accurate size when creating or triaging an issue. With legacy
+Project fields, choose `Size` `T`, `S`, `M`, or `L`; with `issue_fields`, choose
+Effort `Tiny`, `Small`, `Medium`, or `Large`:
 
 - `T`: tiny, obvious change; usually one file or one Project metadata action,
   with no design decision or cross-module behavior.
@@ -130,9 +146,10 @@ Use the smallest accurate `Size` when creating or triaging an issue:
 - `M`: medium change with multiple files or interactions.
 - `L`: large change that should be split if possible.
 
-Automation defaults to `S` when no explicit size is supplied. Agents creating
-issues should pass an explicit size when the scope is already clear; use `S`
-when the issue still needs normal triage.
+Automation defaults to `S` for legacy Project fields and `Small` for issue-field
+Effort when no explicit size is supplied. Agents creating issues should pass an
+explicit value when the scope is already clear; use the small default when the
+issue still needs normal triage.
 
 Keep the issue's `Status` field aligned with the implementation train:
 
@@ -153,9 +170,13 @@ by default when a GitHub repository is available. Base copies
 `base-project-template` when the repo Project is missing, links the Project to
 the repository, and backfills existing repository issues. When
 `.github/base-project.yml` exists, Base also adds missing repo-specific `Area`
-and `Initiative` options from that file and applies the same file's
-Project-field `issue_defaults` to Project issue items that are missing those
-values. The same config can set `project.issue_defaults.assignee` as a
+and `Initiative` options from that file and applies Project-field defaults to
+Project issue items that are missing those values. In `issue_fields` mode,
+`issue_defaults.priority` uses `Urgent`, `High`, `Medium`, or `Low`, and
+`issue_defaults.effort` uses `Tiny`, `Small`, `Medium`, or `Large`; issue
+creation and Project Intake fill missing issue-field values. With the setting
+unset or `project_fields`, defaults use legacy Project option names (`P0`–`P3`
+and `T`–`L`). The same config can set `project.issue_defaults.assignee` as a
 repo-local issue creation default. `basectl gh issue create` uses those
 defaults immediately when it creates an issue and adds it to the repo Project.
 
@@ -165,10 +186,13 @@ plain `gh issue create`, or external connectors that can bypass
 `basectl gh issue create` and GitHub's hidden Project auto-add filters.
 `basectl repo configure` creates this workflow when it is missing from older
 Base-managed repositories. Set a `BASE_PROJECT_TOKEN` Actions secret with
-Project write access so the workflow can idempotently add the issue to the
-repo-named Project and set `Status`, `Priority`, `Size`, `Area`, and
-`Initiative` from the generated defaults on issue open, reopen, and close
-events. `basectl repo configure` verifies that the secret exists when Project
+Project access and, when using `issue_fields`, the organization issue-field
+access required to read and write issue metadata. The workflow idempotently adds
+the issue to the repo-named Project and manages `Status`, `Area`, and
+`Initiative` on issue open, reopen, and close events. With the setting unset or
+`project_fields`, it also fills missing Project `Priority` and `Size`; in
+`issue_fields` mode it fills missing issue-field `Priority` and `Effort` instead.
+`basectl repo configure` verifies that the secret exists when Project
 support is enabled and prints a `gh secret set BASE_PROJECT_TOKEN` command when
 the required secret is missing. Without that secret, Project Intake fails before
 running Project operations. During Project operations, the workflow classifies
@@ -177,9 +201,10 @@ waits for the reported retry/reset delay when available, and retries the failed
 operation once. When the GraphQL-backed `gh project` transport exhausts its
 quota or reports `unknown owner type`, Project Intake falls back to the REST
 Projects API. The fallback resolves organization and user owners explicitly,
-finds the exact issue item, preserves non-empty Priority, Size, Area, and
-Initiative values, applies the open/closed Status policy, and reads back all
-five fields before reporting success. The workflow is named
+finds the exact issue item, preserves non-empty metadata values, applies the
+open/closed Status policy, and reads back the Project fields it manages. In
+`issue_fields` mode it also reads back Priority and Effort after writing them.
+The workflow is named
 `Project Intake metadata (advisory)` and reports quota, transport, and delayed
 visibility conditions as a warning plus step summary while leaving required
 product validation workflows independent. Authentication, missing-Project, and
@@ -194,6 +219,11 @@ can add or update the item. This prevents a repository typo or stale Project
 name from silently placing an issue in another repository's Project. For a
 deliberate cross-repository maintenance operation, pass
 `--allow-cross-repo`; the command emits a warning when that override is used.
+`--priority` uses option names from the selected source. `--effort` accepts
+`Tiny`, `Small`, `Medium`, or `Large`; `--size` remains a `T`, `S`, `M`, or `L`
+compatibility alias converted according to the source. Risk tier and date
+options require `project.field_source` to be set. With either configured state,
+`basectl gh issue start` also sets Start date when it is empty.
 When GraphQL quota or transport pressure is classified, `project doctor` and
 `project issue set-fields` recover through the REST Projects API. REST recovery
 resolves the exact owner and Project, handles duplicate or delayed item
@@ -835,19 +865,21 @@ Use one operational GitHub Project per repository. The repo Project title should
 match the repository name, and new repo Projects should be copied from
 `base-project-template`.
 
-Recommended fields:
+Recommended metadata depends on `project.field_source`:
 
 - `Status`: Triage, Backlog, Ready, In Progress, In Review, Done
-- `Priority`: P0, P1, P2, P3
 - `Area` and `Initiative`: repo-specific options declared in
   [`.github/base-project.yml`](../.github/base-project.yml)
-- `Size`: T, S, M, L
+- Unset: Project `Priority` P0–P3 and `Size` T/S/M/L.
+- `issue_fields`: issue-field `Priority` Urgent/High/Medium/Low and `Effort`
+  Tiny/Small/Medium/Large; Status, Area, and Initiative remain Project fields.
+- `project_fields` (rollback only): legacy Project Priority and Effort fields;
+  Risk tier and dates remain issue fields.
 
-Keep `Status`, `Priority`, and `Size` standardized across repos. Keep `Area`
-and `Initiative` repo-specific, and let `basectl repo configure` add missing
-options additively from the repo config file. The metadata vocabulary above and
-the repository configuration are the source of truth; do not maintain a second
-concrete option list in this workflow guide.
+Keep Status standardized across repos. Keep Area and Initiative repo-specific,
+and let `basectl repo configure` add missing options from the repo config file.
+The metadata vocabulary above and the repository configuration are the source
+of truth; do not maintain a second option list in this workflow guide.
 
 Useful views:
 

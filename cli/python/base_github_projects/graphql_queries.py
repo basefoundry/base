@@ -165,6 +165,51 @@ query($projectId: ID!, $cursor: String) {
 }
 """
 
+FETCH_PROJECT_ISSUE_ITEMS_WITH_ISSUE_FIELDS = """
+query($projectId: ID!, $cursor: String) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          content {
+            ... on Issue {
+              id
+              number
+              title
+              repository { nameWithOwner }
+              issueFieldValues(first: 100) {
+                nodes {
+                  __typename
+                  ... on IssueFieldSingleSelectValue {
+                    name
+                    field { ... on IssueFieldSingleSelect { name } }
+                  }
+                  ... on IssueFieldDateValue {
+                    value
+                    field { ... on IssueFieldDate { name } }
+                  }
+                }
+              }
+            }
+          }
+          fieldValues(first: 50) {
+            nodes {
+              __typename
+              ... on ProjectV2ItemFieldSingleSelectValue {
+                name
+                field { ... on ProjectV2SingleSelectField { name } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
 FIND_PROJECT_ITEM_ID = """
 query($projectId: ID!) {
   node(id: $projectId) {

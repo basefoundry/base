@@ -8,7 +8,7 @@ base_gh_issue_usage() {
     cat <<'EOF'
 Usage:
   basectl gh issue list [gh options...]
-  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--size <T|S|M|L>] [--allow-cross-repo] [project options...]
+  basectl gh issue create [--category <bug|enhancement|documentation|ci|security>] --title <title> [--body <body>] [--repo <owner/name>] [--assignee <login>|--no-assignee] [--priority <value>] [--size <T|S|M|L>|--effort <value>] [--allow-cross-repo] [project options...]
   basectl gh issue readiness <number> [--repo <owner/name>] [--project-owner <login> --project-number <number>] [--format <text|json>]
   basectl gh issue start <number> [--category <bug|enhancement|documentation|ci|security>] [--title <title>] [--repo <owner/name>|-R <owner/name>] [--project <title>] [--project-owner <login>] [--no-project] [--allow-cross-repo]
 
@@ -25,7 +25,9 @@ Issue create project options:
   --no-assignee                 Do not assign the issue, even when repo config has a default.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
-  --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
+  --priority <value>            Priority value for the configured field source.
+  --size <T|S|M|L>              Legacy Project Size value; compatibility alias for Effort.
+  --effort <value>              Effort value for issue fields (Tiny, Small, Medium, Large).
   --no-project                  Skip Project metadata updates.
   --allow-cross-repo            Allow an intentional update to a Project not linked to the issue repository.
 
@@ -106,7 +108,9 @@ Options:
   --no-assignee            Ignore any repository assignee default.
   --project <title>        GitHub Project title.
   --project-owner <login>  GitHub Project owner.
-  --size <T|S|M|L>         GitHub Project Size value.
+  --priority <value>       Priority value for the configured field source.
+  --size <T|S|M|L>         Legacy Project Size value; compatibility alias for Effort.
+  --effort <value>         Effort value for issue fields.
   --no-project             Skip GitHub Project metadata updates.
   --allow-cross-repo       Allow an intentional update to a Project not linked to the issue repository.
   -h, --help               Show this help text.
@@ -186,7 +190,9 @@ base_gh_issue_create() {
     local issue_output=""
     local no_assignee=0
     local project_owner=""
+    local project_priority=""
     local project_size=""
+    local project_effort=""
     local project_title=""
     local title=""
     local -a parser_args=()
@@ -200,7 +206,9 @@ base_gh_issue_create() {
         "body|value|--body"
         "project|value|--project"
         "project_owner|value|--project-owner"
+        "priority|value|--priority"
         "size|value|--size"
+        "effort|value|--effort"
         "no_project|flag|--no-project"
         "allow_cross_repo|flag|--allow-cross-repo"
     )
@@ -209,7 +217,7 @@ base_gh_issue_create() {
 
     while (($#)); do
         case "$1" in
-            --category|--repo|--title|--assignee|--body|--project|--project-owner|--size)
+            --category|--repo|--title|--assignee|--body|--project|--project-owner|--priority|--size|--effort)
                 [[ $# -ge 2 ]] || {
                     base_gh_usage_error base_gh_issue_usage "Option '$1' requires an argument."
                     return $?
@@ -253,7 +261,9 @@ base_gh_issue_create() {
     body="${parsed_options[body]:-}"
     project_title="${parsed_options[project]:-}"
     project_owner="${parsed_options[project_owner]:-}"
+    project_priority="${parsed_options[priority]:-}"
     project_size="${parsed_options[size]:-}"
+    project_effort="${parsed_options[effort]:-}"
     configure_project=$((1 - ${parsed_options[no_project]:-0}))
     allow_cross_repo="${parsed_options[allow_cross_repo]:-0}"
 
@@ -274,6 +284,15 @@ base_gh_issue_create() {
             base_gh_issue_usage >&2
             return 2
         }
+    fi
+    if [[ -n "$project_effort" && "$project_effort" != Tiny && "$project_effort" != Small &&
+        "$project_effort" != Medium && "$project_effort" != Large ]]; then
+        base_gh_usage_error base_gh_issue_usage "Invalid --effort value '$project_effort'."
+        return $?
+    fi
+    if [[ -n "$project_size" && -n "$project_effort" ]]; then
+        base_gh_usage_error base_gh_issue_usage "Options '--size' and '--effort' cannot be used together."
+        return $?
     fi
     if ((assignee_explicit)) && ((no_assignee)); then
         base_gh_usage_error base_gh_issue_usage "Options '--assignee' and '--no-assignee' cannot be used together."
@@ -327,6 +346,8 @@ base_gh_issue_create() {
             if [[ -n "$project_size" ]]; then
                 field_args+=(--size "$project_size")
             fi
+            [[ -z "$project_priority" ]] || field_args+=(--priority "$project_priority")
+            [[ -z "$project_effort" ]] || field_args+=(--effort "$project_effort")
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
@@ -339,9 +360,17 @@ base_gh_issue_create() {
                 --owner "$project_owner"
                 --repo "$github_repo"
                 --status Backlog
-                --priority P2
-                --size "$project_size"
             )
+            if [[ -n "$project_priority" ]]; then
+                field_args+=(--priority "$project_priority")
+            else
+                field_args+=(--priority P2)
+            fi
+            if [[ -n "$project_effort" ]]; then
+                field_args+=(--effort "$project_effort")
+            else
+                field_args+=(--size "$project_size")
+            fi
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi

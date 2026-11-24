@@ -55,6 +55,47 @@ def test_project_intake_template_matches_repository_workflow() -> None:
     ).read_text(encoding="utf-8")
 
 
+def test_project_intake_issue_fields_mode_sets_only_missing_issue_defaults(tmp_path: Path) -> None:
+    result = run_project_intake_script(tmp_path, PROJECT_INTAKE_FIELD_SOURCE="issue_fields")
+
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "issue-priority").read_text(encoding="utf-8") == "Medium\n"
+    assert (tmp_path / "issue-effort").read_text(encoding="utf-8") == "Small\n"
+    payload = yaml.safe_load((tmp_path / "issue-field-values-posts.log").read_text(encoding="utf-8"))
+    assert payload == {
+        "issue_field_values": [
+            {"issue_field_id": 43373537, "value": "Medium"},
+            {"issue_field_id": 43373540, "value": "Small"},
+        ]
+    }
+    assert not (tmp_path / "priority").exists()
+    assert not (tmp_path / "size").exists()
+
+
+def test_project_intake_issue_fields_mode_preserves_existing_values(tmp_path: Path) -> None:
+    (tmp_path / "issue-priority").write_text("Low\n", encoding="utf-8")
+    (tmp_path / "issue-effort").write_text("Large\n", encoding="utf-8")
+
+    result = run_project_intake_script(tmp_path, PROJECT_INTAKE_FIELD_SOURCE="issue_fields")
+
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "issue-priority").read_text(encoding="utf-8") == "Low\n"
+    assert (tmp_path / "issue-effort").read_text(encoding="utf-8") == "Large\n"
+    assert not (tmp_path / "issue-field-values-posts.log").exists()
+
+
+def test_project_intake_project_fields_mode_uses_legacy_project_fields(tmp_path: Path) -> None:
+    result = run_project_intake_script(tmp_path, PROJECT_INTAKE_FIELD_SOURCE="project_fields")
+
+    assert result.returncode == 0, result.stderr
+    assert "Project-fields rollback" in result.stdout
+    payload = yaml.safe_load((tmp_path / "rest-patches.log").read_text(encoding="utf-8"))
+    updates = {entry["id"]: entry["value"] for entry in payload["fields"]}
+    assert updates == {10: "O_backlog", 11: "O_p2", 12: "O_s", 13: "O_product", 14: "O_adoption"}
+    gh_log = (tmp_path / "gh.log").read_text(encoding="utf-8")
+    assert "issue-field-values" not in gh_log
+
+
 def test_project_intake_classifies_rate_limits_and_auth_failures() -> None:
     run_command = project_intake_run_command()
 

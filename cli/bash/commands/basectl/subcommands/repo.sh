@@ -1252,14 +1252,15 @@ base_repo_write_project_config() {
 
     base_repo_write_stream "$dry_run" "$root/.github/base-project.yml" <<'EOF'
 project:
+  field_source: issue_fields
   areas: []
   initiatives: []
   issue_defaults:
     status: Backlog
-    priority: P2
+    priority: Medium
     area: Product
     initiative: Adoption Polish
-    size: S
+    effort: Small
 EOF
 }
 
