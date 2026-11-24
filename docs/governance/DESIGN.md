@@ -2,11 +2,11 @@
 
 **Version:** 1.6, 24 November 2026
 **Owner:** Ramesh (codeforester)
-**Status:** Accepted through PR #2707 (#2703); implementation proceeds through the companion plan's issue/PR trains
+**Status:** Accepted through PR #2708 (#2706); implementation proceeds through the companion plan's issue/PR trains
 **Intended home:** `docs/governance/DESIGN.md` in `basefoundry/base`
 **Companion:** `docs/governance/IMPLEMENTATION-PLAN.md`, which sequences the proposed work
 
-**Sources consolidated:** Base Direction Memo v12 (19 Oct 2026); Base Working Notes Parts 1–37 (22 Oct–2 Nov 2026); the supplied governance drafts (3 Nov 2026); current Base workflow, configuration, review and documentation contracts; Ramesh's clarifications (7–22 Nov 2026); and accepted implementation plan v4.4.
+**Sources consolidated:** Base Direction Memo v12 (19 Oct 2026); Base Working Notes Parts 1–37 (22 Oct–2 Nov 2026); the supplied governance drafts (3 Nov 2026); current Base workflow, configuration, review and documentation contracts; Ramesh's clarifications (7–23 Nov 2026); and accepted implementation plan v4.4.
 
 ### How to read this document
 
@@ -1072,7 +1072,7 @@ Internal sources: Base Direction Memo v12; Base Working Notes Parts 1–37; Base
 
 ## Appendix E. Maintainer clarifications recorded 8–23 November 2026
 
-These decisions are incorporated in the current body and supersede any inconsistent statement in the earlier 3 November appendices. Items 17–21 record later maintainer decisions; items 22–29 record #2703's D1–D7 from 21 November and the D2 rollback amendment from 22 November.
+These decisions are incorporated in the current body and supersede any inconsistent statement in the earlier 3 November appendices. Items 17–21 record later maintainer decisions; items 22–29 record #2703's D1–D7 from 21 November and the D2 rollback amendment from 22 November; item 30 records #2706's loop-extension rule from 23 November.
 
 1. Keep Triage between Backlog and Ready, and use separate repository-owned issue and PR round limits, each initially three.
 2. Draft PRs keep the issue In Progress. Use delivery slices rather than fixed PR numbers. In Review requires reviewable evidence for every slice; Done requires every slice merged or an explicit maintainer-approved terminal disposition.
@@ -1103,7 +1103,7 @@ These decisions are incorporated in the current body and supersede any inconsist
 27. (21 Nov) **#2703 D5, reviewer notes.** Rename the PR template section to “Risk, rollback and reviewer notes”; it includes where to start review and what was not verified, with “Not verified: nothing” allowed.
 28. (21 Nov) **#2703 D6, issue form and Ready metadata.** Keep one form and the same sections for every Type; Type changes section content, not section order. Do not add Project Fields or Agent Assignment body sections: readiness reads native Type, configured Priority/Effort sources, Area, assignee and Assisted-by, and requires Risk whenever the source setting is set.
 29. (21 Nov) **#2703 D7, existing issues.** Closed issue bodies remain unchanged and their field values are copied once. Open issues convert when next prepared for Ready, after their original body is preserved in a comment; issues already Ready or later keep their approved contract. Before 1.13 ships, convert remaining open old-format issues or close them as Not planned. Until #2667 ships, 1.11 issues keep current required headings plus §4.2 content.
-30. (23 Nov) The maintainer may extend an issue or PR loop past its configured limit only when every open finding is a bounded correction or evidence check the reviewer can recheck within the granted rounds. Any finding requiring a contract or scope change stays with the maintainer. Grant one or two rounds at a time, up to two extra rounds per loop in total, and apply the eligibility test to every extension. An extended round checks only the recorded findings and their fixes, not the whole issue or PR. Before the next round starts, record the rounds granted, the new limit and why each finding is bounded on the issue or PR. Disputes and findings still open at the final limit go to the maintainer; no extension, timeout or exhausted limit implies approval. See §6.2 step 6.
+30. (23 Nov) **#2706, loop-extension rule.** The maintainer may extend an issue or PR loop past its configured limit only when every open finding is a bounded correction or evidence check the reviewer can recheck within the granted rounds. Any finding requiring a contract or scope change stays with the maintainer. Grant one or two rounds at a time, up to two extra rounds per loop in total, and apply the eligibility test to every extension. An extended round checks only the recorded findings and their fixes, not the whole issue or PR. Before the next round starts, record the rounds granted, the new limit and why each finding is bounded on the issue or PR. Disputes and findings still open at the final limit go to the maintainer; no extension, timeout or exhausted limit implies approval. See §6.2 step 6.
 
 ## Appendix F. Disposition of original B1–B18 items
 
