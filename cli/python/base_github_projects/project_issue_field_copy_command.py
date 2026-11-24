@@ -47,17 +47,16 @@ def copy_issue_fields_command(args: ProjectArguments, ops: ProjectOperations) ->
         for row in changed_items:
             item = row["item"]
             if direction == "project-to-issue":
-                repo_owner, repo_name = item.repository.split("/", 1)
+                repo_owner = item.repository.split("/", 1)[0]
                 if repo_owner not in field_ids_by_owner:
                     field_ids_by_owner[repo_owner] = ops.organization_issue_field_ids(repo_owner)
                 field_ids = field_ids_by_owner[repo_owner]
                 ops.write_issue_field_values(
                     repo_owner,
-                    repo_name,
+                    item.repository,
                     item.number,
                     row["changes"],
                     field_ids=field_ids,
-                    repository_owner=repo_owner,
                 )
             else:
                 for update in row["changes"]:
@@ -69,7 +68,8 @@ def copy_issue_fields_command(args: ProjectArguments, ops: ProjectOperations) ->
             raise ops.ProjectUsageError(str(exc)) from exc
 
     report(plan, direction, dry_run=not args.write)
-    return base_cli.ExitCode.FAILURE if any(row["mismatches"] for row in plan) and args.write else base_cli.ExitCode.SUCCESS
+    has_write_mismatch = any(row["mismatches"] for row in plan) and args.write
+    return base_cli.ExitCode.FAILURE if has_write_mismatch else base_cli.ExitCode.SUCCESS
 
 
 def make_copy_plan(
@@ -195,7 +195,11 @@ def write_before_state(path: Path, project: Any, direction: str, items: tuple[Pr
 
 
 def report(rows: list[dict[str, Any]], direction: str, *, dry_run: bool) -> None:
-    target_fields = ("Priority", "Effort") if direction == "project-to-issue" else ("Legacy priority", "Legacy size", "Priority", "Size")
+    target_fields = (
+        ("Priority", "Effort")
+        if direction == "project-to-issue"
+        else ("Legacy priority", "Legacy size", "Priority", "Size")
+    )
     pending = sum(len(row["changes"]) for row in rows)
     mismatch_count = sum(len(row["mismatches"]) for row in rows)
     print(f"Direction: {direction}")

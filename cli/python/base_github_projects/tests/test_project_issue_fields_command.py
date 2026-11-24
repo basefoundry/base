@@ -414,8 +414,8 @@ def test_issue_fields_source_writes_priority_and_effort_to_the_issue(tmp_path: P
         read_issue_field_values=lambda owner, repo, number: (
             events.append(("read", owner, repo, number)) or {"Priority": "High"}
         ),
-        write_issue_field_values=lambda owner, repo, number, values, **kwargs: events.append(
-            ("write", owner, repo, number, dict(values), kwargs.get("repository_owner"))
+        write_issue_field_values=lambda owner, repository, number, values, **_kwargs: events.append(
+            ("write", owner, repository, number, dict(values))
         ),
         update_item_field=unexpected("update_item_field"),
         add_project_item=unexpected("add_project_item"),
@@ -437,7 +437,7 @@ def test_issue_fields_source_writes_priority_and_effort_to_the_issue(tmp_path: P
     assert events == [
         ("field-ids", "basefoundry"),
         ("read", "basefoundry", "base", 1604),
-        ("write", "basefoundry", "base", 1604, {"Effort": "Tiny"}, "basefoundry"),
+        ("write", "basefoundry", "basefoundry/base", 1604, {"Effort": "Tiny"}),
     ]
 
 
@@ -448,7 +448,12 @@ def test_project_fields_rollback_keeps_priority_effort_in_legacy_project_fields(
     config_path.write_text("project:\n  field_source: project_fields\n", encoding="utf-8")
     events: list[tuple] = []
     fields = (
-        engine.ProjectField("priority", "Legacy priority", "SINGLE_SELECT", (engine.SelectOption("P1", "BLUE", "", "p1"),)),
+        engine.ProjectField(
+            "priority",
+            "Legacy priority",
+            "SINGLE_SELECT",
+            (engine.SelectOption("P1", "BLUE", "", "p1"),),
+        ),
         engine.ProjectField("size", "Legacy size", "SINGLE_SELECT", (engine.SelectOption("S", "GREEN", "", "s"),)),
     )
 
@@ -462,8 +467,8 @@ def test_project_fields_rollback_keeps_priority_effort_in_legacy_project_fields(
         find_project_item_state=lambda _project_id, _issue_id: engine.ProjectItemState("item", {}),
         organization_issue_field_ids=lambda owner: events.append(("field-ids", owner)) or {"Risk tier": 3},
         read_issue_field_values=lambda owner, repo, number: events.append(("read", owner, repo, number)) or {},
-        write_issue_field_values=lambda owner, repo, number, values, **kwargs: events.append(
-            ("write", owner, repo, number, dict(values), kwargs.get("repository_owner"))
+        write_issue_field_values=lambda owner, repository, number, values, **_kwargs: events.append(
+            ("write", owner, repository, number, dict(values))
         ),
         update_item_field=lambda _project_id, _item_id, update: events.append(
             ("project", update.field_name, update.option_name)
@@ -488,7 +493,7 @@ def test_project_fields_rollback_keeps_priority_effort_in_legacy_project_fields(
         ("read", "basefoundry", "base", 1604),
         ("project", "Legacy priority", "P1"),
         ("project", "Legacy size", "S"),
-        ("write", "basefoundry", "base", 1604, {"Risk tier": "High"}, "basefoundry"),
+        ("write", "basefoundry", "basefoundry/base", 1604, {"Risk tier": "High"}),
     ]
 
 

@@ -28,7 +28,8 @@ from .project_git import require_repo
 from .project_git import split_repo
 from .project_model import BASE_PROJECT_SCHEMA, DEFAULT_TEMPLATE_PROJECT
 from .project_model import ConfigureAction, FieldUpdate, Finding, OwnerInfo
-from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectIssueData, ProjectItemState, ProjectSchema, ProjectView
+from .project_model import ProjectArguments, ProjectField, ProjectInfo, ProjectIssueData
+from .project_model import ProjectItemState, ProjectSchema, ProjectView
 from .project_model import SelectFieldSpec, SelectOption
 from .project_operations import ProjectOperations
 from .project_schema import ISSUE_DEFAULT_OUTPUT_ORDER  # pylint: disable=unused-import
@@ -269,27 +270,37 @@ def rest_issue_set_fields_command(args: ProjectArguments) -> int:
                 "same-owner repositories; pass --allow-cross-repo intentionally."
             )
 
-    if issue_values:
-        field_ids = organization_issue_field_ids(owner)
-        missing_fields = sorted(set(issue_values) - set(field_ids))
-        if missing_fields:
-            raise ProjectError("Organization issue field(s) not found: " + ", ".join(missing_fields) + ".")
-        current_values = read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
-        pending = {name: value for name, value in issue_values.items() if current_values.get(name) != value}
-        if args.dry_run:
-            for name, value in pending.items():
-                print(f"[DRY-RUN] Would set issue field {name} to {value}.")
-        elif pending:
-            write_issue_field_values(
-                owner,
-                repo_name,
-                args.issue_number or 0,
-                pending,
-                field_ids=field_ids,
-                repository_owner=repo_owner,
-            )
-            print(f"✓ Updated issue fields for issue #{args.issue_number} (REST fallback)")
+    update_rest_issue_fields(args, owner, repo_owner, repo_name, issue_values)
     return base_cli.ExitCode.SUCCESS
+
+
+def update_rest_issue_fields(
+    args: ProjectArguments,
+    owner: str,
+    repo_owner: str,
+    repo_name: str,
+    issue_values: dict[str, str],
+) -> None:
+    if not issue_values:
+        return
+    field_ids = organization_issue_field_ids(owner)
+    missing_fields = sorted(set(issue_values) - set(field_ids))
+    if missing_fields:
+        raise ProjectError("Organization issue field(s) not found: " + ", ".join(missing_fields) + ".")
+    current_values = read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
+    pending = {name: value for name, value in issue_values.items() if current_values.get(name) != value}
+    if args.dry_run:
+        for name, value in pending.items():
+            print(f"[DRY-RUN] Would set issue field {name} to {value}.")
+    elif pending:
+        write_issue_field_values(
+            owner,
+            f"{repo_owner}/{repo_name}",
+            args.issue_number or 0,
+            pending,
+            field_ids=field_ids,
+        )
+        print(f"✓ Updated issue fields for issue #{args.issue_number} (REST fallback)")
 
 
 def find_owner_and_project(owner: str, title: str) -> OwnerInfo:

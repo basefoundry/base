@@ -70,11 +70,10 @@ def test_write_issue_field_values_uses_option_names_and_repository_owner(monkeyp
 
     issue_field_values.write_issue_field_values(
         "basefoundry",
-        "base",
+        "basefoundry/base",
         42,
         {"Priority": "High", "Effort": "Small"},
         field_ids={"Priority": 1, "Effort": 2},
-        repository_owner="basefoundry",
     )
 
     assert calls == [

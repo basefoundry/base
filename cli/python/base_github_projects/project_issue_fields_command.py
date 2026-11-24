@@ -5,68 +5,32 @@ import sys
 
 import base_cli
 
-from .project_model import ProjectArguments
+from .project_config import ProjectConfig
+from .project_model import FieldUpdate, OwnerInfo, ProjectArguments, ProjectInfo, ProjectItemState
 from .project_operations import ProjectOperations
+
+
+ISSUE_FIELD_NAMES = {
+    "priority": "Priority",
+    "effort": "Effort",
+    "risk_tier": "Risk tier",
+    "start_date": "Start date",
+    "target_date": "Target date",
+}
+PROJECT_FIELD_KEYS = {"status", "priority", "area", "initiative", "size"}
+DATE_FIELD_KEYS = {"risk_tier", "start_date", "target_date"}
 
 
 def issue_set_fields_command(args: ProjectArguments, ops: ProjectOperations) -> int:
     owner = ops.require_owner(args)
-    repo = ops.require_repo(args)
-    repo_owner, repo_name = ops.split_repo(repo)
-    repo = f"{repo_owner}/{repo_name}"
-    owner_info = ops.find_owner_and_project(owner, args.project_title or "")
-    if owner_info.project is None:
-        raise ops.ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'.")
-    project = owner_info.project
-    linked_repositories = ops.fetch_project_repository_names(project.project_id)
-    normalized_repo = repo.casefold()
-    if not args.allow_cross_repo and normalized_repo not in {linked.casefold() for linked in linked_repositories}:
-        linked_summary = ", ".join(sorted(linked_repositories)) or "none"
-        raise ops.ProjectUsageError(
-            f"Project '{args.project_title}' is not linked to repository '{repo}'. "
-            "Refusing to add or update an issue across repositories. "
-            "Use the repository's linked Project or pass --allow-cross-repo intentionally. "
-            f"Linked repositories: {linked_summary}."
-        )
-    if args.allow_cross_repo and normalized_repo not in {linked.casefold() for linked in linked_repositories}:
-        print(
-            f"WARNING: Updating Project '{args.project_title}' with issue repository '{repo}' "
-            "because --allow-cross-repo was supplied.",
-            file=sys.stderr,
-        )
+    repo_owner, repo_name = ops.split_repo(ops.require_repo(args))
+    repository = f"{repo_owner}/{repo_name}"
+    project = require_project_for_repository(args, ops, owner, repository)
     fields = ops.fetch_project_fields(project.project_id)
     config = ops.project_config_for_args(args)
-    values = ops.issue_field_values_for_args(args)
-    issue_field_names = {
-        "priority": "Priority",
-        "effort": "Effort",
-        "risk_tier": "Risk tier",
-        "start_date": "Start date",
-        "target_date": "Target date",
-    }
-    if config.field_source is None and any(key in values for key in ("risk_tier", "start_date", "target_date")):
-        raise ops.ProjectUsageError("Risk tier and date options require project.field_source to be set.")
-    issue_values = {
-        issue_field_names[key]: value
-        for key, value in values.items()
-        if key in issue_field_names and (key not in {"priority", "effort"} or config.field_source == "issue_fields")
-    }
-    project_values = {
-        key: value
-        for key, value in values.items()
-        if key in {"status", "priority", "area", "initiative", "size"}
-        and not (config.field_source == "issue_fields" and key in {"priority", "size"})
-    }
-    if args.start_date_today_if_empty and config.field_source is not None:
-        issue_field_ids = ops.organization_issue_field_ids(repo_owner)
-        if "Start date" not in issue_field_ids:
-            raise ops.ProjectError("Organization issue field 'Start date' was not found.")
-        current_issue_values = ops.read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
-        if not current_issue_values.get("Start date") and "start_date" not in values:
-            issue_values["Start date"] = date.today().isoformat()
-    else:
-        issue_field_ids = {}
-
+    project_values, issue_values, issue_field_ids = requested_values(
+        args, ops, config, repo_owner, repo_name
+    )
     updates = ops.resolve_issue_field_updates(
         fields,
         project_values,
@@ -74,56 +38,152 @@ def issue_set_fields_command(args: ProjectArguments, ops: ProjectOperations) -> 
     )
     if not updates and not issue_values:
         raise ops.ProjectUsageError("At least one field option must be provided.")
+
     issue_id = ops.fetch_issue_id(repo_owner, repo_name, args.issue_number or 0)
     item_state = ops.find_project_item_state(project.project_id, issue_id)
-    issue_fields_to_write: dict[str, str] = {}
-    if issue_values:
-        if not issue_field_ids:
-            issue_field_ids = ops.organization_issue_field_ids(repo_owner)
-        missing_fields = sorted(set(issue_values) - set(issue_field_ids))
-        if missing_fields:
-            raise ops.ProjectError("Organization issue field(s) not found: " + ", ".join(missing_fields) + ".")
-        current_issue_values = ops.read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
-        issue_fields_to_write = {
-            name: value for name, value in issue_values.items() if current_issue_values.get(name) != value
-        }
+    issue_field_ids, issue_writes = issue_field_changes(
+        ops, repository, args.issue_number or 0, issue_values, issue_field_ids
+    )
     if args.dry_run:
-        if updates:
-            print(f"[DRY-RUN] Would add issue #{args.issue_number} to Project '{args.project_title}' if needed.")
-            for update in updates:
-                print(f"[DRY-RUN] Would set {update.field_name} to {update.option_name}.")
-        for name, value in issue_fields_to_write.items():
-            print(f"[DRY-RUN] Would set issue field {name} to {value}.")
+        print_dry_run(args, updates, issue_writes)
         return base_cli.ExitCode.SUCCESS
-    if item_state is None and updates:
-        item_id = ops.add_project_item(project.project_id, issue_id)
-        pending_updates = updates
-    elif item_state is None:
-        item_id = ""
-        pending_updates = ()
-    else:
-        item_id = item_state.item_id
-        pending_updates = tuple(
-            update for update in updates if item_state.values.get(update.field_name) != update.option_name
-        )
+
+    item_id, pending_updates = pending_project_updates(ops, project.project_id, item_state, updates, issue_id)
     for update in pending_updates:
         ops.update_item_field(project.project_id, item_id, update)
-    if issue_fields_to_write:
+    if issue_writes:
         ops.write_issue_field_values(
-            owner,
-            repo_name,
+            repo_owner,
+            repository,
             args.issue_number or 0,
-            issue_fields_to_write,
+            issue_writes,
             field_ids=issue_field_ids,
-            repository_owner=repo_owner,
         )
-    if pending_updates or issue_fields_to_write:
-        if pending_updates and issue_fields_to_write:
-            print(f"✓ Updated Project and issue metadata for issue #{args.issue_number}")
-        elif pending_updates:
-            print(f"✓ Updated Project metadata for issue #{args.issue_number}")
-        else:
-            print(f"✓ Updated issue fields for issue #{args.issue_number}")
+    report_update(args, pending_updates, issue_writes)
+    return base_cli.ExitCode.SUCCESS
+
+
+def require_project_for_repository(
+    args: ProjectArguments,
+    ops: ProjectOperations,
+    owner: str,
+    repository: str,
+) -> ProjectInfo:
+    owner_info: OwnerInfo = ops.find_owner_and_project(owner, args.project_title or "")
+    if owner_info.project is None:
+        raise ops.ProjectError(f"Project '{args.project_title}' was not found for owner '{owner}'.")
+    linked_repositories = ops.fetch_project_repository_names(owner_info.project.project_id)
+    is_linked = repository.casefold() in {linked.casefold() for linked in linked_repositories}
+    if is_linked:
+        return owner_info.project
+    if not args.allow_cross_repo:
+        linked_summary = ", ".join(sorted(linked_repositories)) or "none"
+        raise ops.ProjectUsageError(
+            f"Project '{args.project_title}' is not linked to repository '{repository}'. "
+            "Refusing to add or update an issue across repositories. "
+            "Use the repository's linked Project or pass --allow-cross-repo intentionally. "
+            f"Linked repositories: {linked_summary}."
+        )
+    print(
+        f"WARNING: Updating Project '{args.project_title}' with issue repository '{repository}' "
+        "because --allow-cross-repo was supplied.",
+        file=sys.stderr,
+    )
+    return owner_info.project
+
+
+def requested_values(
+    args: ProjectArguments,
+    ops: ProjectOperations,
+    config: ProjectConfig,
+    repo_owner: str,
+    repo_name: str,
+) -> tuple[dict[str, str], dict[str, str], dict[str, int]]:
+    values = ops.issue_field_values_for_args(args)
+    if config.field_source is None and DATE_FIELD_KEYS.intersection(values):
+        raise ops.ProjectUsageError("Risk tier and date options require project.field_source to be set.")
+    issue_values = {
+        ISSUE_FIELD_NAMES[key]: value
+        for key, value in values.items()
+        if key in ISSUE_FIELD_NAMES and (key not in {"priority", "effort"} or config.field_source == "issue_fields")
+    }
+    project_values = {
+        key: value
+        for key, value in values.items()
+        if key in PROJECT_FIELD_KEYS
+        and not (config.field_source == "issue_fields" and key in {"priority", "size"})
+    }
+    field_ids: dict[str, int] = {}
+    if args.start_date_today_if_empty and config.field_source is not None:
+        field_ids = ops.organization_issue_field_ids(repo_owner)
+        if "Start date" not in field_ids:
+            raise ops.ProjectError("Organization issue field 'Start date' was not found.")
+        current_values = ops.read_issue_field_values(repo_owner, repo_name, args.issue_number or 0)
+        if not current_values.get("Start date") and "start_date" not in values:
+            issue_values["Start date"] = date.today().isoformat()
+    return project_values, issue_values, field_ids
+
+
+def issue_field_changes(
+    ops: ProjectOperations,
+    repository: str,
+    issue_number: int,
+    issue_values: dict[str, str],
+    field_ids: dict[str, int],
+) -> tuple[dict[str, int], dict[str, str]]:
+    if not issue_values:
+        return field_ids, {}
+    repo_owner, repo_name = ops.split_repo(repository)
+    if not field_ids:
+        field_ids = ops.organization_issue_field_ids(repo_owner)
+    missing_fields = sorted(set(issue_values) - set(field_ids))
+    if missing_fields:
+        raise ops.ProjectError("Organization issue field(s) not found: " + ", ".join(missing_fields) + ".")
+    current_values = ops.read_issue_field_values(repo_owner, repo_name, issue_number)
+    writes = {name: value for name, value in issue_values.items() if current_values.get(name) != value}
+    return field_ids, writes
+
+
+def print_dry_run(
+    args: ProjectArguments,
+    updates: tuple[FieldUpdate, ...],
+    issue_writes: dict[str, str],
+) -> None:
+    if updates:
+        print(f"[DRY-RUN] Would add issue #{args.issue_number} to Project '{args.project_title}' if needed.")
+        for update in updates:
+            print(f"[DRY-RUN] Would set {update.field_name} to {update.option_name}.")
+    for name, value in issue_writes.items():
+        print(f"[DRY-RUN] Would set issue field {name} to {value}.")
+
+
+def pending_project_updates(
+    ops: ProjectOperations,
+    project_id: str,
+    item_state: ProjectItemState | None,
+    updates: tuple[FieldUpdate, ...],
+    issue_id: str,
+) -> tuple[str, tuple[FieldUpdate, ...]]:
+    if item_state is None:
+        if not updates:
+            return "", ()
+        return ops.add_project_item(project_id, issue_id), updates
+    pending = tuple(
+        update for update in updates if item_state.values.get(update.field_name) != update.option_name
+    )
+    return item_state.item_id, pending
+
+
+def report_update(
+    args: ProjectArguments,
+    pending_updates: tuple[FieldUpdate, ...],
+    issue_writes: dict[str, str],
+) -> None:
+    if pending_updates and issue_writes:
+        print(f"✓ Updated Project and issue metadata for issue #{args.issue_number}")
+    elif pending_updates:
+        print(f"✓ Updated Project metadata for issue #{args.issue_number}")
+    elif issue_writes:
+        print(f"✓ Updated issue fields for issue #{args.issue_number}")
     else:
         print(f"✓ Project metadata already current for issue #{args.issue_number}")
-    return base_cli.ExitCode.SUCCESS

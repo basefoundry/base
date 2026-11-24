@@ -27,6 +27,15 @@ ISSUE_FIELD_OPTIONS = (
 )
 OPTION_NOT_CONSUMED = 0
 SPACED_OPTION_TOKEN_COUNT = 2
+BOOLEAN_OPTION_ATTRIBUTES = {
+    "--dry-run": "dry_run",
+    "--write": "write",
+    "--replace-project": "replace_project",
+}
+ISSUE_BOOLEAN_OPTION_ATTRIBUTES = {
+    "--start-date-today-if-empty": "start_date_today_if_empty",
+    "--allow-cross-repo": "allow_cross_repo",
+}
 
 
 @dataclass
@@ -88,7 +97,7 @@ def parse_args(
 
     command = arguments[1]
     remaining = list(arguments[2:])
-    if command == "doctor":
+    if command in {"doctor", "configure"}:
         state = parse_project_options(
             remaining,
             allow_fields=False,
@@ -96,60 +105,54 @@ def parse_args(
             infer_owner_from_git=infer_owner,
         )
         require_project_title(state)
-        return state_to_args("doctor", state)
-    if command == "configure":
-        state = parse_project_options(
-            remaining,
-            allow_fields=False,
-            allow_issue=False,
-            infer_owner_from_git=infer_owner,
-        )
-        require_project_title(state)
-        return state_to_args("configure", state)
+        return state_to_args(command, state)
     if command == "issue":
-        if remaining and remaining[0] == "defaults":
-            state = parse_project_options(
-                remaining[1:],
-                allow_fields=False,
-                allow_issue=False,
-                infer_owner_from_git=infer_owner,
-            )
+        return parse_issue_arguments(remaining, infer_owner, infer_repo)
+    raise ProjectUsageError(f"Unknown project command '{command}'.")
+
+
+def parse_issue_arguments(
+    remaining: list[str],
+    infer_owner: Callable[[], str | None],
+    infer_repo: Callable[[], str | None],
+) -> ProjectArguments:
+    if remaining and remaining[0] in {"defaults", "copy-fields"}:
+        subcommand = remaining[0]
+        state = parse_project_options(
+            remaining[1:],
+            allow_fields=False,
+            allow_issue=False,
+            infer_owner_from_git=infer_owner,
+        )
+        if subcommand == "defaults":
             if not state.config_path:
                 raise ProjectUsageError("The 'project issue defaults' command requires --config.")
             return state_to_args("issue-defaults", state)
-        if remaining and remaining[0] == "copy-fields":
-            state = parse_project_options(
-                remaining[1:],
-                allow_fields=False,
-                allow_issue=False,
-                infer_owner_from_git=infer_owner,
-            )
-            require_project_title(state)
-            if state.copy_direction not in {"project-to-issue", "issue-to-project"}:
-                raise ProjectUsageError(
-                    "The 'project issue copy-fields' command requires "
-                    "--direction project-to-issue or --direction issue-to-project."
-                )
-            return state_to_args("issue-copy-fields", state)
-        if len(remaining) < 2 or remaining[0] != "set-fields":
-            raise ProjectUsageError("Expected 'project issue set-fields <number>'.")
-        try:
-            issue_number = int(remaining[1])
-        except ValueError as exc:
-            raise ProjectUsageError(f"Invalid issue number '{remaining[1]}'.") from exc
-        state = parse_project_options(
-            remaining[2:],
-            allow_fields=True,
-            allow_issue=True,
-            infer_owner_from_git=infer_owner,
-        )
         require_project_title(state)
-        if not state.repo:
-            state.repo = infer_repo()
-        if not state.repo:
-            raise ProjectUsageError("The 'project issue set-fields' command requires --repo.")
-        return state_to_args("issue-set-fields", state, issue_number=issue_number)
-    raise ProjectUsageError(f"Unknown project command '{command}'.")
+        if state.copy_direction not in {"project-to-issue", "issue-to-project"}:
+            raise ProjectUsageError(
+                "The 'project issue copy-fields' command requires "
+                "--direction project-to-issue or --direction issue-to-project."
+            )
+        return state_to_args("issue-copy-fields", state)
+    if len(remaining) < 2 or remaining[0] != "set-fields":
+        raise ProjectUsageError("Expected 'project issue set-fields <number>'.")
+    try:
+        issue_number = int(remaining[1])
+    except ValueError as exc:
+        raise ProjectUsageError(f"Invalid issue number '{remaining[1]}'.") from exc
+    state = parse_project_options(
+        remaining[2:],
+        allow_fields=True,
+        allow_issue=True,
+        infer_owner_from_git=infer_owner,
+    )
+    require_project_title(state)
+    if not state.repo:
+        state.repo = infer_repo()
+    if not state.repo:
+        raise ProjectUsageError("The 'project issue set-fields' command requires --repo.")
+    return state_to_args("issue-set-fields", state, issue_number=issue_number)
 
 
 def parse_project_options(
@@ -160,30 +163,18 @@ def parse_project_options(
     infer_owner_from_git: Callable[[], str | None] | None = None,
 ) -> OptionState:
     state = OptionState(initiative_options=[], field_values={})
+    boolean_options = dict(BOOLEAN_OPTION_ATTRIBUTES)
+    if allow_issue:
+        boolean_options.update(ISSUE_BOOLEAN_OPTION_ATTRIBUTES)
     index = 0
     while index < len(remaining):
         arg = remaining[index]
         if arg in HELP_OPTIONS:
             print_usage()
             raise SystemExit(0)
-        if arg == "--dry-run":
-            state.dry_run = True
-            index += 1
-            continue
-        if arg == "--write":
-            state.write = True
-            index += 1
-            continue
-        if allow_issue and arg == "--start-date-today-if-empty":
-            state.start_date_today_if_empty = True
-            index += 1
-            continue
-        if arg == "--replace-project":
-            state.replace_project = True
-            index += 1
-            continue
-        if allow_issue and arg == "--allow-cross-repo":
-            state.allow_cross_repo = True
+        attribute = boolean_options.get(arg)
+        if attribute:
+            setattr(state, attribute, True)
             index += 1
             continue
         if apply_inline_option(state, arg, allow_fields=allow_fields):

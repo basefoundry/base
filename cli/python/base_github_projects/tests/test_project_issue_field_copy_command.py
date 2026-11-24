@@ -39,8 +39,8 @@ def copy_ops(items: list[engine.ProjectIssueData], events: list[tuple], *, misma
     def fetch_items(_project_id: str):
         return tuple(items)
 
-    def write_issue(owner: str, repo: str, number: int, values: dict[str, str], **kwargs: object):
-        events.append(("issue", owner, kwargs.get("repository_owner"), repo, number, dict(values)))
+    def write_issue(owner: str, repository: str, number: int, values: dict[str, str], **_kwargs: object):
+        events.append(("issue", owner, repository, number, dict(values)))
         item = items[0]
         item.issue_values.update(values)
         for field, actual in mismatches:
@@ -163,7 +163,7 @@ def test_project_to_issue_copy_is_dry_run_by_default_and_only_plans_differences(
 
     output = capsys.readouterr().out
     assert status == base_cli.ExitCode.SUCCESS
-    assert events == []
+    assert not events
     assert "Mode: dry run" in output
     assert "Values to change: 1" in output
     assert "Readback mismatches: not checked (dry run)" in output
@@ -183,7 +183,9 @@ def test_project_to_issue_write_exports_before_state_and_reads_back(tmp_path: Pa
     snapshot = json.loads(export_path.read_text(encoding="utf-8"))
     assert status == base_cli.ExitCode.SUCCESS
     assert snapshot["items"][0]["issue_values"] == {}
-    assert events == [("issue", "basefoundry", "basefoundry", "base", 42, {"Priority": "High", "Effort": "Small"})]
+    assert events == [
+        ("issue", "basefoundry", "basefoundry/base", 42, {"Priority": "High", "Effort": "Small"})
+    ]
     assert "Priority: High=1" in output
     assert "Effort: Small=1" in output
     assert "Readback mismatches: 0" in output
@@ -214,7 +216,7 @@ def test_project_to_issue_rerun_skips_values_that_already_match(tmp_path: Path, 
     )
 
     assert status == base_cli.ExitCode.SUCCESS
-    assert events == []
+    assert not events
     assert "Values to change: 0" in capsys.readouterr().out
 
 
@@ -243,7 +245,7 @@ def test_issue_to_project_copy_defaults_to_dry_run(capsys):
 
     output = capsys.readouterr().out
     assert status == base_cli.ExitCode.SUCCESS
-    assert events == []
+    assert not events
     assert "Mode: dry run" in output
     assert "Legacy priority: P0=1" in output
     assert "Legacy size: T=1" in output
@@ -262,7 +264,7 @@ def test_issue_to_project_rerun_skips_already_matching_values(tmp_path: Path, ca
     )
 
     assert status == base_cli.ExitCode.SUCCESS
-    assert events == []
+    assert not events
     assert "Values to change: 0" in capsys.readouterr().out
 
 

@@ -341,7 +341,7 @@ base_gh_issue_readiness_collect_body_findings() {
 }
 
 base_gh_issue_readiness_collect_project_findings() {
-    local status field config_path project_owner repo_owner repo_name issue_fields_json organization_fields_json
+    local status config_path project_owner repo_owner repo_name issue_fields_json organization_fields_json
 
     config_path="$(base_gh_project_config_path || true)"
     if [[ -n "$config_path" ]]; then

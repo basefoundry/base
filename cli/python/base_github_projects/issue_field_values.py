@@ -90,12 +90,11 @@ def organization_issue_field_ids(owner: str) -> dict[str, int]:
 
 def write_issue_field_values(
     owner: str,
-    repo: str,
+    repository: str,
     issue_number: int,
     values: dict[str, str],
     *,
     field_ids: dict[str, int] | None = None,
-    repository_owner: str | None = None,
 ) -> None:
     if not values:
         return
@@ -110,7 +109,7 @@ def write_issue_field_values(
         ]
     }
     run_issue_fields_api(
-        f"repos/{repository_owner or owner}/{repo}/issues/{issue_number}/issue-field-values",
+        f"repos/{repository}/issues/{issue_number}/issue-field-values",
         method="POST",
         payload=payload,
     )
