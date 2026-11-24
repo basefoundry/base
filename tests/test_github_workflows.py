@@ -582,8 +582,8 @@ def test_implementation_issue_template_is_copilot_ready_and_project_aligned() ->
     assert template["labels"] == ["enhancement"]
     assert "assignees" not in template
     assert {"goal", "background", "scope", "acceptance_criteria", "validation", "non_goals"} <= fields.keys()
-    assert fields["priority"]["attributes"]["options"] == ["P0", "P1", "P2", "P3"]
-    assert fields["size"]["attributes"]["options"] == ["T", "S", "M", "L"]
+    assert fields["priority"]["attributes"]["options"] == ["Urgent", "High", "Medium", "Low"]
+    assert fields["effort"]["attributes"]["options"] == ["Tiny", "Small", "Medium", "Large"]
     assert fields["area"]["attributes"]["options"] == project_config["areas"]
     assert fields["initiative"]["attributes"]["options"] == project_config["initiatives"]
     assert "assign this issue to Copilot" in fields["agent_assignment"]["attributes"]["description"]

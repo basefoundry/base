@@ -323,13 +323,36 @@ case "$*" in
   "api repos/basefoundry/base/contents/.github/base-project.yml --jq .content")
     case "${PROJECT_INTAKE_FIELD_SOURCE:-unset}" in
       issue_fields)
-        config='project:\n  field_source: issue_fields\n  issue_defaults:\n    status: Backlog\n    priority: Medium\n    effort: Small\n    area: Product\n    initiative: Adoption Polish\n'
+        config='project:
+  field_source: issue_fields
+  issue_defaults:
+    status: Backlog
+    priority: Medium
+    effort: Small
+    area: Product
+    initiative: Adoption Polish
+'
         ;;
       project_fields)
-        config='project:\n  field_source: project_fields\n  issue_defaults:\n    status: Backlog\n    priority: Medium\n    effort: Small\n    area: Product\n    initiative: Adoption Polish\n'
+        config='project:
+  field_source: project_fields
+  issue_defaults:
+    status: Backlog
+    priority: Medium
+    effort: Small
+    area: Product
+    initiative: Adoption Polish
+'
         ;;
       *)
-        config='project:\n  issue_defaults:\n    status: Backlog\n    priority: P2\n    size: S\n    area: Product\n    initiative: Adoption Polish\n'
+        config='project:
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+    area: Product
+    initiative: Adoption Polish
+'
         ;;
     esac
     printf '%b' "$config" | base64 | tr -d '\n'
@@ -341,7 +364,7 @@ case "$*" in
   "api -H X-GitHub-Api-Version: 2026-03-10 repos/basefoundry/base/issues/1311/issue-field-values")
     project_intake_mock_issue_field_values
     ;;
-  api\\ -H\\ X-GitHub-Api-Version:\\ 2026-03-10\\ --method\\ POST\\ repos/basefoundry/base/issues/1311/issue-field-values\\ --input\\ -)
+  *"POST repos/basefoundry/base/issues/1311/issue-field-values --input -")
     payload="$(cat)"
     printf '%s\n' "$payload" >> "${PROJECT_INTAKE_STATE:?}/issue-field-values-posts.log"
     while IFS=$'\t' read -r field_id value; do

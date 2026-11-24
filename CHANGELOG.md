@@ -40,6 +40,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Added
 
+- Add organization issue fields for Priority and Effort to newly configured
+  repositories, with a reversible `basectl gh project issue copy-fields`
+  migration that is dry-run by default and requires a before-state export for
+  writes.
+- Stability compatibility: enroll `basectl gh project issue copy-fields` and
+  the new configured issue-field options in the Stable command baseline.
 - Upgrade clean, detached Base source checkouts to a reviewed later stable tag
   with `basectl update --release <tag>`, including a preview and setup recovery.
 - Stability compatibility: enroll the new `basectl gh review fetch` and
