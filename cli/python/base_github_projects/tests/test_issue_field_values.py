@@ -17,7 +17,7 @@ def test_run_issue_fields_api_pins_version_and_posts_json(monkeypatch) -> None:
     result = issue_field_values.run_issue_fields_api(
         "repos/basefoundry/base/issues/42/issue-field-values",
         method="POST",
-        payload={"issue_field_values": [{"issue_field_id": 12, "value": "High"}]},
+        payload={"issue_field_values": [{"field_id": 12, "value": "High"}]},
     )
 
     assert result == {}
@@ -34,7 +34,7 @@ def test_run_issue_fields_api_pins_version_and_posts_json(monkeypatch) -> None:
                 "--input",
                 "-",
             ],
-            "input": '{"issue_field_values": [{"issue_field_id": 12, "value": "High"}]}',
+            "input": '{"issue_field_values": [{"field_id": 12, "value": "High"}]}',
             "text": True,
             "capture_output": True,
             "check": False,
@@ -82,8 +82,8 @@ def test_write_issue_field_values_uses_option_names_and_repository_owner(monkeyp
             "POST",
             {
                 "issue_field_values": [
-                    {"issue_field_id": 2, "value": "Small"},
-                    {"issue_field_id": 1, "value": "High"},
+                    {"field_id": 2, "value": "Small"},
+                    {"field_id": 1, "value": "High"},
                 ]
             },
         )

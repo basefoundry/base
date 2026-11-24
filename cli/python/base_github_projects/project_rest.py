@@ -27,7 +27,9 @@ from .project_transport_errors import is_project_transport_error as _is_project_
 
 
 GITHUB_REST_TIMEOUT_SECONDS = 60
-REST_MANAGED_FIELDS = ("Status", "Priority", "Area", "Initiative", "Size")
+REST_MANAGED_FIELDS = (
+    "Status", "Priority", "Area", "Initiative", "Size", "Legacy priority", "Legacy size"
+)
 
 
 @dataclass(frozen=True)

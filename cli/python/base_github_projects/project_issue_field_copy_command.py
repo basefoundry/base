@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
+from dataclasses import dataclass, field as dataclass_field
 from datetime import datetime, timezone
 import json
 from pathlib import Path
 import sys
+import time
 from typing import Any
 
 import base_cli
@@ -17,9 +20,53 @@ PRIORITY_FORWARD = {"P0": "Urgent", "P1": "High", "P2": "Medium", "P3": "Low"}
 EFFORT_FORWARD = {"T": "Tiny", "S": "Small", "M": "Medium", "L": "Large"}
 PRIORITY_REVERSE = {value: key for key, value in PRIORITY_FORWARD.items()}
 EFFORT_REVERSE = {value: key for key, value in EFFORT_FORWARD.items()}
+COPY_WRITE_INTERVAL_SECONDS = 8.0
 
 
-def copy_issue_fields_command(args: ProjectArguments, ops: ProjectOperations) -> int:
+@dataclass
+class CopyWriteProgress:
+    values_written: int = 0
+    requests: int = 0
+
+
+@dataclass
+class CopyWriter:
+    ops: ProjectOperations
+    pause: Callable[[float], None]
+    progress: CopyWriteProgress = dataclass_field(default_factory=CopyWriteProgress)
+    field_ids_by_owner: dict[str, dict[str, int]] = dataclass_field(default_factory=dict)
+
+    def write_issue_fields(self, row: dict[str, Any], item: ProjectIssueData) -> None:
+        repo_owner = item.repository.split("/", 1)[0]
+        if repo_owner not in self.field_ids_by_owner:
+            self.field_ids_by_owner[repo_owner] = self.ops.organization_issue_field_ids(repo_owner)
+        if self.progress.requests:
+            self.pause(COPY_WRITE_INTERVAL_SECONDS)
+        self.ops.write_issue_field_values(
+            repo_owner,
+            item.repository,
+            item.number,
+            row["changes"],
+            field_ids=self.field_ids_by_owner[repo_owner],
+        )
+        self.progress.requests += 1
+        self.progress.values_written += len(row["changes"])
+
+    def write_project_fields(self, row: dict[str, Any], project_id: str, item: ProjectIssueData) -> None:
+        for update in row["changes"]:
+            if self.progress.requests:
+                self.pause(COPY_WRITE_INTERVAL_SECONDS)
+            self.ops.update_item_field(project_id, item.item_id, update)
+            self.progress.requests += 1
+            self.progress.values_written += 1
+
+
+def copy_issue_fields_command(
+    args: ProjectArguments,
+    ops: ProjectOperations,
+    *,
+    sleep: Callable[[float], None] | None = None,
+) -> int:
     owner = ops.require_owner(args)
     owner_info = ops.find_owner_and_project(owner, args.project_title or "")
     if owner_info.project is None:
@@ -28,6 +75,7 @@ def copy_issue_fields_command(args: ProjectArguments, ops: ProjectOperations) ->
     items = ops.fetch_project_issue_items(project.project_id)
     fields = ops.fetch_project_fields(project.project_id)
     direction = args.copy_direction or ""
+    pause = sleep or time.sleep
     if direction not in {"project-to-issue", "issue-to-project"}:
         raise ops.ProjectUsageError("Copy direction must be project-to-issue or issue-to-project.")
 
@@ -43,33 +91,52 @@ def copy_issue_fields_command(args: ProjectArguments, ops: ProjectOperations) ->
             write_before_state(Path(args.export_path), project, direction, items)
         except OSError as exc:
             raise ops.ProjectUsageError(f"Could not write before-state export '{args.export_path}': {exc}.") from exc
-        field_ids_by_owner: dict[str, dict[str, int]] = {}
+        plan, values_written = write_copy_plan(
+            project,
+            fields,
+            changed_items,
+            direction,
+            CopyWriter(ops, pause),
+        )
+    else:
+        values_written = 0
+
+    report(plan, direction, dry_run=not args.write, values_written=values_written)
+    has_write_mismatch = any(row["mismatches"] for row in plan) and args.write
+    return base_cli.ExitCode.FAILURE if has_write_mismatch else base_cli.ExitCode.SUCCESS
+
+
+def write_copy_plan(
+    project: Any,
+    fields: tuple[ProjectField, ...],
+    changed_items: list[dict[str, Any]],
+    direction: str,
+    writer: CopyWriter,
+) -> tuple[list[dict[str, Any]], int]:
+    try:
         for row in changed_items:
             item = row["item"]
             if direction == "project-to-issue":
-                repo_owner = item.repository.split("/", 1)[0]
-                if repo_owner not in field_ids_by_owner:
-                    field_ids_by_owner[repo_owner] = ops.organization_issue_field_ids(repo_owner)
-                field_ids = field_ids_by_owner[repo_owner]
-                ops.write_issue_field_values(
-                    repo_owner,
-                    item.repository,
-                    item.number,
-                    row["changes"],
-                    field_ids=field_ids,
-                )
+                writer.write_issue_fields(row, item)
             else:
-                for update in row["changes"]:
-                    ops.update_item_field(project.project_id, item.item_id, update)
-        items = ops.fetch_project_issue_items(project.project_id)
-        try:
-            plan = make_copy_plan(items, fields, direction, project_title=project.title)
-        except ValueError as exc:
-            raise ops.ProjectUsageError(str(exc)) from exc
+                writer.write_project_fields(row, project.project_id, item)
+        refreshed_items = writer.ops.fetch_project_issue_items(project.project_id)
+        plan = make_copy_plan(refreshed_items, fields, direction, project_title=project.title)
+    except ValueError as exc:
+        report_copy_failure(writer.progress.values_written)
+        raise writer.ops.ProjectUsageError(str(exc)) from exc
+    except Exception:
+        report_copy_failure(writer.progress.values_written)
+        raise
+    return plan, writer.progress.values_written
 
-    report(plan, direction, dry_run=not args.write)
-    has_write_mismatch = any(row["mismatches"] for row in plan) and args.write
-    return base_cli.ExitCode.FAILURE if has_write_mismatch else base_cli.ExitCode.SUCCESS
+
+def report_copy_failure(values_written: int) -> None:
+    print(
+        f"Copy stopped after {values_written} values were written. Keep the before-state export; "
+        "to resume, rerun with a new --export path. The command writes only differing values.",
+        file=sys.stderr,
+    )
 
 
 def make_copy_plan(
@@ -80,11 +147,13 @@ def make_copy_plan(
     project_title: str,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    priority_field = project_field_name(fields, "Priority", "Legacy priority", project_title)
+    size_field = project_field_name(fields, "Size", "Legacy size", project_title)
     for item in items:
         if direction == "project-to-issue":
             source = {
-                "Priority": first_value(item.project_values, "Legacy priority", "Priority"),
-                "Effort": first_value(item.project_values, "Legacy size", "Size"),
+                "Priority": item.project_values.get(priority_field, ""),
+                "Effort": item.project_values.get(size_field, ""),
             }
             expected = {
                 name: mapped_value(value, PRIORITY_FORWARD if name == "Priority" else EFFORT_FORWARD, item, name)
@@ -108,8 +177,8 @@ def make_copy_plan(
                 "Effort": item.issue_values.get("Effort", ""),
             }
             target_names = {
-                "Priority": project_field_name(fields, "Legacy priority", "Priority", project_title),
-                "Effort": project_field_name(fields, "Legacy size", "Size", project_title),
+                "Priority": priority_field,
+                "Effort": size_field,
             }
             expected = {
                 target_names[name]: mapped_value(
@@ -142,13 +211,6 @@ def make_copy_plan(
             }
         )
     return rows
-
-
-def first_value(values: dict[str, str], *names: str) -> str:
-    for name in names:
-        if values.get(name):
-            return values[name]
-    return ""
 
 
 def project_field_name(fields: tuple[ProjectField, ...], preferred: str, fallback: str, title: str) -> str:
@@ -194,11 +256,11 @@ def write_before_state(path: Path, project: Any, direction: str, items: tuple[Pr
         stream.write("\n")
 
 
-def report(rows: list[dict[str, Any]], direction: str, *, dry_run: bool) -> None:
+def report(rows: list[dict[str, Any]], direction: str, *, dry_run: bool, values_written: int = 0) -> None:
     target_fields = (
         ("Priority", "Effort")
         if direction == "project-to-issue"
-        else ("Legacy priority", "Legacy size", "Priority", "Size")
+        else ("Priority", "Size", "Legacy priority", "Legacy size")
     )
     pending = sum(len(row["changes"]) for row in rows)
     mismatch_count = sum(len(row["mismatches"]) for row in rows)
@@ -206,6 +268,8 @@ def report(rows: list[dict[str, Any]], direction: str, *, dry_run: bool) -> None
     print(f"Mode: {'dry run' if dry_run else 'write'}")
     print(f"Items scanned: {len(rows)}")
     print(f"Values to change: {pending if dry_run else 0}")
+    if not dry_run:
+        print(f"Values written: {values_written}")
     print("Per-value counts:")
     for field in target_fields:
         counts = Counter(

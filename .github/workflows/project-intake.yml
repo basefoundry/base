@@ -166,6 +166,11 @@ jobs:
               return "$status"
             fi
 
+            if [[ "$operation" == "read repository Project config" && "$diagnostic_output" == *"404"* ]]; then
+              echo "::warning::Repository Project config was not found; using the existing Project-field defaults." >&2
+              return 78
+            fi
+
             if [[ "${PROJECT_INTAKE_ALLOW_PROJECT_FALLBACK:-0}" == "1" ]] &&
               project_intake_is_project_transport_failure "$diagnostic_output"; then
               echo "::warning::GraphQL Project transport failed during Project Intake: $operation" >&2
@@ -322,9 +327,9 @@ jobs:
             return 77
           }
 
-          project_config_base64="$(project_intake_gh "read repository Project config" gh api \
-            "repos/$GITHUB_REPOSITORY/contents/.github/base-project.yml" --jq .content)" || exit $?
-          project_config_json="$(ruby -rbase64 -rjson -ryaml -e '
+          if project_config_base64="$(project_intake_gh "read repository Project config" gh api \
+            "repos/$GITHUB_REPOSITORY/contents/.github/base-project.yml" --jq .content)"; then
+            project_config_json="$(ruby -rbase64 -rjson -ryaml -e '
             config = YAML.safe_load(Base64.decode64(STDIN.read), aliases: false) || {}
             project = config.fetch("project", {})
             abort("project must be a mapping") unless project.is_a?(Hash)
@@ -350,10 +355,17 @@ jobs:
             end
             puts JSON.generate({field_source: source || "unset", priority: priority, size: size, effort: effort,
               area: defaults.fetch("area", "Product"), initiative: defaults.fetch("initiative", "Adoption Polish")})
-          ' <<<"$project_config_base64")" || {
-            echo "::error::Could not parse .github/base-project.yml for Project Intake."
-            exit 1
-          }
+            ' <<<"$project_config_base64")" || {
+              echo "::error::Could not parse .github/base-project.yml for Project Intake."
+              exit 1
+            }
+          else
+            config_status=$?
+            if [[ "$config_status" != "78" ]]; then
+              exit "$config_status"
+            fi
+            project_config_json='{"field_source":"unset","priority":"P2","size":"S","effort":"","area":"Product","initiative":"Adoption Polish"}'
+          fi
           BASE_PROJECT_FIELD_SOURCE="$(jq -r '.field_source' <<<"$project_config_json")"
           BASE_PROJECT_REPOSITORY_OWNER="${GITHUB_REPOSITORY%%/*}"
           BASE_PROJECT_DEFAULT_PRIORITY="$(jq -r '.priority' <<<"$project_config_json")"
@@ -406,12 +418,12 @@ jobs:
             if [[ -z "$priority_value" ]]; then
               expected_priority="$BASE_PROJECT_DEFAULT_PRIORITY"
               updates="$(jq -c --argjson id "$priority_id" --arg value "$BASE_PROJECT_DEFAULT_PRIORITY" \
-                '. + [{issue_field_id: $id, value: $value}]' <<<"$updates")"
+                '. + [{field_id: $id, value: $value}]' <<<"$updates")"
             fi
             if [[ -z "$effort_value" ]]; then
               expected_effort="$BASE_PROJECT_DEFAULT_EFFORT"
               updates="$(jq -c --argjson id "$effort_id" --arg value "$BASE_PROJECT_DEFAULT_EFFORT" \
-                '. + [{issue_field_id: $id, value: $value}]' <<<"$updates")"
+                '. + [{field_id: $id, value: $value}]' <<<"$updates")"
             fi
             if [[ "$(jq 'length' <<<"$updates")" != "0" ]]; then
               payload="$(jq -cn --argjson fields "$updates" '{issue_field_values: $fields}')"
@@ -674,10 +686,12 @@ jobs:
                 expected_project_field_count=3
                 ;;
               project_fields)
-                if jq -e '.[] | select(.name == "Legacy priority")' <<<"$fields_json" >/dev/null; then
+                if ! jq -e '.[] | select(.name == "Priority")' <<<"$fields_json" >/dev/null &&
+                  jq -e '.[] | select(.name == "Legacy priority")' <<<"$fields_json" >/dev/null; then
                   priority_field_name="Legacy priority"
                 fi
-                if jq -e '.[] | select(.name == "Legacy size")' <<<"$fields_json" >/dev/null; then
+                if ! jq -e '.[] | select(.name == "Size")' <<<"$fields_json" >/dev/null &&
+                  jq -e '.[] | select(.name == "Legacy size")' <<<"$fields_json" >/dev/null; then
                   size_field_name="Legacy size"
                 fi
                 ;;

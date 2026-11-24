@@ -40,9 +40,10 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Added
 
-- Add organization issue fields for Priority and Effort to newly configured
-  repositories, with a reversible `basectl gh project issue copy-fields`
-  migration that is dry-run by default and requires a before-state export for
+- Let eligible repositories use organization issue fields for Priority, Effort,
+  Risk tier and dates through `.github/base-project.yml`, and copy values
+  between Project and issue fields with `basectl gh project issue copy-fields`.
+  The migration is dry-run by default and requires a before-state export for
   writes.
 - Stability compatibility: enroll `basectl gh project issue copy-fields` and
   the new configured issue-field options in the Stable command baseline.

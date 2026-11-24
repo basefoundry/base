@@ -35,6 +35,7 @@ BOOLEAN_OPTION_ATTRIBUTES = {
 ISSUE_BOOLEAN_OPTION_ATTRIBUTES = {
     "--start-date-today-if-empty": "start_date_today_if_empty",
     "--allow-cross-repo": "allow_cross_repo",
+    "--no-defaults": "no_defaults",
 }
 
 
@@ -54,6 +55,7 @@ class OptionState:
     copy_direction: str | None = None
     export_path: str | None = None
     start_date_today_if_empty: bool = False
+    no_defaults: bool = False
     field_values: dict[str, str] | None = None
 
 
@@ -275,6 +277,7 @@ def state_to_args(command: str, state: OptionState, issue_number: int | None = N
         copy_direction=state.copy_direction,
         export_path=state.export_path,
         start_date_today_if_empty=state.start_date_today_if_empty,
+        no_defaults=state.no_defaults,
         issue_number=issue_number,
         field_values=dict(state.field_values or {}),
     )

@@ -964,6 +964,7 @@ base_gh_set_issue_in_progress() {
         --owner "$project_owner"
         --repo "$github_repo"
         --status "In Progress"
+        --no-defaults
     )
     config_path="$(base_gh_project_config_path || true)"
     if [[ -n "$config_path" ]]; then

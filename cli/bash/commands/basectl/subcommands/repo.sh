@@ -1246,30 +1246,64 @@ base_repo_write_project_intake_workflow() {
     base_repo_write_stream "$dry_run" "$root/.github/workflows/project-intake.yml" < "$template"
 }
 
+base_repo_project_issue_fields_available() {
+    local github_repo="$1" owner owner_type fields_json
+
+    BASE_REPO_PROJECT_FIELD_SOURCE_REASON="repository owner is unavailable"
+    [[ "$github_repo" == */* ]] || return 1
+    owner="${github_repo%%/*}"
+    if ! owner_type="$(base_gh_run api "users/$owner" --jq .type 2>/dev/null)"; then
+        BASE_REPO_PROJECT_FIELD_SOURCE_REASON="could not verify whether '$owner' is an organization"
+        return 1
+    fi
+    if [[ "$owner_type" != "Organization" ]]; then
+        BASE_REPO_PROJECT_FIELD_SOURCE_REASON="owner '$owner' is not an organization"
+        return 1
+    fi
+    if ! fields_json="$(base_gh_run api -H 'X-GitHub-Api-Version: 2026-03-10' \
+        "orgs/$owner/issue-fields?per_page=100" 2>/dev/null)"; then
+        BASE_REPO_PROJECT_FIELD_SOURCE_REASON="could not verify organization '$owner' issue fields"
+        return 1
+    fi
+    if ! jq -e 'map(.name) | index("Priority") != null and index("Effort") != null' \
+        <<<"$fields_json" >/dev/null; then
+        BASE_REPO_PROJECT_FIELD_SOURCE_REASON="organization '$owner' does not have both Priority and Effort issue fields"
+        return 1
+    fi
+    BASE_REPO_PROJECT_FIELD_SOURCE_REASON="organization '$owner' has Priority and Effort issue fields"
+    return 0
+}
+
 base_repo_write_project_config() {
     local dry_run="$1"
     local root="$2"
+    local github_repo="${3:-}"
+    local field_source=""
+    local field_defaults="    priority: P2\n    size: S"
+    local config_contents
 
-    base_repo_write_stream "$dry_run" "$root/.github/base-project.yml" <<'EOF'
-project:
-  field_source: issue_fields
-  areas: []
-  initiatives: []
-  issue_defaults:
-    status: Backlog
-    priority: Medium
-    area: Product
-    initiative: Adoption Polish
-    effort: Small
-EOF
+    if base_repo_project_issue_fields_available "$github_repo"; then
+        field_source="issue_fields"
+        field_defaults="    priority: Medium\n    effort: Small"
+        base_std_log_info "Project field source: issue_fields ($BASE_REPO_PROJECT_FIELD_SOURCE_REASON)."
+    else
+        base_std_log_info "Project field source left unset: $BASE_REPO_PROJECT_FIELD_SOURCE_REASON; generated defaults use Project fields."
+    fi
+
+    config_contents="project:\n"
+    [[ -z "$field_source" ]] || config_contents+="  field_source: $field_source\n"
+    config_contents+="  areas: []\n  initiatives: []\n  issue_defaults:\n    status: Backlog\n"
+    config_contents+="$field_defaults\n    area: Product\n    initiative: Adoption Polish\n"
+    printf '%b' "$config_contents" | base_repo_write_stream "$dry_run" "$root/.github/base-project.yml"
 }
 
 base_repo_write_project_support_files() {
     local dry_run="$1"
     local root="$2"
+    local github_repo="${3:-}"
     local status=0
 
-    base_repo_write_project_config "$dry_run" "$root" || status=1
+    base_repo_write_project_config "$dry_run" "$root" "$github_repo" || status=1
     base_repo_write_project_intake_workflow "$dry_run" "$root" || status=1
 
     return "$status"
@@ -1281,7 +1315,8 @@ base_repo_write_baseline() {
     local license_id="$5"
     local name="$2"
     local root="$4"
-    local languages=("${@:6}")
+    local github_repo="$6"
+    local languages=("${@:7}")
     local status=0
 
     if [[ "$dry_run" != "1" ]]; then
@@ -1293,7 +1328,7 @@ base_repo_write_baseline() {
     base_repo_write_changelog "$dry_run" "$name" "$root" || status=1
     base_repo_write_contributing "$dry_run" "$name" "$root" || status=1
     base_repo_write_pull_request_template "$dry_run" "$root" || status=1
-    base_repo_write_project_config "$dry_run" "$root" || status=1
+    base_repo_write_project_config "$dry_run" "$root" "$github_repo" || status=1
     base_repo_write_license "$dry_run" "$license_id" "$root" || status=1
     base_repo_write_gitignore "$dry_run" "$root" || status=1
     base_repo_write_manifest "$dry_run" "$name" "$root" "${languages[@]}" || status=1
@@ -2123,7 +2158,7 @@ base_repo_configure() {
     fi
     base_repo_write_issue_branch_policy_workflow "$dry_run" "$path" || return 1
     if ((configure_project)); then
-        base_repo_write_project_support_files "$dry_run" "$path" || return 1
+        base_repo_write_project_support_files "$dry_run" "$path" "$github_repo" || return 1
     fi
 
     base_repo_load_github_settings || return 1

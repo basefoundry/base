@@ -197,6 +197,14 @@ without deleting or renaming existing options. Base also applies the file's
 Project `issue_defaults` to repo Project issue items when those field values are
 still blank. `project.field_source: issue_fields` keeps Priority and Size out of
 the Project schema and stores Priority and Effort as organization issue fields.
+New `repo init` and `repo configure` baselines select this setting only when the
+repository owner is an organization that has both Priority and Effort issue
+fields. For user-owned repositories, organizations without both fields, or
+when the owner cannot be verified, the generated setting stays unset and the
+command reports that it will use Project fields. In that state, generated
+defaults use Project Priority `P2` and Size `S`; eligible organizations use
+issue-field Priority `Medium` and Effort `Small`. Existing
+`.github/base-project.yml` files are left unchanged.
 During migration from an older shared Project, pass
 `--copy-project-fields-from <title>` to copy missing Project item field values
 by issue, field name, and option name into the repo Project. Existing target
@@ -238,14 +246,16 @@ project:
 - **`issue_fields`:** Priority (`Urgent`, `High`, `Medium`, `Low`), Effort
   (`Tiny`, `Small`, `Medium`, `Large`), Risk tier, and dates use issue fields.
   Status, Area, and Initiative remain Project fields. `basectl repo configure`
-  writes this state for new repositories.
-- **`project_fields` (rollback only):** Priority and Effort use the legacy
-  Project fields (`Legacy priority` and `Legacy size` when present); Risk tier
-  and dates remain issue fields.
+  writes this state for new repositories only when its organization owner has
+  both Priority and Effort issue fields.
+- **`project_fields` (rollback only):** issue-field Priority and Effort are
+  copied back to standard Project `Priority` and `Size`, falling back to
+  `Legacy priority` and `Legacy size` only when the corresponding standard
+  field is absent; Risk tier and dates remain issue fields.
 
 `areas` and `initiatives` are applied by `repo configure`. In the unset and
 `project_fields` states, `issue_defaults.priority` and `issue_defaults.size`
-use legacy Project option names. In `issue_fields` mode, use
+use Project option names. In `issue_fields` mode, use
 `issue_defaults.priority` and `issue_defaults.effort` with the issue-field
 option names. Project tooling validates defaults, `basectl gh issue create`
 uses them when adding an issue, and Project Intake fills missing Priority and
@@ -594,9 +604,9 @@ source Project item has a value and the target repo Project item does not:
 reported when the repo Project does not have a matching option.
 
 In `issue_fields` mode, the Project schema omits Priority and Size. In
-`project_fields` mode, the rollback schema uses `Legacy priority` and `Legacy
-size` when present, with the old `Priority` and `Size` names accepted as a
-fallback. Base's own `.github/base-project.yml` can remain unset until its
+`project_fields` mode, the rollback schema prefers standard `Priority` and
+`Size` fields and falls back to `Legacy priority` and `Legacy size` only when a
+standard field is absent. Base's own `.github/base-project.yml` can remain unset until its
 issue-field migration is complete.
 
 When Project V2 access is unavailable, `repo init` and `repo configure` log a

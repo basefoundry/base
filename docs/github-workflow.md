@@ -100,8 +100,9 @@ Project coordinates are provided. With no `project.field_source`, it checks
 Project `Status`, `Priority`, `Size`, `Area`, and `Initiative`. In `issue_fields`
 mode, it checks Project `Status`, `Area`, and `Initiative`, plus issue-field
 `Priority` and `Effort`. In `project_fields` rollback mode, it checks Project
-`Status`, `Priority`, `Effort`, `Area`, and `Initiative`, reading Priority and
-Effort from `Legacy priority` and `Legacy size` when those fields exist. In
+`Status`, `Priority`, `Effort`, `Area`, and `Initiative`, preferring standard
+`Priority` and `Size` fields and falling back to `Legacy priority` and
+`Legacy size` only when a standard field is absent. In
 either configured mode, Risk tier is required once the organization has that
 issue field; S2 repositories can use the setting before S3 creates the field.
 Omitting Project coordinates reports a partial result so maintainers do not
@@ -127,8 +128,10 @@ Project metadata. Priority and effort locations depend on the repository's
 - **`issue_fields`:** use issue-field `Priority` (`Urgent`, `High`, `Medium`,
   `Low`), `Effort` (`Tiny`, `Small`, `Medium`, `Large`), Risk tier, and dates.
   Status, Area, and Initiative remain Project fields.
-- **`project_fields` (rollback only):** Priority and Effort use the legacy
-  Project fields; Risk tier and dates continue to use issue fields.
+- **`project_fields` (rollback only):** issue-field Priority and Effort are
+  copied back to standard Project `Priority` and `Size`, falling back to
+  `Legacy priority` and `Legacy size` only when the corresponding standard
+  field is absent; Risk tier and dates continue to use issue fields.
 
 Use `Agentic Coding Platform` for work that makes GitHub-centered agentic
 implementation more repeatable: agent-ready repo baselines, agent-readiness
@@ -175,7 +178,7 @@ Project issue items that are missing those values. In `issue_fields` mode,
 `issue_defaults.priority` uses `Urgent`, `High`, `Medium`, or `Low`, and
 `issue_defaults.effort` uses `Tiny`, `Small`, `Medium`, or `Large`; issue
 creation and Project Intake fill missing issue-field values. With the setting
-unset or `project_fields`, defaults use legacy Project option names (`P0`–`P3`
+unset or `project_fields`, defaults use Project option names (`P0`–`P3`
 and `T`–`L`). The same config can set `project.issue_defaults.assignee` as a
 repo-local issue creation default. `basectl gh issue create` uses those
 defaults immediately when it creates an issue and adds it to the repo Project.
@@ -192,6 +195,9 @@ the issue to the repo-named Project and manages `Status`, `Area`, and
 `Initiative` on issue open, reopen, and close events. With the setting unset or
 `project_fields`, it also fills missing Project `Priority` and `Size`; in
 `issue_fields` mode it fills missing issue-field `Priority` and `Effort` instead.
+If the repository config endpoint returns 404, the workflow keeps working with
+the existing unset-source defaults (`Priority: P2`, `Size: S`); other config
+read failures still fail the run.
 `basectl repo configure` verifies that the secret exists when Project
 support is enabled and prints a `gh secret set BASE_PROJECT_TOKEN` command when
 the required secret is missing. Without that secret, Project Intake fails before
@@ -873,7 +879,8 @@ Recommended metadata depends on `project.field_source`:
 - Unset: Project `Priority` P0–P3 and `Size` T/S/M/L.
 - `issue_fields`: issue-field `Priority` Urgent/High/Medium/Low and `Effort`
   Tiny/Small/Medium/Large; Status, Area, and Initiative remain Project fields.
-- `project_fields` (rollback only): legacy Project Priority and Effort fields;
+- `project_fields` (rollback only): standard Project `Priority` and `Size`
+  fields, with a legacy-name fallback only if a standard field is absent;
   Risk tier and dates remain issue fields.
 
 Keep Status standardized across repos. Keep Area and Initiative repo-specific,

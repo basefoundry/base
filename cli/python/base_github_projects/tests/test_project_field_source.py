@@ -35,12 +35,31 @@ def test_project_config_rejects_unknown_field_source(tmp_path: Path) -> None:
         read_project_config(path)
 
 
+def test_issue_field_priority_defaults_and_explicit_values_map_to_option_names(tmp_path: Path) -> None:
+    path = tmp_path / "base-project.yml"
+    path.write_text(
+        "project:\n  field_source: issue_fields\n  issue_defaults:\n    priority: P2\n    effort: Small\n",
+        encoding="utf-8",
+    )
+    args = engine.ProjectArguments(
+        area="project",
+        command="issue-set-fields",
+        config_path=str(path),
+        field_values={"priority": "P1"},
+    )
+
+    assert project_schema.issue_field_values_for_args(args) == {"priority": "High", "effort": "Small"}
+    assert project_schema.issue_field_values_for_args(
+        engine.ProjectArguments(**{**args.__dict__, "no_defaults": True})
+    ) == {"priority": "High"}
+
+
 @pytest.mark.parametrize(
     ("source", "expected_names"),
     [
         (None, {"Priority", "Size"}),
         ("issue_fields", set()),
-        ("project_fields", {"Legacy priority", "Legacy size"}),
+        ("project_fields", {"Priority", "Size"}),
     ],
 )
 def test_schema_uses_project_fields_for_the_selected_source(

@@ -104,7 +104,7 @@ def write_issue_field_values(
         raise ProjectError("Organization issue field(s) not found: " + ", ".join(missing) + ".")
     payload = {
         "issue_field_values": [
-            {"issue_field_id": ids[name], "value": value}
+            {"field_id": ids[name], "value": value}
             for name, value in sorted(values.items())
         ]
     }

@@ -115,6 +115,7 @@ class ProjectArguments:
     copy_direction: str | None = None
     export_path: str | None = None
     start_date_today_if_empty: bool = False
+    no_defaults: bool = False
     issue_number: int | None = None
     field_values: dict[str, str] | None = None
 

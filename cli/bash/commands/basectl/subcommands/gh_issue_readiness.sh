@@ -77,11 +77,17 @@ base_gh_issue_readiness_project_api_prefix() {
 
 base_gh_issue_readiness_project_row() {
     local issue="$1" repo="$2" project_owner="$3" project_number="$4" field_source="${5:-}"
-    local api_prefix fields_json field_ids_csv items_json
+    local api_prefix fields_json field_ids_csv items_json priority_field="Priority" size_field="Size"
 
     api_prefix="$(base_gh_issue_readiness_project_api_prefix "$project_owner")" || return $?
     fields_json="$(base_cli_gh_run api --method GET \
         "$api_prefix/projectsV2/$project_number/fields" -f per_page=100)" || return $?
+    if [[ "$field_source" == "project_fields" ]]; then
+        jq -e '.[] | select(.name == "Priority")' <<<"$fields_json" >/dev/null ||
+            priority_field="Legacy priority"
+        jq -e '.[] | select(.name == "Size")' <<<"$fields_json" >/dev/null ||
+            size_field="Legacy size"
+    fi
     field_ids_csv="$(jq -r --arg source "$field_source" '
         [ .[]
           | select(.name == "Status" or .name == "Area" or .name == "Initiative" or
@@ -94,7 +100,8 @@ base_gh_issue_readiness_project_row() {
     [[ -z "$field_ids_csv" ]] || field_args+=(-f "fields=$field_ids_csv")
     items_json="$(base_cli_gh_run api --method GET --paginate --slurp \
         "$api_prefix/projectsV2/$project_number/items" "${field_args[@]}")" || return $?
-    jq -r --argjson issue "$issue" --arg repo "$repo" --arg source "$field_source" '
+    jq -r --argjson issue "$issue" --arg repo "$repo" \
+        --arg priority_field "$priority_field" --arg size_field "$size_field" '
         def field_value($name):
             [ (.fields // [])[]
               | select(.name == $name)
@@ -108,12 +115,49 @@ base_gh_issue_readiness_project_row() {
         | if . == null then
             empty
           else
-            [field_value("Status"), field_value("Priority"), field_value("Size"),
-             field_value("Area"), field_value("Initiative"),
-             field_value("Legacy priority"), field_value("Legacy size")]
+            [field_value("Status"), field_value($priority_field), field_value($size_field),
+             field_value("Area"), field_value("Initiative"), "", ""]
             | join("\u001f")
           end
     ' <<<"$items_json"
+}
+
+base_gh_issue_readiness_field_source_for_repo() {
+    local repository="$1" repository_root current_repository="" config_path=""
+    local content status
+
+    repository_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$repository_root" ]]; then
+        base_gh_infer_repo_from_origin "$repository_root" current_repository || current_repository=""
+    fi
+    if [[ "$repository" == "$current_repository" ]]; then
+        config_path="$(base_gh_project_config_path || true)"
+        if [[ -n "$config_path" ]]; then
+            base_gh_issue_default_from_config "$config_path" field_source || true
+            return 0
+        fi
+    fi
+
+    if content="$(base_cli_gh_run api "repos/$repository/contents/.github/base-project.yml" \
+        --jq .content 2>&1)"; then
+        :
+    else
+        status=$?
+        if [[ "$content" == *"404"* ]]; then
+            return 0
+        fi
+        printf '%s\n' "$content" >&2
+        return "$status"
+    fi
+    ruby -rbase64 -ryaml -e '
+      config = YAML.safe_load(Base64.decode64(STDIN.read), aliases: false) || {}
+      project = config.fetch("project", {})
+      abort("project must be a mapping") unless project.is_a?(Hash)
+      source = project["field_source"]
+      abort("project.field_source must be issue_fields or project_fields") unless
+        source.nil? || %w[issue_fields project_fields].include?(source)
+      puts source if source
+    ' <<<"$content"
 }
 
 base_gh_issue_readiness_format_error() {
@@ -341,11 +385,16 @@ base_gh_issue_readiness_collect_body_findings() {
 }
 
 base_gh_issue_readiness_collect_project_findings() {
-    local status config_path project_owner repo_owner repo_name issue_fields_json organization_fields_json
+    local status repo_owner repo_name issue_fields_json organization_fields_json
 
-    config_path="$(base_gh_project_config_path || true)"
-    if [[ -n "$config_path" ]]; then
-        _BASE_GH_ISSUE_READINESS_FIELD_SOURCE="$(base_gh_issue_default_from_config "$config_path" field_source || true)"
+    if _BASE_GH_ISSUE_READINESS_FIELD_SOURCE="$(base_gh_issue_readiness_field_source_for_repo \
+        "$_BASE_GH_ISSUE_READINESS_REPOSITORY")"; then
+        :
+    else
+        status=$?
+        base_gh_issue_readiness_upstream_error \
+            "$_BASE_GH_ISSUE_READINESS_OUTPUT_FORMAT" project_config "$status"
+        return $?
     fi
 
     if ((_BASE_GH_ISSUE_READINESS_PROJECT_VALIDATION_REQUESTED)); then
@@ -385,9 +434,9 @@ base_gh_issue_readiness_collect_project_findings() {
                 issue_fields)
                     ;;
                 project_fields)
-                    [[ -n "$_BASE_GH_ISSUE_READINESS_PROJECT_LEGACY_PRIORITY$_BASE_GH_ISSUE_READINESS_PROJECT_PRIORITY" ]] ||
+                    [[ -n "$_BASE_GH_ISSUE_READINESS_PROJECT_PRIORITY" ]] ||
                         _BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS+=("Priority")
-                    [[ -n "$_BASE_GH_ISSUE_READINESS_PROJECT_LEGACY_SIZE$_BASE_GH_ISSUE_READINESS_PROJECT_SIZE" ]] ||
+                    [[ -n "$_BASE_GH_ISSUE_READINESS_PROJECT_SIZE" ]] ||
                         _BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS+=("Effort")
                     ;;
                 *)
@@ -433,7 +482,9 @@ base_gh_issue_readiness_collect_project_findings() {
             }
             if jq -e '.[] | select(.name == "Risk tier")' <<<"$organization_fields_json" >/dev/null; then
                 [[ -n "$_BASE_GH_ISSUE_READINESS_ISSUE_RISK_TIER" ]] ||
-                    _BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS+=("Risk tier")
+                    _BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS+=("Risk tier (issue value missing)")
+            else
+                _BASE_GH_ISSUE_READINESS_MISSING_PROJECT_FIELDS+=("Risk tier (organization field missing)")
             fi
         fi
     fi
@@ -486,8 +537,8 @@ base_gh_issue_readiness_render_json() {
             effective_effort="$_BASE_GH_ISSUE_READINESS_ISSUE_EFFORT"
             ;;
         project_fields)
-            effective_priority="${_BASE_GH_ISSUE_READINESS_PROJECT_LEGACY_PRIORITY:-$_BASE_GH_ISSUE_READINESS_PROJECT_PRIORITY}"
-            effective_effort="${_BASE_GH_ISSUE_READINESS_PROJECT_LEGACY_SIZE:-$_BASE_GH_ISSUE_READINESS_PROJECT_SIZE}"
+            effective_priority="${_BASE_GH_ISSUE_READINESS_PROJECT_PRIORITY:-$_BASE_GH_ISSUE_READINESS_PROJECT_LEGACY_PRIORITY}"
+            effective_effort="${_BASE_GH_ISSUE_READINESS_PROJECT_SIZE:-$_BASE_GH_ISSUE_READINESS_PROJECT_LEGACY_SIZE}"
             ;;
     esac
     printf -v fields_json \

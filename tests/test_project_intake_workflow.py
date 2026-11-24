@@ -64,8 +64,8 @@ def test_project_intake_issue_fields_mode_sets_only_missing_issue_defaults(tmp_p
     payload = yaml.safe_load((tmp_path / "issue-field-values-posts.log").read_text(encoding="utf-8"))
     assert payload == {
         "issue_field_values": [
-            {"issue_field_id": 43373537, "value": "Medium"},
-            {"issue_field_id": 43373540, "value": "Small"},
+            {"field_id": 43373537, "value": "Medium"},
+            {"field_id": 43373540, "value": "Small"},
         ]
     }
     assert not (tmp_path / "priority").exists()
@@ -82,6 +82,17 @@ def test_project_intake_issue_fields_mode_preserves_existing_values(tmp_path: Pa
     assert (tmp_path / "issue-priority").read_text(encoding="utf-8") == "Low\n"
     assert (tmp_path / "issue-effort").read_text(encoding="utf-8") == "Large\n"
     assert not (tmp_path / "issue-field-values-posts.log").exists()
+
+
+def test_project_intake_uses_project_defaults_when_repository_config_is_missing(tmp_path: Path) -> None:
+    result = run_project_intake_script(tmp_path, PROJECT_INTAKE_CONFIG_MISSING="1")
+
+    assert result.returncode == 0, result.stderr
+    assert "Repository Project config was not found; using the existing Project-field defaults." in result.stderr
+    assert "Synced issue #1311 into Project base" in result.stdout
+    assert not (tmp_path / "issue-field-values-posts.log").exists()
+    assert "P2" in (tmp_path / "priority").read_text(encoding="utf-8")
+    assert "S" in (tmp_path / "size").read_text(encoding="utf-8")
 
 
 def test_project_intake_project_fields_mode_uses_legacy_project_fields(tmp_path: Path) -> None:

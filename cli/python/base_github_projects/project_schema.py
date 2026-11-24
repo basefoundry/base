@@ -27,16 +27,6 @@ def schema_for_args(args: ProjectArguments) -> ProjectSchema:
     schema = BASE_PROJECT_SCHEMA
     if config.field_source == "issue_fields":
         schema = ProjectSchema(tuple(field for field in schema.fields if field.name not in {"Priority", "Size"}))
-    elif config.field_source == "project_fields":
-        schema = ProjectSchema(
-            tuple(
-                SelectFieldSpec(
-                    {"Priority": "Legacy priority", "Size": "Legacy size"}.get(field.name, field.name),
-                    field.options,
-                )
-                for field in schema.fields
-            )
-        )
     if args.initiative_options:
         return schema_with_project_config(
             schema_with_initiatives(schema, args.initiative_options),
@@ -53,7 +43,7 @@ def project_config_for_args(args: ProjectArguments) -> ProjectConfig:
 
 def issue_field_values_for_args(args: ProjectArguments) -> dict[str, str]:
     config = project_config_for_args(args)
-    defaults = normalize_field_values(config.field_source, config.issue_defaults)
+    defaults = {} if args.no_defaults else normalize_field_values(config.field_source, config.issue_defaults)
     defaults.update(normalize_field_values(config.field_source, args.field_values or {}))
     return defaults
 
@@ -85,8 +75,11 @@ def project_field_defaults_for_config(config: ProjectConfig) -> dict[str, str]:
 
 
 def normalize_field_values(field_source: str | None, values: dict[str, str]) -> dict[str, str]:
-    """Resolve the Size compatibility alias against the configured field home."""
+    """Resolve compatibility aliases against the configured field home."""
     normalized = dict(values)
+    if field_source == "issue_fields" and normalized.get("priority") in {"P0", "P1", "P2", "P3"}:
+        priority = normalized["priority"]
+        normalized["priority"] = {"P0": "Urgent", "P1": "High", "P2": "Medium", "P3": "Low"}[priority]
     effort = normalized.pop("effort", None)
     size = normalized.pop("size", None)
     if effort and size:

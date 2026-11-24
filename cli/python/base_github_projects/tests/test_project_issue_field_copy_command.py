@@ -19,6 +19,19 @@ FIELDS = (
         engine.SelectOption(name, "BLUE", "", f"s-{name}") for name in ("T", "S", "M", "L")
     )),
 )
+STANDARD_AND_LEGACY_FIELDS = (
+    engine.ProjectField("priority", "Priority", "SINGLE_SELECT", tuple(
+        engine.SelectOption(name, "BLUE", "", f"new-p-{name}") for name in ("P0", "P1", "P2", "P3")
+    )),
+    engine.ProjectField("size", "Size", "SINGLE_SELECT", tuple(
+        engine.SelectOption(name, "BLUE", "", f"new-s-{name}") for name in ("T", "S", "M", "L")
+    )),
+    *FIELDS,
+)
+
+
+def run_copy(*args, **kwargs):
+    return copy_command.copy_issue_fields_command(*args, sleep=lambda _seconds: None, **kwargs)
 
 
 def project_item(*, issue_values: dict[str, str] | None = None, project_values: dict[str, str] | None = None):
@@ -159,7 +172,7 @@ def test_project_to_issue_copy_is_dry_run_by_default_and_only_plans_differences(
             {"Legacy priority": "P2", "Legacy size": "M"}, {"Priority": "Medium", "Effort": "Medium"}),
     ]
     events: list[tuple] = []
-    status = copy_command.copy_issue_fields_command(args("project-to-issue"), copy_ops(items, events))
+    status = run_copy(args("project-to-issue"), copy_ops(items, events))
 
     output = capsys.readouterr().out
     assert status == base_cli.ExitCode.SUCCESS
@@ -171,11 +184,47 @@ def test_project_to_issue_copy_is_dry_run_by_default_and_only_plans_differences(
     assert "Effort: Medium=1, Small=1" in output
 
 
+def test_project_to_issue_prefers_standard_project_fields_to_legacy_values(capsys):
+    item = project_item(
+        project_values={"Priority": "P2", "Legacy priority": "P1", "Size": "M", "Legacy size": "S"}
+    )
+    events: list[tuple] = []
+
+    ops = replace(
+        copy_ops([item], events),
+        fetch_project_fields=lambda _project_id: STANDARD_AND_LEGACY_FIELDS,
+    )
+    status = run_copy(args("project-to-issue"), ops)
+
+    output = capsys.readouterr().out
+    assert status == base_cli.ExitCode.SUCCESS
+    assert "Priority: Medium=1" in output
+    assert "Effort: Medium=1" in output
+
+
+def test_project_to_issue_does_not_fall_back_to_legacy_values_when_standard_fields_exist(capsys):
+    item = project_item(
+        project_values={"Priority": "", "Legacy priority": "P1", "Size": "", "Legacy size": "S"}
+    )
+    ops = replace(
+        copy_ops([item], []),
+        fetch_project_fields=lambda _project_id: STANDARD_AND_LEGACY_FIELDS,
+    )
+
+    status = run_copy(args("project-to-issue"), ops)
+
+    output = capsys.readouterr().out
+    assert status == base_cli.ExitCode.SUCCESS
+    assert "Values to change: 0" in output
+    assert "Priority:" not in output
+    assert "Effort:" not in output
+
+
 def test_project_to_issue_write_exports_before_state_and_reads_back(tmp_path: Path, capsys):
     export_path = tmp_path / "migration" / "before.json"
     items = [project_item(project_values={"Legacy priority": "P1", "Legacy size": "S"})]
     events: list[tuple] = []
-    status = copy_command.copy_issue_fields_command(
+    status = run_copy(
         args("project-to-issue", write=True, export_path=export_path), copy_ops(items, events)
     )
 
@@ -197,7 +246,7 @@ def test_project_to_issue_write_refuses_to_overwrite_export(tmp_path: Path):
     items = [project_item(project_values={"Legacy priority": "P1"})]
 
     with pytest.raises(engine.ProjectUsageError, match="Could not write before-state export"):
-        copy_command.copy_issue_fields_command(
+        run_copy(
             args("project-to-issue", write=True, export_path=export_path), copy_ops(items, [])
         )
     assert export_path.read_text(encoding="utf-8") == "keep"
@@ -211,7 +260,7 @@ def test_project_to_issue_rerun_skips_values_that_already_match(tmp_path: Path, 
     )]
     events: list[tuple] = []
 
-    status = copy_command.copy_issue_fields_command(
+    status = run_copy(
         args("project-to-issue", write=True, export_path=export_path), copy_ops(items, events)
     )
 
@@ -224,7 +273,7 @@ def test_issue_to_project_copy_writes_only_differences_and_verifies(tmp_path: Pa
     export_path = tmp_path / "before.json"
     items = [project_item(issue_values={"Priority": "Urgent", "Effort": "Tiny"})]
     events: list[tuple] = []
-    status = copy_command.copy_issue_fields_command(
+    status = run_copy(
         args("issue-to-project", write=True, export_path=export_path), copy_ops(items, events)
     )
 
@@ -235,13 +284,99 @@ def test_issue_to_project_copy_writes_only_differences_and_verifies(tmp_path: Pa
     assert "Legacy priority: P0=1" in output
     assert "Legacy size: T=1" in output
     assert "Readback mismatches: 0" in output
+    assert "Values written: 2" in output
+
+
+def test_issue_to_project_prefers_standard_fields_when_legacy_fields_also_exist(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    items = [project_item(issue_values={"Priority": "Urgent", "Effort": "Tiny"})]
+    events: list[tuple] = []
+    ops = replace(copy_ops(items, events), fetch_project_fields=lambda _project_id: STANDARD_AND_LEGACY_FIELDS)
+
+    status = run_copy(args("issue-to-project", write=True, export_path=tmp_path / "before.json"), ops)
+
+    output = capsys.readouterr().out
+    assert status == base_cli.ExitCode.SUCCESS
+    assert events == [
+        ("project", "item-1", "Priority", "P0"),
+        ("project", "item-1", "Size", "T"),
+    ]
+    assert "Priority: P0=1" in output
+    assert "Size: T=1" in output
+
+
+def test_copy_paces_writes_reports_partial_progress_and_resumes_with_new_export(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    item = project_item(issue_values={"Priority": "Urgent", "Effort": "Tiny"})
+    events: list[tuple] = []
+    waits: list[float] = []
+    ops = copy_ops([item], events)
+    original_update = ops.update_item_field
+    update_count = 0
+
+    def fail_second_update(project_id: str, item_id: str, update: engine.FieldUpdate) -> None:
+        nonlocal update_count
+        update_count += 1
+        if update_count == 2:
+            raise engine.ProjectError("simulated write failure")
+        original_update(project_id, item_id, update)
+
+    ops = replace(ops, update_item_field=fail_second_update)
+    first_export = tmp_path / "first-before.json"
+    with pytest.raises(engine.ProjectError, match="simulated write failure"):
+        copy_command.copy_issue_fields_command(
+            args("issue-to-project", write=True, export_path=first_export), ops, sleep=waits.append
+        )
+
+    assert waits == [copy_command.COPY_WRITE_INTERVAL_SECONDS]
+    assert first_export.exists()
+    error = capsys.readouterr().err
+    assert "Copy stopped after 1 values were written" in error
+    assert "rerun with a new --export path" in error
+
+    next_export = tmp_path / "resume-before.json"
+    status = run_copy(args("issue-to-project", write=True, export_path=next_export), copy_ops([item], events))
+    output = capsys.readouterr().out
+    assert status == base_cli.ExitCode.SUCCESS
+    assert events[-1] == ("project", "item-1", "Legacy size", "T")
+    assert "Values written: 1" in output
+
+
+def test_copy_reports_partial_progress_when_readback_fails(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    item = project_item(issue_values={"Priority": "Urgent", "Effort": "Tiny"})
+    events: list[tuple] = []
+    ops = copy_ops([item], events)
+    fetch_count = 0
+
+    def fail_readback(project_id: str) -> tuple[engine.ProjectIssueData, ...]:
+        nonlocal fetch_count
+        fetch_count += 1
+        if fetch_count == 2:
+            raise engine.ProjectError("simulated readback failure")
+        return (item,)
+
+    ops = replace(ops, fetch_project_issue_items=fail_readback)
+    with pytest.raises(engine.ProjectError, match="simulated readback failure"):
+        copy_command.copy_issue_fields_command(
+            args("issue-to-project", write=True, export_path=tmp_path / "before.json"),
+            ops,
+            sleep=lambda _seconds: None,
+        )
+
+    error = capsys.readouterr().err
+    assert "Copy stopped after 2 values were written" in error
+    assert "rerun with a new --export path" in error
 
 
 def test_issue_to_project_copy_defaults_to_dry_run(capsys):
     items = [project_item(issue_values={"Priority": "Urgent", "Effort": "Tiny"})]
     events: list[tuple] = []
 
-    status = copy_command.copy_issue_fields_command(args("issue-to-project"), copy_ops(items, events))
+    status = run_copy(args("issue-to-project"), copy_ops(items, events))
 
     output = capsys.readouterr().out
     assert status == base_cli.ExitCode.SUCCESS
@@ -259,7 +394,7 @@ def test_issue_to_project_rerun_skips_already_matching_values(tmp_path: Path, ca
         project_values={"Legacy priority": "P3", "Legacy size": "L"},
     )]
     events: list[tuple] = []
-    status = copy_command.copy_issue_fields_command(
+    status = run_copy(
         args("issue-to-project", write=True, export_path=export_path), copy_ops(items, events)
     )
 
@@ -281,5 +416,5 @@ def test_project_to_issue_rejects_option_from_the_other_field(
     item = project_item(project_values=project_values)
 
     with pytest.raises(engine.ProjectUsageError, match=f"unmapped {field} value"):
-        copy_command.copy_issue_fields_command(args("project-to-issue"), copy_ops([item], []))
+        run_copy(args("project-to-issue"), copy_ops([item], []))
 

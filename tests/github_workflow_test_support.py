@@ -321,6 +321,10 @@ project_intake_mock_issue_field_values() {
 
 case "$*" in
   "api repos/basefoundry/base/contents/.github/base-project.yml --jq .content")
+    if [[ "${PROJECT_INTAKE_CONFIG_MISSING:-0}" == "1" ]]; then
+      printf 'HTTP 404: Not Found\n' >&2
+      exit 1
+    fi
     case "${PROJECT_INTAKE_FIELD_SOURCE:-unset}" in
       issue_fields)
         config='project:
@@ -373,7 +377,7 @@ case "$*" in
         43373540) printf '%s\n' "$value" > "${PROJECT_INTAKE_STATE:?}/issue-effort" ;;
         *) printf 'unexpected issue field id: %s\n' "$field_id" >&2; exit 2 ;;
       esac
-    done < <(jq -r '.issue_field_values[] | [.issue_field_id, .value] | @tsv' <<<"$payload")
+    done < <(jq -r '.issue_field_values[] | [.field_id, .value] | @tsv' <<<"$payload")
     ;;
   "api repos/basefoundry/base/issues/1311")
     count_file="${PROJECT_INTAKE_STATE:?}/issue-view-count"

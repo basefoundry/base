@@ -196,8 +196,9 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   - `basectl gh issue readiness <number>` checks required implementation issue
     body sections and reports labels and assignees. Pass `--project-owner` and
     `--project-number` with `--repo` to validate fields from the configured
-    source; without Project coordinates it reports a partial result. In either
-    configured mode it requires Risk tier once the organization field exists.
+    source for that target repository; without Project coordinates it reports
+    a partial result. Both configured modes require Risk tier and distinguish
+    a missing organization field from a missing issue value.
   - `basectl gh issue start <number>` resolves issue metadata from an explicit
     `--repo`/`-R` selector, then `GH_REPO`, then the origin remote.
   - `basectl gh auth status` inspects stored GitHub authentication state

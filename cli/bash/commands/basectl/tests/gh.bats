@@ -216,6 +216,15 @@ if [[ "$1" == "api" ]]; then
         fi
         exit 0
     fi
+    if [[ "$*" == *"contents/.github/base-project.yml"* ]]; then
+        case "${BASE_GH_TEST_FIELD_SOURCE:-unset}" in
+            issue_fields) printf 'cHJvamVjdDoKICBmaWVsZF9zb3VyY2U6IGlzc3VlX2ZpZWxkcwo=' ;;
+            project_fields) printf 'cHJvamVjdDoKICBmaWVsZF9zb3VyY2U6IHByb2plY3RfZmllbGRzCg==' ;;
+            *) printf 'cHJvamVjdDoge30K' ;;
+        esac
+        printf '\n'
+        exit 0
+    fi
     if [[ "$*" == *"repos/basefoundry/base/issues/123/issue-field-values"* ]]; then
         printf '%s\n' "${BASE_GH_TEST_ISSUE_FIELD_VALUES:-[]}"
         exit 0
@@ -229,6 +238,10 @@ if [[ "$1" == "api" ]]; then
             printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"legacy-priority-id","name":"Legacy priority"},{"id":"legacy-size-id","name":"Legacy size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
             exit 0
         fi
+        if [[ "${BASE_GH_TEST_BOTH_FIELDS:-0}" == "1" ]]; then
+            printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"priority-id","name":"Priority"},{"id":"size-id","name":"Size"},{"id":"legacy-priority-id","name":"Legacy priority"},{"id":"legacy-size-id","name":"Legacy size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
+            exit 0
+        fi
         printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"priority-id","name":"Priority"},{"id":"size-id","name":"Size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
         exit 0
     fi
@@ -237,6 +250,8 @@ if [[ "$1" == "api" ]]; then
             complete)
                 if [[ "${BASE_GH_TEST_LEGACY_FIELDS:-0}" == "1" ]]; then
                     printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"name":"Legacy size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                elif [[ "${BASE_GH_TEST_BOTH_FIELDS:-0}" == "1" ]]; then
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":null},{"name":"Size","value":null},{"name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"name":"Legacy size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
                 else
                     printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
                 fi
@@ -707,8 +722,7 @@ run_gh_subcommand() {
         run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Project fields: missing Priority, Effort"* ]]
-    [[ "$output" != *"Risk tier"* ]]
+    [[ "$output" == *"Project fields: missing Priority, Effort, Risk tier (organization field missing)"* ]]
 }
 
 @test "basectl gh issue readiness requires Risk tier in issue_fields mode once the organization field exists" {
@@ -726,7 +740,7 @@ run_gh_subcommand() {
         run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Project fields: missing Risk tier"* ]]
+    [[ "$output" == *"Project fields: missing Risk tier (issue value missing)"* ]]
 }
 
 @test "basectl gh issue readiness requires Risk tier in project_fields rollback mode once the organization field exists" {
@@ -743,7 +757,42 @@ run_gh_subcommand() {
         run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
 
     [ "$status" -eq 1 ]
-    [[ "$output" == *"Project fields: missing Risk tier"* ]]
+    [[ "$output" == *"Project fields: missing Risk tier (issue value missing)"* ]]
+}
+
+@test "basectl gh issue readiness prefers empty standard fields over populated legacy fields" {
+    local repo="$TEST_TMPDIR/project-fields-with-restored-names"
+
+    write_field_source_repo "$repo" project_fields
+    write_issue_defaults_wrapper
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_FIELD_SOURCE=project_fields BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        BASE_GH_TEST_BOTH_FIELDS=1 BASE_GH_TEST_RISK_FIELD_EXISTS=0 \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Priority, Effort, Risk tier (organization field missing)"* ]]
+}
+
+@test "issue readiness reads another repository's field-source config through the Contents API" {
+    write_issue_readiness_gh_mock
+
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" BASE_GH_TEST_FIELD_SOURCE=issue_fields \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            cd "$BASE_HOME"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_issue_readiness.sh"
+            base_gh_issue_readiness_field_source_for_repo basefoundry/consumer
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "issue_fields" ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == *"repos/basefoundry/consumer/contents/.github/base-project.yml"* ]]
 }
 
 @test "basectl gh issue readiness paginates Project items through the REST API" {
@@ -1499,7 +1548,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Project status: In Progress (verified for issue #117)."* ]]
-    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress --no-defaults" ]
 }
 
 @test "basectl gh issue start uses configured source and fills an empty Start date" {
@@ -1534,7 +1583,7 @@ EOF
     BASE_GH_TEST_CWD="$repo" run_gh_subcommand issue start 117
 
     [ "$status" -eq 0 ]
-    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress --config $config_path --start-date-today-if-empty" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress --no-defaults --config $config_path --start-date-today-if-empty" ]
 }
 
 @test "basectl gh issue start blocks the worktree handoff when Project status fails" {
