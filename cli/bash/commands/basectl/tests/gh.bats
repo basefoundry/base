@@ -218,11 +218,10 @@ if [[ "$1" == "api" ]]; then
     fi
     if [[ "$*" == *"contents/.github/base-project.yml"* ]]; then
         case "${BASE_GH_TEST_FIELD_SOURCE:-unset}" in
-            issue_fields) printf 'cHJvamVjdDoKICBmaWVsZF9zb3VyY2U6IGlzc3VlX2ZpZWxkcwo=' ;;
-            project_fields) printf 'cHJvamVjdDoKICBmaWVsZF9zb3VyY2U6IHByb2plY3RfZmllbGRzCg==' ;;
-            *) printf 'cHJvamVjdDoge30K' ;;
+            issue_fields) printf 'project:\n  field_source: issue_fields\n' ;;
+            project_fields) printf 'project:\n  field_source: project_fields\n' ;;
+            *) printf 'project: {}\n' ;;
         esac
-        printf '\n'
         exit 0
     fi
     if [[ "$*" == *"repos/basefoundry/base/issues/123/issue-field-values"* ]]; then
@@ -324,7 +323,20 @@ write_issue_defaults_wrapper() {
     cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$*" == *" project issue defaults "* ]]; then
-    [[ -z "${BASE_GH_TEST_FIELD_SOURCE:-}" ]] || printf 'field_source\t%s\n' "$BASE_GH_TEST_FIELD_SOURCE"
+    config_path=""
+    while (($#)); do
+        if [[ "$1" == "--config" && $# -ge 2 ]]; then
+            config_path="$2"
+            shift 2
+        else
+            shift
+        fi
+    done
+    if [[ -n "$config_path" && -f "$config_path" ]]; then
+        awk '$1 == "field_source:" { print "field_source\t" $2 }' "$config_path"
+    elif [[ -n "${BASE_GH_TEST_FIELD_SOURCE:-}" ]]; then
+        printf 'field_source\t%s\n' "$BASE_GH_TEST_FIELD_SOURCE"
+    fi
 fi
 EOF
     chmod +x "$TEST_MOCKBIN/project-wrapper"
@@ -345,13 +357,19 @@ EOF
 
 run_gh_subcommand() {
     local cwd="${BASE_GH_TEST_CWD:-$TEST_HOME}"
+    local project_wrapper="${BASE_GH_PROJECT_WRAPPER:-}"
+
+    if [[ "$1" == "issue" && "$2" == "readiness" && -z "$project_wrapper" ]]; then
+        write_issue_defaults_wrapper
+        project_wrapper="$TEST_MOCKBIN/project-wrapper"
+    fi
 
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
         BASE_GH_TEST_CWD="$cwd" \
         BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        BASE_GH_PROJECT_WRAPPER="${BASE_GH_PROJECT_WRAPPER:-}" \
+        BASE_GH_PROJECT_WRAPPER="$project_wrapper" \
         PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$BASE_GH_TEST_CWD"
@@ -778,9 +796,17 @@ run_gh_subcommand() {
 
 @test "issue readiness reads another repository's field-source config through the Contents API" {
     write_issue_readiness_gh_mock
+    write_issue_defaults_wrapper
+    cat > "$TEST_MOCKBIN/ruby" <<'EOF'
+#!/usr/bin/env bash
+touch "${BASE_GH_TEST_STATE_DIR:?}/ruby-called"
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/ruby"
 
     run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
         BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" BASE_GH_TEST_FIELD_SOURCE=issue_fields \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
         PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
         bash -c '
             cd "$BASE_HOME"
@@ -793,6 +819,7 @@ run_gh_subcommand() {
     [ "$status" -eq 0 ]
     [ "$output" = "issue_fields" ]
     [[ "$(cat "$TEST_STATE_DIR/gh-args")" == *"repos/basefoundry/consumer/contents/.github/base-project.yml"* ]]
+    [ ! -e "$TEST_STATE_DIR/ruby-called" ]
 }
 
 @test "basectl gh issue readiness paginates Project items through the REST API" {

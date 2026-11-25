@@ -30,8 +30,8 @@ STANDARD_AND_LEGACY_FIELDS = (
 )
 
 
-def run_copy(*args, **kwargs):
-    return copy_command.copy_issue_fields_command(*args, sleep=lambda _seconds: None, **kwargs)
+def run_copy(*command_args, **kwargs):
+    return copy_command.copy_issue_fields_command(*command_args, sleep=lambda _seconds: None, **kwargs)
 
 
 def project_item(*, issue_values: dict[str, str] | None = None, project_values: dict[str, str] | None = None):
@@ -352,7 +352,7 @@ def test_copy_reports_partial_progress_when_readback_fails(
     ops = copy_ops([item], events)
     fetch_count = 0
 
-    def fail_readback(project_id: str) -> tuple[engine.ProjectIssueData, ...]:
+    def fail_readback(_project_id: str) -> tuple[engine.ProjectIssueData, ...]:
         nonlocal fetch_count
         fetch_count += 1
         if fetch_count == 2:

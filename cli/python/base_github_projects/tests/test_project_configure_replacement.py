@@ -176,8 +176,7 @@ def test_configure_command_uses_restored_standard_project_fields_without_duplica
     )
 
     assert status == 0
-    assert "Priority" not in created_fields
-    assert "Size" not in created_fields
+    assert not created_fields
 
 
 def test_configure_command_replace_project_dry_run_reports_cutover_plan(

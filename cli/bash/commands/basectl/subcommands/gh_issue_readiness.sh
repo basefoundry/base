@@ -124,7 +124,7 @@ base_gh_issue_readiness_project_row() {
 
 base_gh_issue_readiness_field_source_for_repo() {
     local repository="$1" repository_root current_repository="" config_path=""
-    local content status
+    local content status defaults default_key default_value field_source=""
 
     repository_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
     if [[ -n "$repository_root" ]]; then
@@ -139,7 +139,7 @@ base_gh_issue_readiness_field_source_for_repo() {
     fi
 
     if content="$(base_cli_gh_run api "repos/$repository/contents/.github/base-project.yml" \
-        --jq .content 2>&1)"; then
+        --jq '.content | @base64d' 2>&1)"; then
         :
     else
         status=$?
@@ -149,15 +149,27 @@ base_gh_issue_readiness_field_source_for_repo() {
         printf '%s\n' "$content" >&2
         return "$status"
     fi
-    ruby -rbase64 -ryaml -e '
-      config = YAML.safe_load(Base64.decode64(STDIN.read), aliases: false) || {}
-      project = config.fetch("project", {})
-      abort("project must be a mapping") unless project.is_a?(Hash)
-      source = project["field_source"]
-      abort("project.field_source must be issue_fields or project_fields") unless
-        source.nil? || %w[issue_fields project_fields].include?(source)
-      puts source if source
-    ' <<<"$content"
+
+    config_path="$(mktemp "${TMPDIR:-/tmp}/base-project.XXXXXX")" || return 1
+    if ! printf '%s\n' "$content" >"$config_path"; then
+        rm -f "$config_path"
+        return 1
+    fi
+    if defaults="$(base_gh_project_issue_defaults --config "$config_path" 2>&1)"; then
+        while IFS=$'\t' read -r default_key default_value; do
+            if [[ "$default_key" == "field_source" ]]; then
+                field_source="$default_value"
+                break
+            fi
+        done <<<"$defaults"
+    else
+        status=$?
+        rm -f "$config_path"
+        printf '%s\n' "$defaults" >&2
+        return "$status"
+    fi
+    rm -f "$config_path"
+    [[ -z "$field_source" ]] || printf '%s\n' "$field_source"
 }
 
 base_gh_issue_readiness_format_error() {

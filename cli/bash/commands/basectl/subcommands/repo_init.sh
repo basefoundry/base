@@ -457,14 +457,8 @@ base_repo_init_plan_pr() {
 }
 
 base_repo_init_write_baseline() {
-    local default_owner
-
     if [[ -z "$github_repo" ]]; then
         github_repo="$(base_repo_infer_github_repo "$root" || true)"
-    fi
-    if [[ -z "$github_repo" ]]; then
-        default_owner="$(base_repo_default_github_owner || true)"
-        [[ -z "$default_owner" ]] || github_repo="$default_owner/$name"
     fi
     if ((configure_release)) && [[ -z "$github_repo" ]]; then
         github_repo="$(base_repo_infer_github_repo "$root" || true)"

@@ -2372,6 +2372,31 @@ EOF
     [[ "$output" == *"basectl repo init base-demo --path $repo_dir --repo <owner/base-demo>"* ]]
 }
 
+@test "basectl repo init does not use default_owner as a GitHub repository target" {
+    local repo_dir="$TEST_TMPDIR/default-owner-init"
+    local release_dir="$TEST_TMPDIR/default-owner-release"
+
+    mkdir -p "$TEST_HOME/.base.d"
+    cat >"$TEST_HOME/.base.d/config.yaml" <<'EOF'
+github:
+  default_owner: codeforester
+EOF
+
+    run_basectl repo init default-owner-init --path "$repo_dir" --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred."* ]]
+    [[ "$output" != *"Would create private GitHub repository 'codeforester/default-owner-init'"* ]]
+    [[ "$output" != *"gh repo edit codeforester/default-owner-init"* ]]
+
+    run_basectl repo init default-owner-release --path "$release_dir" --release --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--release' requires --repo <owner/name> or an existing GitHub origin remote."* ]]
+    [[ "$output" != *"Would create private GitHub repository 'codeforester/default-owner-release'"* ]]
+    [ ! -e "$release_dir/README.md" ]
+}
+
 @test "basectl repo init leaves existing files unchanged" {
     local repo_dir="$TEST_TMPDIR/custom"
 
