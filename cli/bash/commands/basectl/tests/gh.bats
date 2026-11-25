@@ -208,18 +208,52 @@ if [[ "$1" == "api" ]]; then
         printf 'Project API unavailable\n' >&2
         exit 1
     fi
+    if [[ "$*" == *"orgs/basefoundry/issue-fields?per_page=100"* ]]; then
+        if [[ "${BASE_GH_TEST_RISK_FIELD_EXISTS:-0}" == "1" ]]; then
+            printf '%s\n' '[{"id":43373537,"name":"Priority"},{"id":43373538,"name":"Start date"},{"id":43373540,"name":"Effort"},{"id":99999999,"name":"Risk tier"}]'
+        else
+            printf '%s\n' '[{"id":43373537,"name":"Priority"},{"id":43373538,"name":"Start date"},{"id":43373540,"name":"Effort"}]'
+        fi
+        exit 0
+    fi
+    if [[ "$*" == *"contents/.github/base-project.yml"* ]]; then
+        case "${BASE_GH_TEST_FIELD_SOURCE:-unset}" in
+            issue_fields) printf 'project:\n  field_source: issue_fields\n' ;;
+            project_fields) printf 'project:\n  field_source: project_fields\n' ;;
+            *) printf 'project: {}\n' ;;
+        esac
+        exit 0
+    fi
+    if [[ "$*" == *"repos/basefoundry/base/issues/123/issue-field-values"* ]]; then
+        printf '%s\n' "${BASE_GH_TEST_ISSUE_FIELD_VALUES:-[]}"
+        exit 0
+    fi
     if [[ "$*" == *"users/basefoundry"* ]]; then
         printf 'Organization\n'
         exit 0
     fi
     if [[ "$*" == *"projectsV2/10/fields"* ]]; then
+        if [[ "${BASE_GH_TEST_LEGACY_FIELDS:-0}" == "1" ]]; then
+            printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"legacy-priority-id","name":"Legacy priority"},{"id":"legacy-size-id","name":"Legacy size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
+            exit 0
+        fi
+        if [[ "${BASE_GH_TEST_BOTH_FIELDS:-0}" == "1" ]]; then
+            printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"priority-id","name":"Priority"},{"id":"size-id","name":"Size"},{"id":"legacy-priority-id","name":"Legacy priority"},{"id":"legacy-size-id","name":"Legacy size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
+            exit 0
+        fi
         printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"priority-id","name":"Priority"},{"id":"size-id","name":"Size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
         exit 0
     fi
     if [[ "$*" == *"projectsV2/10/items"* ]]; then
         case "${BASE_GH_TEST_PROJECT_MODE:-complete}" in
             complete)
-                printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                if [[ "${BASE_GH_TEST_LEGACY_FIELDS:-0}" == "1" ]]; then
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"name":"Legacy size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                elif [[ "${BASE_GH_TEST_BOTH_FIELDS:-0}" == "1" ]]; then
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":null},{"name":"Size","value":null},{"name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"name":"Legacy size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                else
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                fi
                 ;;
             missing)
                 printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":null},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":null}]}]]'
@@ -265,6 +299,49 @@ Base needs issue context before a coding agent starts.
 EOF
 }
 
+write_field_source_repo() {
+    local repo="$1" field_source="$2"
+
+    init_git_repo "$repo"
+    mkdir -p "$repo/.github"
+    if [[ -n "$field_source" ]]; then
+        cat > "$repo/.github/base-project.yml" <<EOF
+project:
+  field_source: $field_source
+EOF
+    else
+        cat > "$repo/.github/base-project.yml" <<'EOF'
+project:
+  issue_defaults:
+    priority: P2
+    size: S
+EOF
+    fi
+}
+
+write_issue_defaults_wrapper() {
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *" project issue defaults "* ]]; then
+    config_path=""
+    while (($#)); do
+        if [[ "$1" == "--config" && $# -ge 2 ]]; then
+            config_path="$2"
+            shift 2
+        else
+            shift
+        fi
+    done
+    if [[ -n "$config_path" && -f "$config_path" ]]; then
+        awk '$1 == "field_source:" { print "field_source\t" $2 }' "$config_path"
+    elif [[ -n "${BASE_GH_TEST_FIELD_SOURCE:-}" ]]; then
+        printf 'field_source\t%s\n' "$BASE_GH_TEST_FIELD_SOURCE"
+    fi
+fi
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+}
+
 write_incomplete_issue_readiness_body() {
     cat > "$TEST_STATE_DIR/issue-body" <<'EOF'
 ## Goal
@@ -280,13 +357,19 @@ EOF
 
 run_gh_subcommand() {
     local cwd="${BASE_GH_TEST_CWD:-$TEST_HOME}"
+    local project_wrapper="${BASE_GH_PROJECT_WRAPPER:-}"
+
+    if [[ "$1" == "issue" && "$2" == "readiness" && -z "$project_wrapper" ]]; then
+        write_issue_defaults_wrapper
+        project_wrapper="$TEST_MOCKBIN/project-wrapper"
+    fi
 
     run env \
         HOME="$TEST_HOME" \
         BASE_HOME="$BASE_REPO_ROOT" \
         BASE_GH_TEST_CWD="$cwd" \
         BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
-        BASE_GH_PROJECT_WRAPPER="${BASE_GH_PROJECT_WRAPPER:-}" \
+        BASE_GH_PROJECT_WRAPPER="$project_wrapper" \
         PATH="$TEST_MOCKBIN:$PATH" \
         bash -c '
             cd "$BASE_GH_TEST_CWD"
@@ -639,6 +722,104 @@ run_gh_subcommand() {
     [[ "$output" == *"Project fields: ok"* ]]
     [[ "$output" == *"Labels: enhancement, agent-ready"* ]]
     [[ "$output" == *"Assignees: codeforester"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" != *"issue-field-values"* ]]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" != *"issue-fields?per_page=100"* ]]
+}
+
+@test "basectl gh issue readiness requires issue Priority and Effort in issue_fields mode without assuming Risk exists" {
+    local repo
+
+    repo="$TEST_TMPDIR/issue-fields"
+    write_field_source_repo "$repo" issue_fields
+    write_issue_defaults_wrapper
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_FIELD_SOURCE=issue_fields BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        BASE_GH_TEST_RISK_FIELD_EXISTS=0 \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Priority, Effort, Risk tier (organization field missing)"* ]]
+}
+
+@test "basectl gh issue readiness requires Risk tier in issue_fields mode once the organization field exists" {
+    local repo
+
+    repo="$TEST_TMPDIR/issue-fields"
+    write_field_source_repo "$repo" issue_fields
+    write_issue_defaults_wrapper
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_FIELD_SOURCE=issue_fields BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        BASE_GH_TEST_RISK_FIELD_EXISTS=1 \
+        BASE_GH_TEST_ISSUE_FIELD_VALUES='[{"issue_field_name":"Priority","single_select_option":{"name":"High"}},{"issue_field_name":"Effort","single_select_option":{"name":"Small"}}]' \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Risk tier (issue value missing)"* ]]
+}
+
+@test "basectl gh issue readiness requires Risk tier in project_fields rollback mode once the organization field exists" {
+    local repo
+
+    repo="$TEST_TMPDIR/project-fields"
+    write_field_source_repo "$repo" project_fields
+    write_issue_defaults_wrapper
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_FIELD_SOURCE=project_fields BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        BASE_GH_TEST_LEGACY_FIELDS=1 BASE_GH_TEST_RISK_FIELD_EXISTS=1 \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Risk tier (issue value missing)"* ]]
+}
+
+@test "basectl gh issue readiness prefers empty standard fields over populated legacy fields" {
+    local repo="$TEST_TMPDIR/project-fields-with-restored-names"
+
+    write_field_source_repo "$repo" project_fields
+    write_issue_defaults_wrapper
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+
+    BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_FIELD_SOURCE=project_fields BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        BASE_GH_TEST_BOTH_FIELDS=1 BASE_GH_TEST_RISK_FIELD_EXISTS=0 \
+        run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Project fields: missing Priority, Effort, Risk tier (organization field missing)"* ]]
+}
+
+@test "issue readiness reads another repository's field-source config through the Contents API" {
+    write_issue_readiness_gh_mock
+    write_issue_defaults_wrapper
+    cat > "$TEST_MOCKBIN/ruby" <<'EOF'
+#!/usr/bin/env bash
+touch "${BASE_GH_TEST_STATE_DIR:?}/ruby-called"
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/ruby"
+
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" BASE_GH_TEST_FIELD_SOURCE=issue_fields \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            cd "$BASE_HOME"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh_issue_readiness.sh"
+            base_gh_issue_readiness_field_source_for_repo basefoundry/consumer
+        '
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "issue_fields" ]
+    [[ "$(cat "$TEST_STATE_DIR/gh-args")" == *"repos/basefoundry/consumer/contents/.github/base-project.yml"* ]]
+    [ ! -e "$TEST_STATE_DIR/ruby-called" ]
 }
 
 @test "basectl gh issue readiness paginates Project items through the REST API" {
@@ -699,7 +880,7 @@ run_gh_subcommand() {
 
     [ "$status" -eq 1 ]
     [[ "$output" == *"Issue #123 readiness: not ready"* ]]
-    [[ "$output" == *"Project fields: missing Size, Initiative"* ]]
+    [[ "$output" == *"Project fields: missing Initiative, Size"* ]]
     [[ "$output" == *"Fix hint: set missing Project fields before assigning implementation work."* ]]
 }
 
@@ -1394,7 +1575,42 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"Project status: In Progress (verified for issue #117)."* ]]
-    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress --no-defaults" ]
+}
+
+@test "basectl gh issue start uses configured source and fills an empty Start date" {
+    local config_path repo
+
+    repo="$TEST_TMPDIR/repo"
+    init_git_repo "$repo"
+    add_github_origin "$repo"
+    mkdir -p "$repo/.github"
+    cat > "$repo/.github/base-project.yml" <<'EOF'
+project:
+  field_source: issue_fields
+  issue_defaults:
+    priority: Medium
+    effort: Small
+EOF
+    printf 'hello\n' > "$repo/README.md"
+    commit_all "$repo" "Initial commit"
+    write_branch_issue_gh_mock
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *" project issue defaults "* ]]; then
+    printf 'field_source\tissue_fields\n'
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+    config_path="$(git -C "$repo" rev-parse --show-toplevel)/.github/base-project.yml"
+
+    BASE_GH_TEST_CWD="$repo" run_gh_subcommand issue start 117
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 117 --project base --owner basefoundry --repo basefoundry/base --status In Progress --no-defaults --config $config_path --start-date-today-if-empty" ]
 }
 
 @test "basectl gh issue start blocks the worktree handoff when Project status fails" {

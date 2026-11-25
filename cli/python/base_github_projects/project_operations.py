@@ -13,6 +13,7 @@ from .project_model import OwnerInfo
 from .project_model import ProjectArguments
 from .project_model import ProjectField
 from .project_model import ProjectInfo
+from .project_model import ProjectIssueData
 from .project_model import ProjectItemState
 from .project_model import ProjectSchema
 from .project_model import ProjectView
@@ -69,6 +70,8 @@ class ProjectOperations:
     create_single_select_field: Callable[[str, SelectFieldSpec], None]
     fetch_issue_id: Callable[[str, str, int], str]
     fetch_project_fields: Callable[[str], tuple[ProjectField, ...]]
+    fetch_project_issue_items: Callable[[str], tuple[ProjectIssueData, ...]]
+    organization_issue_field_ids: Callable[[str], dict[str, int]]
     fetch_project_repository_names: Callable[[str], set[str]]
     fetch_project_views: Callable[[str], tuple[ProjectView, ...]]
     find_owner_and_project: Callable[[str, str], OwnerInfo]
@@ -79,12 +82,14 @@ class ProjectOperations:
     missing_option_names: Callable[[ProjectField, SelectFieldSpec], tuple[str, ...]]
     project_config_for_args: Callable[[ProjectArguments], ProjectConfig]
     project_field_defaults_for_config: Callable[[ProjectConfig], dict[str, str]]
+    read_issue_field_values: Callable[[str, str, int], dict[str, str]]
     require_owner: Callable[[ProjectArguments], str]
     require_repo: Callable[[ProjectArguments], str]
     resolve_issue_field_updates: ResolveIssueFieldUpdates
     schema_for_args: Callable[[ProjectArguments], ProjectSchema]
     split_repo: Callable[[str], tuple[str, str]]
     update_item_field: Callable[[str, str, FieldUpdate], None]
+    write_issue_field_values: Callable[..., None]
     update_project: UpdateProject
     update_single_select_field: Callable[[ProjectField, SelectFieldSpec], None]
     verify_standard_template_views: Callable[[tuple[ProjectView, ...]], None]

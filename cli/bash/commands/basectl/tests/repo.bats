@@ -53,6 +53,32 @@ EOF
     chmod +x "$TEST_MOCKBIN/gh"
 }
 
+write_repo_init_field_source_gh_mock() {
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${BASE_REPO_TEST_STATE_DIR:?}/gh-args"
+if [[ "$*" == *"users/fieldorg"* ]]; then
+    printf '%s\n' "${BASE_REPO_TEST_OWNER_TYPE:-Organization}"
+    exit 0
+fi
+if [[ "$*" == *"users/personal"* ]]; then
+    printf 'User\n'
+    exit 0
+fi
+if [[ "$*" == *"orgs/fieldorg/issue-fields?per_page=100"* ]]; then
+    if [[ -n "${BASE_REPO_TEST_ISSUE_FIELDS:-}" ]]; then
+        printf '%s\n' "$BASE_REPO_TEST_ISSUE_FIELDS"
+    else
+        printf '%s\n' '[{"name":"Priority"},{"name":"Effort"}]'
+    fi
+    exit 0
+fi
+printf 'unexpected gh args: %s\n' "$*" >&2
+exit 99
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+}
+
 write_project_installer_template_mocks() {
     local real_bash="$1"
     local installer_body="$2"
@@ -2080,11 +2106,14 @@ EOF
     grep -Fq "its category prefix matches the issue's single standard category label" "$repo_dir/.github/pull_request_template.md"
     grep -Fq "command: ./tests/validate.sh" "$repo_dir/base_manifest.yaml"
     grep -Fq "issue_defaults:" "$repo_dir/.github/base-project.yml"
+    ! grep -Fq "field_source:" "$repo_dir/.github/base-project.yml"
     grep -Fq "status: Backlog" "$repo_dir/.github/base-project.yml"
     grep -Fq "priority: P2" "$repo_dir/.github/base-project.yml"
+    grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
+    ! grep -Fq "effort:" "$repo_dir/.github/base-project.yml"
     grep -Fq "area: Product" "$repo_dir/.github/base-project.yml"
     grep -Fq "initiative: Adoption Polish" "$repo_dir/.github/base-project.yml"
-    grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
+    ! grep -Fq "size:" "$repo_dir/.github/base-project.yml"
     grep -Fq "permissions:" "$repo_dir/.github/workflows/tests.yml"
     grep -Fq "contents: read" "$repo_dir/.github/workflows/tests.yml"
     grep -Fq "concurrency:" "$repo_dir/.github/workflows/tests.yml"
@@ -2145,6 +2174,118 @@ EOF
     run bash -c 'cd "$1" && ./tests/validate.sh' _ "$repo_dir"
     [ "$status" -eq 0 ]
     [[ "$output" == *"Repository baseline is present."* ]]
+}
+
+@test "repo init enables issue fields only for an organization with both required fields" {
+    local repo_dir="$TEST_TMPDIR/eligible-org"
+
+    write_repo_init_field_source_gh_mock
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init eligible-org --path "$repo_dir" \
+        --repo fieldorg/eligible-org --no-configure
+
+    [ "$status" -eq 0 ]
+    grep -Fq "field_source: issue_fields" "$repo_dir/.github/base-project.yml"
+    grep -Fq "priority: Medium" "$repo_dir/.github/base-project.yml"
+    grep -Fq "effort: Small" "$repo_dir/.github/base-project.yml"
+    [[ "$output" == *"Project field source: issue_fields"* ]]
+    grep -Fq "api users/fieldorg --jq .type" "$TEST_STATE_DIR/gh-args"
+    grep -Fq "orgs/fieldorg/issue-fields?per_page=100" "$TEST_STATE_DIR/gh-args"
+}
+
+@test "repo init leaves issue fields unset for a user owner and incompatible organizations" {
+    local repo_dir="$TEST_TMPDIR/noneligible-org"
+
+    write_repo_init_field_source_gh_mock
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init personal-project --path "$TEST_TMPDIR/personal-project" \
+        --repo personal/personal-project --no-configure
+
+    [ "$status" -eq 0 ]
+    ! grep -Fq "field_source:" "$TEST_TMPDIR/personal-project/.github/base-project.yml"
+    grep -Fq "priority: P2" "$TEST_TMPDIR/personal-project/.github/base-project.yml"
+    grep -Fq "size: S" "$TEST_TMPDIR/personal-project/.github/base-project.yml"
+    [[ "$output" == *"owner 'personal' is not an organization"* ]]
+    grep -Fq "users/personal" "$TEST_STATE_DIR/gh-args"
+
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_TEST_ISSUE_FIELDS='[{"name":"Priority"}]' \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" repo init noneligible-org --path "$repo_dir" \
+        --repo fieldorg/noneligible-org --no-configure
+
+    [ "$status" -eq 0 ]
+    ! grep -Fq "field_source:" "$repo_dir/.github/base-project.yml"
+    grep -Fq "priority: P2" "$repo_dir/.github/base-project.yml"
+    grep -Fq "size: S" "$repo_dir/.github/base-project.yml"
+    [[ "$output" == *"does not have both Priority and Effort issue fields"* ]]
+}
+
+@test "repo configure selects issue fields only for an eligible organization" {
+    local eligible_repo="$TEST_TMPDIR/configure-eligible"
+    local personal_repo="$TEST_TMPDIR/configure-personal"
+    local incomplete_org_repo="$TEST_TMPDIR/configure-incomplete-org"
+
+    write_repo_init_field_source_gh_mock
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_load_github_settings() { :; }
+            base_repo_configure_github() { :; }
+            base_repo_configure_project_metadata() { :; }
+            base_repo_configure "$1" --repo fieldorg/configure-eligible --no-protect-default-branch
+        ' bash "$eligible_repo"
+
+    [ "$status" -eq 0 ]
+    grep -Fq "field_source: issue_fields" "$eligible_repo/.github/base-project.yml"
+    grep -Fq "priority: Medium" "$eligible_repo/.github/base-project.yml"
+    grep -Fq "effort: Small" "$eligible_repo/.github/base-project.yml"
+    [[ "$output" == *"Project field source: issue_fields"* ]]
+
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_load_github_settings() { :; }
+            base_repo_configure_github() { :; }
+            base_repo_configure_project_metadata() { :; }
+            base_repo_configure "$1" --repo personal/configure-project --no-protect-default-branch
+        ' bash "$personal_repo"
+
+    [ "$status" -eq 0 ]
+    ! grep -Fq "field_source:" "$personal_repo/.github/base-project.yml"
+    grep -Fq "priority: P2" "$personal_repo/.github/base-project.yml"
+    grep -Fq "size: S" "$personal_repo/.github/base-project.yml"
+    [[ "$output" == *"owner 'personal' is not an organization"* ]]
+
+    run env HOME="$TEST_HOME" BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_REPO_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_REPO_TEST_ISSUE_FIELDS='[{"name":"Priority"}]' \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        bash -c '
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/repo.sh"
+            base_repo_load_github_settings() { :; }
+            base_repo_configure_github() { :; }
+            base_repo_configure_project_metadata() { :; }
+            base_repo_configure "$1" --repo fieldorg/configure-incomplete-org --no-protect-default-branch
+        ' bash "$incomplete_org_repo"
+
+    [ "$status" -eq 0 ]
+    ! grep -Fq "field_source:" "$incomplete_org_repo/.github/base-project.yml"
+    grep -Fq "priority: P2" "$incomplete_org_repo/.github/base-project.yml"
+    grep -Fq "size: S" "$incomplete_org_repo/.github/base-project.yml"
+    [[ "$output" == *"does not have both Priority and Effort issue fields"* ]]
 }
 
 @test "basectl repo init writes normalized language metadata" {
@@ -2229,6 +2370,31 @@ EOF
     [[ "$output" == *"basectl repo configure $repo_dir --repo <owner/base-demo>"* ]]
     [[ "$output" == *"Or to create the GitHub repository and configure it now:"* ]]
     [[ "$output" == *"basectl repo init base-demo --path $repo_dir --repo <owner/base-demo>"* ]]
+}
+
+@test "basectl repo init does not use default_owner as a GitHub repository target" {
+    local repo_dir="$TEST_TMPDIR/default-owner-init"
+    local release_dir="$TEST_TMPDIR/default-owner-release"
+
+    mkdir -p "$TEST_HOME/.base.d"
+    cat >"$TEST_HOME/.base.d/config.yaml" <<'EOF'
+github:
+  default_owner: codeforester
+EOF
+
+    run_basectl repo init default-owner-init --path "$repo_dir" --dry-run
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"[DRY-RUN] Would not create or configure a GitHub repository because no GitHub repo was provided or inferred."* ]]
+    [[ "$output" != *"Would create private GitHub repository 'codeforester/default-owner-init'"* ]]
+    [[ "$output" != *"gh repo edit codeforester/default-owner-init"* ]]
+
+    run_basectl repo init default-owner-release --path "$release_dir" --release --dry-run
+
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"Option '--release' requires --repo <owner/name> or an existing GitHub origin remote."* ]]
+    [[ "$output" != *"Would create private GitHub repository 'codeforester/default-owner-release'"* ]]
+    [ ! -e "$release_dir/README.md" ]
 }
 
 @test "basectl repo init leaves existing files unchanged" {

@@ -465,6 +465,9 @@
         "--category": {
           "takes_value": true
         },
+        "--effort": {
+          "takes_value": true
+        },
         "--help": {
           "takes_value": false
         },
@@ -473,6 +476,9 @@
         },
         "--no-project": {
           "takes_value": false
+        },
+        "--priority": {
+          "takes_value": true
         },
         "--project": {
           "takes_value": true
@@ -538,11 +544,23 @@
     },
     "basectl gh issue start <number>": {
       "flags": {
+        "--allow-cross-repo": {
+          "takes_value": false
+        },
         "--category": {
           "takes_value": true
         },
         "--help": {
           "takes_value": false
+        },
+        "--no-project": {
+          "takes_value": false
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--project-owner": {
+          "takes_value": true
         },
         "--repo": {
           "takes_value": true
@@ -627,6 +645,31 @@
         }
       }
     },
+    "basectl gh project issue copy-fields": {
+      "flags": {
+        "--direction": {
+          "takes_value": true
+        },
+        "--export": {
+          "takes_value": true
+        },
+        "--help": {
+          "takes_value": false
+        },
+        "--owner": {
+          "takes_value": true
+        },
+        "--project": {
+          "takes_value": true
+        },
+        "--write": {
+          "takes_value": false
+        },
+        "-h": {
+          "takes_value": false
+        }
+      }
+    },
     "basectl gh project issue set-fields <number>": {
       "flags": {
         "--allow-cross-repo": {
@@ -640,6 +683,9 @@
         },
         "--dry-run": {
           "takes_value": false
+        },
+        "--effort": {
+          "takes_value": true
         },
         "--help": {
           "takes_value": false
@@ -659,6 +705,9 @@
         "--repo": {
           "takes_value": true
         },
+        "--risk-tier": {
+          "takes_value": true
+        },
         "--size": {
           "enum": [
             "T",
@@ -668,7 +717,13 @@
           ],
           "takes_value": true
         },
+        "--start-date": {
+          "takes_value": true
+        },
         "--status": {
+          "takes_value": true
+        },
+        "--target-date": {
           "takes_value": true
         },
         "-h": {
@@ -2728,9 +2783,6 @@
       "$defs": {
         "counts": {
           "properties": {
-            "blocked": {
-              "type": "integer"
-            },
             "failed": {
               "type": "integer"
             },
@@ -2745,7 +2797,6 @@
             }
           },
           "required": [
-            "blocked",
             "failed",
             "not_run",
             "passed",
@@ -2880,6 +2931,9 @@
       "$defs": {
         "counts": {
           "properties": {
+            "blocked": {
+              "type": "integer"
+            },
             "failed": {
               "type": "integer"
             },
@@ -2897,6 +2951,7 @@
             }
           },
           "required": [
+            "blocked",
             "failed",
             "planned",
             "skipped",

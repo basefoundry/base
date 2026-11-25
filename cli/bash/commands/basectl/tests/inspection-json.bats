@@ -78,6 +78,18 @@ EOF
     chmod +x "$TEST_MOCKBIN/gh"
 }
 
+write_inspection_issue_project_wrapper() {
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+[[ "$*" == *"base_github_projects project issue defaults"* ]] || {
+    printf 'unexpected Project wrapper args: %s\n' "$*" >&2
+    exit 99
+}
+exit 0
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+}
+
 write_complete_inspection_issue_body() {
     cat > "$TEST_STATE_DIR/issue-body" <<'EOF'
 ## Goal
@@ -218,6 +230,8 @@ EOF
 
 @test "gh issue readiness JSON covers ready and empty metadata" {
     write_inspection_issue_gh_mock
+    write_inspection_issue_project_wrapper
+    export BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper"
     write_complete_inspection_issue_body
 
     run_inspection_basectl_with_env BASE_GH_TEST_EMPTY_METADATA 1 \
@@ -238,13 +252,17 @@ EOF
         '(.data | keys) == ["assignees","body","issue_number","labels","project","readiness","repository"] and
          (.data.body | keys) == ["missing_sections","status"] and
          (.data.project | keys) == ["fields","missing_fields","number","owner","requested","status"] and
-         (.data.project.fields | keys) == ["area","initiative","priority","size","status"]'
+         (.data.project.fields | keys) == ["area","effort","field_source","initiative","priority","risk_tier","size","status"] and
+         .data.project.fields.field_source == null and
+         .data.project.fields.effort == "M" and .data.project.fields.risk_tier == null'
 }
 
 @test "gh issue readiness JSON represents partial and missing-field findings" {
     local text_status
 
     write_inspection_issue_gh_mock
+    write_inspection_issue_project_wrapper
+    export BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper"
     write_complete_inspection_issue_body
 
     run_inspection_basectl gh issue readiness 123 --repo basefoundry/base

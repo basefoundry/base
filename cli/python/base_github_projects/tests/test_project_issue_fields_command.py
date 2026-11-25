@@ -8,7 +8,7 @@ from typing import NoReturn
 import base_cli
 import pytest
 
-from base_github_projects import engine
+from base_github_projects import engine, project_schema
 from base_github_projects import project_issue_fields_command
 from base_github_projects.project_operations import ProjectOperations
 
@@ -392,3 +392,146 @@ def test_partial_field_update_failure_is_deterministic_and_stops_later_updates()
 
     assert str(excinfo.value) == "Could not update Priority for Project item."
     assert events == [("Status", "In Progress"), ("Priority", "P2")]
+
+
+def test_issue_fields_source_writes_priority_and_effort_to_the_issue(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project:\n  field_source: issue_fields\n", encoding="utf-8")
+    events: list[tuple] = []
+    fields = (engine.ProjectField("status", "Status", "SINGLE_SELECT"),)
+
+    ops = replace(
+        base_operations(),
+        fetch_project_fields=lambda _project_id: fields,
+        project_config_for_args=project_schema.project_config_for_args,
+        issue_field_values_for_args=project_schema.issue_field_values_for_args,
+        resolve_issue_field_updates=project_schema.resolve_issue_field_updates,
+        fetch_issue_id=lambda _owner, _repo, _number: "issue-id",
+        find_project_item_state=lambda _project_id, _issue_id: None,
+        organization_issue_field_ids=lambda owner: (
+            events.append(("field-ids", owner)) or {"Priority": 1, "Effort": 2}
+        ),
+        read_issue_field_values=lambda owner, repo, number: (
+            events.append(("read", owner, repo, number)) or {"Priority": "High"}
+        ),
+        write_issue_field_values=lambda owner, repository, number, values, **_kwargs: events.append(
+            ("write", owner, repository, number, dict(values))
+        ),
+        update_item_field=unexpected("update_item_field"),
+        add_project_item=unexpected("add_project_item"),
+    )
+    args = engine.ProjectArguments(
+        area="project",
+        command="issue-set-fields",
+        project_title="Base Roadmap",
+        owner="basefoundry",
+        repo="basefoundry/base",
+        config_path=str(config_path),
+        issue_number=1604,
+        field_values={"priority": "High", "effort": "Tiny"},
+    )
+
+    status = project_issue_fields_command.issue_set_fields_command(args, ops)
+
+    assert status == base_cli.ExitCode.SUCCESS
+    assert events == [
+        ("field-ids", "basefoundry"),
+        ("read", "basefoundry", "base", 1604),
+        ("write", "basefoundry", "basefoundry/base", 1604, {"Effort": "Tiny"}),
+    ]
+
+
+def test_project_fields_rollback_keeps_priority_effort_in_legacy_project_fields(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project:\n  field_source: project_fields\n", encoding="utf-8")
+    events: list[tuple] = []
+    fields = (
+        engine.ProjectField(
+            "priority",
+            "Legacy priority",
+            "SINGLE_SELECT",
+            (engine.SelectOption("P1", "BLUE", "", "p1"),),
+        ),
+        engine.ProjectField("size", "Legacy size", "SINGLE_SELECT", (engine.SelectOption("S", "GREEN", "", "s"),)),
+    )
+
+    ops = replace(
+        base_operations(),
+        fetch_project_fields=lambda _project_id: fields,
+        project_config_for_args=project_schema.project_config_for_args,
+        issue_field_values_for_args=project_schema.issue_field_values_for_args,
+        resolve_issue_field_updates=project_schema.resolve_issue_field_updates,
+        fetch_issue_id=lambda _owner, _repo, _number: "issue-id",
+        find_project_item_state=lambda _project_id, _issue_id: engine.ProjectItemState("item", {}),
+        organization_issue_field_ids=lambda owner: events.append(("field-ids", owner)) or {"Risk tier": 3},
+        read_issue_field_values=lambda owner, repo, number: events.append(("read", owner, repo, number)) or {},
+        write_issue_field_values=lambda owner, repository, number, values, **_kwargs: events.append(
+            ("write", owner, repository, number, dict(values))
+        ),
+        update_item_field=lambda _project_id, _item_id, update: events.append(
+            ("project", update.field_name, update.option_name)
+        ),
+    )
+    args = engine.ProjectArguments(
+        area="project",
+        command="issue-set-fields",
+        project_title="Base Roadmap",
+        owner="basefoundry",
+        repo="basefoundry/base",
+        config_path=str(config_path),
+        issue_number=1604,
+        field_values={"priority": "P1", "effort": "Small", "risk_tier": "High"},
+    )
+
+    status = project_issue_fields_command.issue_set_fields_command(args, ops)
+
+    assert status == base_cli.ExitCode.SUCCESS
+    assert events == [
+        ("field-ids", "basefoundry"),
+        ("read", "basefoundry", "base", 1604),
+        ("project", "Legacy priority", "P1"),
+        ("project", "Legacy size", "S"),
+        ("write", "basefoundry", "basefoundry/base", 1604, {"Risk tier": "High"}),
+    ]
+
+
+def test_unset_field_source_preserves_project_priority_and_size_behavior(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project: {}\n", encoding="utf-8")
+    events: list[tuple] = []
+    fields = (
+        engine.ProjectField("priority", "Priority", "SINGLE_SELECT", (engine.SelectOption("P1", "BLUE", "", "p1"),)),
+        engine.ProjectField("size", "Size", "SINGLE_SELECT", (engine.SelectOption("S", "GREEN", "", "s"),)),
+    )
+
+    ops = replace(
+        base_operations(),
+        fetch_project_fields=lambda _project_id: fields,
+        project_config_for_args=project_schema.project_config_for_args,
+        issue_field_values_for_args=project_schema.issue_field_values_for_args,
+        resolve_issue_field_updates=project_schema.resolve_issue_field_updates,
+        fetch_issue_id=lambda _owner, _repo, _number: "issue-id",
+        find_project_item_state=lambda _project_id, _issue_id: engine.ProjectItemState("item", {}),
+        update_item_field=lambda _project_id, _item_id, update: events.append(
+            (update.field_name, update.option_name)
+        ),
+        read_issue_field_values=lambda *_args: pytest.fail("unset mode must not read issue fields"),
+        write_issue_field_values=lambda *_args, **_kwargs: pytest.fail("unset mode must not write issue fields"),
+    )
+    args = engine.ProjectArguments(
+        area="project",
+        command="issue-set-fields",
+        project_title="Base Roadmap",
+        owner="basefoundry",
+        repo="basefoundry/base",
+        config_path=str(config_path),
+        issue_number=1604,
+        field_values={"priority": "P1", "size": "S"},
+    )
+
+    status = project_issue_fields_command.issue_set_fields_command(args, ops)
+
+    assert status == base_cli.ExitCode.SUCCESS
+    assert events == [("Priority", "P1"), ("Size", "S")]

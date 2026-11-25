@@ -930,7 +930,9 @@ _base_basectl_completion() {
                             ;;
                         issue)
                             if ((COMP_CWORD == 4)); then
-                                _base_basectl_completion_compgen "set-fields" "$cur"
+                                _base_basectl_completion_compgen "set-fields copy-fields" "$cur"
+                            elif [[ "${COMP_WORDS[4]:-}" == copy-fields ]]; then
+                                _base_basectl_completion_compgen "--project --owner --direction --write --export -h --help" "$cur"
                             else
                                 _base_basectl_completion_compgen "--repo --project --owner --config --allow-cross-repo --status --priority --area --initiative --size --dry-run -h --help" "$cur"
                             fi

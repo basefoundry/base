@@ -1191,22 +1191,34 @@ _base_basectl_completion() {
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         issue)
-                            _arguments '2:gh area:(auth issue pr branch worktree project review)' \
-                                '3:project command:(doctor configure issue)' \
-                                '4:issue command:(set-fields)' \
-                                '5:issue number:' \
-                                '--repo[GitHub repository]:repo:' \
-                                '--project[GitHub Project title]:title:' \
-                                '--owner[GitHub Project owner]:owner:' \
-                                '--config[Project intake config]:path:_files' \
-                                '--status[Status option]:status:' \
-                                '--priority[Priority option]:priority:' \
-                                '--area[Area option]:area:' \
-                                '--initiative[Initiative option]:initiative:' \
-                                '--size[Size option]:size:' \
-                                '--allow-cross-repo[Allow updating a Project not linked to the issue repository]' \
-                                '--dry-run[Print planned changes]' \
-                                '(-h --help)'{-h,--help}'[Show help text]'
+                            if [[ "${words[5]:-}" == copy-fields ]]; then
+                                _arguments '2:gh area:(auth issue pr branch worktree project review)' \
+                                    '3:project command:(doctor configure issue)' \
+                                    '4:issue command:(set-fields copy-fields)' \
+                                    '--project[GitHub Project title]:title:' \
+                                    '--owner[GitHub Project owner]:owner:' \
+                                    '--direction[Copy direction]:direction:(project-to-issue issue-to-project)' \
+                                    '--write[Apply changes after exporting the before-state]' \
+                                    '--export[Before-state export path]:path:_files' \
+                                    '(-h --help)'{-h,--help}'[Show help text]'
+                            else
+                                _arguments '2:gh area:(auth issue pr branch worktree project review)' \
+                                    '3:project command:(doctor configure issue)' \
+                                    '4:issue command:(set-fields copy-fields)' \
+                                    '5:issue number:' \
+                                    '--repo[GitHub repository]:repo:' \
+                                    '--project[GitHub Project title]:title:' \
+                                    '--owner[GitHub Project owner]:owner:' \
+                                    '--config[Project intake config]:path:_files' \
+                                    '--status[Status option]:status:' \
+                                    '--priority[Priority option]:priority:' \
+                                    '--area[Area option]:area:' \
+                                    '--initiative[Initiative option]:initiative:' \
+                                    '--size[Size option]:size:' \
+                                    '--allow-cross-repo[Allow updating a Project not linked to the issue repository]' \
+                                    '--dry-run[Print planned changes]' \
+                                    '(-h --help)'{-h,--help}'[Show help text]'
+                            fi
                             ;;
                         *)
                             _arguments '2:gh area:(auth issue pr branch worktree project review)' \

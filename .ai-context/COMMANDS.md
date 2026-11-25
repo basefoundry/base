@@ -187,14 +187,18 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     `--assignee <login>` to assign an issue, or set
     `project.issue_defaults.assignee` in `.github/base-project.yml` for a
     repo-local default. Pass `--no-assignee` to ignore that default for one
-    issue. Pass `--size <T|S|M|L>` when the issue scope is clear; otherwise
-    Project metadata defaults to `Size=S`. Project updates must target a
-    Project linked to the issue repository unless `--allow-cross-repo` is
+    issue. Priority and effort option names follow `project.field_source`:
+    unset repositories use Project `P0`–`P3` and Size `T`–`L`; `issue_fields`
+    repositories use issue-field Priority (`Urgent`, `High`, `Medium`, `Low`)
+    and Effort (`Tiny`, `Small`, `Medium`, `Large`). Project updates must target
+    a Project linked to the issue repository unless `--allow-cross-repo` is
     supplied for an intentional cross-repository maintenance operation.
   - `basectl gh issue readiness <number>` checks required implementation issue
     body sections and reports labels and assignees. Pass `--project-owner` and
-    `--project-number` with `--repo` to validate Base Project fields; without
-    Project coordinates it reports a partial result.
+    `--project-number` with `--repo` to validate fields from the configured
+    source for that target repository; without Project coordinates it reports
+    a partial result. Both configured modes require Risk tier and distinguish
+    a missing organization field from a missing issue value.
   - `basectl gh issue start <number>` resolves issue metadata from an explicit
     `--repo`/`-R` selector, then `GH_REPO`, then the origin remote.
   - `basectl gh auth status` inspects stored GitHub authentication state
@@ -224,7 +228,13 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
   - `basectl gh project issue set-fields <number>` - add an issue to the
     Project if needed and update its metadata fields. The command rejects
     repository/Project mismatches by default; pass `--allow-cross-repo` only
-    when that mismatch is deliberate.
+    when that mismatch is deliberate. `--effort` accepts `Tiny`, `Small`,
+    `Medium`, or `Large`; `--size` is the legacy `T`/`S`/`M`/`L` alias.
+  - `basectl gh project issue copy-fields` - dry-run or apply the forward or
+    reverse Priority/Effort copy between legacy Project fields and issue
+    fields. A write requires `--export <path>`, creates the before-state file
+    without replacing an existing file, changes only differences, and reads
+    values back to report per-value counts and mismatches.
 
 Stable read-only inspection JSON uses one schema-versioned envelope across
 `repo check`, `release check`, `gh issue readiness`, and `gh branch stale`.

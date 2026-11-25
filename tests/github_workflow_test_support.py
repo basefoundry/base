@@ -300,7 +300,9 @@ project_intake_mock_rest_item() {
       .fields |= map(
         if .name == "Status" then .value.name.raw = $status
         elif .name == "Priority" then .value.name.raw = $priority
+        elif .name == "Legacy priority" then .value.name.raw = $priority
         elif .name == "Size" then .value.name.raw = $size
+        elif .name == "Legacy size" then .value.name.raw = $size
         elif .name == "Area" then .value.name.raw = $area
         elif .name == "Initiative" then .value.name.raw = $initiative
         else . end
@@ -309,7 +311,74 @@ project_intake_mock_rest_item() {
     "${PROJECT_INTAKE_FIXTURE_PATH:?}"
 }
 
+project_intake_mock_issue_field_values() {
+  jq -nc \
+    --arg priority "$(project_intake_mock_value issue-priority)" \
+    --arg effort "$(project_intake_mock_value issue-effort)" \
+    '[if $priority == "" then empty else {issue_field_name:"Priority",single_select_option:{name:$priority}} end,
+      if $effort == "" then empty else {issue_field_name:"Effort",single_select_option:{name:$effort}} end]'
+}
+
 case "$*" in
+  "api repos/basefoundry/base/contents/.github/base-project.yml --jq .content")
+    if [[ "${PROJECT_INTAKE_CONFIG_MISSING:-0}" == "1" ]]; then
+      printf 'HTTP 404: Not Found\n' >&2
+      exit 1
+    fi
+    case "${PROJECT_INTAKE_FIELD_SOURCE:-unset}" in
+      issue_fields)
+        config='project:
+  field_source: issue_fields
+  issue_defaults:
+    status: Backlog
+    priority: Medium
+    effort: Small
+    area: Product
+    initiative: Adoption Polish
+'
+        ;;
+      project_fields)
+        config='project:
+  field_source: project_fields
+  issue_defaults:
+    status: Backlog
+    priority: Medium
+    effort: Small
+    area: Product
+    initiative: Adoption Polish
+'
+        ;;
+      *)
+        config='project:
+  issue_defaults:
+    status: Backlog
+    priority: P2
+    size: S
+    area: Product
+    initiative: Adoption Polish
+'
+        ;;
+    esac
+    printf '%b' "$config" | base64 | tr -d '\n'
+    printf '\n'
+    ;;
+  "api -H X-GitHub-Api-Version: 2026-03-10 orgs/basefoundry/issue-fields?per_page=100")
+    printf '[{"id":43373537,"name":"Priority"},{"id":43373540,"name":"Effort"}]\n'
+    ;;
+  "api -H X-GitHub-Api-Version: 2026-03-10 repos/basefoundry/base/issues/1311/issue-field-values")
+    project_intake_mock_issue_field_values
+    ;;
+  *"POST repos/basefoundry/base/issues/1311/issue-field-values --input -")
+    payload="$(cat)"
+    printf '%s\n' "$payload" >> "${PROJECT_INTAKE_STATE:?}/issue-field-values-posts.log"
+    while IFS=$'\t' read -r field_id value; do
+      case "$field_id" in
+        43373537) printf '%s\n' "$value" > "${PROJECT_INTAKE_STATE:?}/issue-priority" ;;
+        43373540) printf '%s\n' "$value" > "${PROJECT_INTAKE_STATE:?}/issue-effort" ;;
+        *) printf 'unexpected issue field id: %s\n' "$field_id" >&2; exit 2 ;;
+      esac
+    done < <(jq -r '.issue_field_values[] | [.field_id, .value] | @tsv' <<<"$payload")
+    ;;
   "api repos/basefoundry/base/issues/1311")
     count_file="${PROJECT_INTAKE_STATE:?}/issue-view-count"
     count=0

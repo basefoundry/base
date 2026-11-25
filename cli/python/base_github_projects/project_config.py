@@ -13,11 +13,16 @@ class ProjectConfigError(RuntimeError):
 class ProjectConfig:
     areas: tuple[str, ...] = ()
     initiatives: tuple[str, ...] = ()
+    field_source: str | None = None
     issue_defaults: dict[str, str] = field(default_factory=dict)
 
 
-ALLOWED_PROJECT_KEYS = {"areas", "initiatives", "issue_defaults"}
-ALLOWED_DEFAULT_KEYS = {"status", "priority", "size", "area", "initiative", "assignee"}
+ALLOWED_PROJECT_KEYS = {"areas", "initiatives", "field_source", "issue_defaults"}
+ALLOWED_FIELD_SOURCES = {"issue_fields", "project_fields"}
+ALLOWED_DEFAULT_KEYS = {
+    "status", "priority", "size", "effort", "risk_tier", "start_date", "target_date",
+    "area", "initiative", "assignee",
+}
 
 
 def read_project_config(path: Path) -> ProjectConfig:
@@ -34,8 +39,19 @@ def read_project_config(path: Path) -> ProjectConfig:
     return ProjectConfig(
         areas=read_string_list(path, project, "areas"),
         initiatives=read_string_list(path, project, "initiatives"),
+        field_source=read_field_source(path, project),
         issue_defaults=read_issue_defaults(path, project),
     )
+
+
+def read_field_source(path: Path, project: dict[str, Any]) -> str | None:
+    value = project.get("field_source")
+    if value is None:
+        return None
+    if not isinstance(value, str) or value.strip() not in ALLOWED_FIELD_SOURCES:
+        allowed = ", ".join(sorted(ALLOWED_FIELD_SOURCES))
+        raise ProjectConfigError(f"{path}: project.field_source must be one of: {allowed}.")
+    return value.strip()
 
 
 def read_yaml_mapping(path: Path) -> dict[str, Any]:

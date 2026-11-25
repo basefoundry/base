@@ -17,11 +17,26 @@ PROJECT_VALUE_OPTIONS = (
     "--schema",
     "--config",
     "--copy-fields-from",
+    "--direction",
+    "--export",
     "--initiative-option",
 )
-ISSUE_FIELD_OPTIONS = ("--status", "--priority", "--area", "--initiative", "--size")
+ISSUE_FIELD_OPTIONS = (
+    "--status", "--priority", "--area", "--initiative", "--size", "--effort",
+    "--risk-tier", "--start-date", "--target-date",
+)
 OPTION_NOT_CONSUMED = 0
 SPACED_OPTION_TOKEN_COUNT = 2
+BOOLEAN_OPTION_ATTRIBUTES = {
+    "--dry-run": "dry_run",
+    "--write": "write",
+    "--replace-project": "replace_project",
+}
+ISSUE_BOOLEAN_OPTION_ATTRIBUTES = {
+    "--start-date-today-if-empty": "start_date_today_if_empty",
+    "--allow-cross-repo": "allow_cross_repo",
+    "--no-defaults": "no_defaults",
+}
 
 
 @dataclass
@@ -36,6 +51,11 @@ class OptionState:
     replace_project: bool = False
     allow_cross_repo: bool = False
     dry_run: bool = False
+    write: bool = False
+    copy_direction: str | None = None
+    export_path: str | None = None
+    start_date_today_if_empty: bool = False
+    no_defaults: bool = False
     field_values: dict[str, str] | None = None
 
 
@@ -51,8 +71,9 @@ def print_usage(file=sys.stdout) -> None:
                 "[--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] "
                 "[--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]",
                 f"  {command} project issue set-fields <number> "
-                "--repo <owner/name> --project <title> [--config <path>] "
-                "[--allow-cross-repo] [field options...]",
+                "--repo <owner/name> --project <title> [--config <path>] [--allow-cross-repo] [field options...]",
+                f"  {command} project issue copy-fields --project <title> [--owner <login>] "
+                "--direction <project-to-issue|issue-to-project> [--write] [--export <path>]",
                 f"  {command} project issue defaults --config <path>",
             )
         ),
@@ -78,7 +99,7 @@ def parse_args(
 
     command = arguments[1]
     remaining = list(arguments[2:])
-    if command == "doctor":
+    if command in {"doctor", "configure"}:
         state = parse_project_options(
             remaining,
             allow_fields=False,
@@ -86,46 +107,54 @@ def parse_args(
             infer_owner_from_git=infer_owner,
         )
         require_project_title(state)
-        return state_to_args("doctor", state)
-    if command == "configure":
-        state = parse_project_options(
-            remaining,
-            allow_fields=False,
-            allow_issue=False,
-            infer_owner_from_git=infer_owner,
-        )
-        require_project_title(state)
-        return state_to_args("configure", state)
+        return state_to_args(command, state)
     if command == "issue":
-        if remaining and remaining[0] == "defaults":
-            state = parse_project_options(
-                remaining[1:],
-                allow_fields=False,
-                allow_issue=False,
-                infer_owner_from_git=infer_owner,
-            )
+        return parse_issue_arguments(remaining, infer_owner, infer_repo)
+    raise ProjectUsageError(f"Unknown project command '{command}'.")
+
+
+def parse_issue_arguments(
+    remaining: list[str],
+    infer_owner: Callable[[], str | None],
+    infer_repo: Callable[[], str | None],
+) -> ProjectArguments:
+    if remaining and remaining[0] in {"defaults", "copy-fields"}:
+        subcommand = remaining[0]
+        state = parse_project_options(
+            remaining[1:],
+            allow_fields=False,
+            allow_issue=False,
+            infer_owner_from_git=infer_owner,
+        )
+        if subcommand == "defaults":
             if not state.config_path:
                 raise ProjectUsageError("The 'project issue defaults' command requires --config.")
             return state_to_args("issue-defaults", state)
-        if len(remaining) < 2 or remaining[0] != "set-fields":
-            raise ProjectUsageError("Expected 'project issue set-fields <number>'.")
-        try:
-            issue_number = int(remaining[1])
-        except ValueError as exc:
-            raise ProjectUsageError(f"Invalid issue number '{remaining[1]}'.") from exc
-        state = parse_project_options(
-            remaining[2:],
-            allow_fields=True,
-            allow_issue=True,
-            infer_owner_from_git=infer_owner,
-        )
         require_project_title(state)
-        if not state.repo:
-            state.repo = infer_repo()
-        if not state.repo:
-            raise ProjectUsageError("The 'project issue set-fields' command requires --repo.")
-        return state_to_args("issue-set-fields", state, issue_number=issue_number)
-    raise ProjectUsageError(f"Unknown project command '{command}'.")
+        if state.copy_direction not in {"project-to-issue", "issue-to-project"}:
+            raise ProjectUsageError(
+                "The 'project issue copy-fields' command requires "
+                "--direction project-to-issue or --direction issue-to-project."
+            )
+        return state_to_args("issue-copy-fields", state)
+    if len(remaining) < 2 or remaining[0] != "set-fields":
+        raise ProjectUsageError("Expected 'project issue set-fields <number>'.")
+    try:
+        issue_number = int(remaining[1])
+    except ValueError as exc:
+        raise ProjectUsageError(f"Invalid issue number '{remaining[1]}'.") from exc
+    state = parse_project_options(
+        remaining[2:],
+        allow_fields=True,
+        allow_issue=True,
+        infer_owner_from_git=infer_owner,
+    )
+    require_project_title(state)
+    if not state.repo:
+        state.repo = infer_repo()
+    if not state.repo:
+        raise ProjectUsageError("The 'project issue set-fields' command requires --repo.")
+    return state_to_args("issue-set-fields", state, issue_number=issue_number)
 
 
 def parse_project_options(
@@ -136,22 +165,18 @@ def parse_project_options(
     infer_owner_from_git: Callable[[], str | None] | None = None,
 ) -> OptionState:
     state = OptionState(initiative_options=[], field_values={})
+    boolean_options = dict(BOOLEAN_OPTION_ATTRIBUTES)
+    if allow_issue:
+        boolean_options.update(ISSUE_BOOLEAN_OPTION_ATTRIBUTES)
     index = 0
     while index < len(remaining):
         arg = remaining[index]
         if arg in HELP_OPTIONS:
             print_usage()
             raise SystemExit(0)
-        if arg == "--dry-run":
-            state.dry_run = True
-            index += 1
-            continue
-        if arg == "--replace-project":
-            state.replace_project = True
-            index += 1
-            continue
-        if allow_issue and arg == "--allow-cross-repo":
-            state.allow_cross_repo = True
+        attribute = boolean_options.get(arg)
+        if attribute:
+            setattr(state, attribute, True)
             index += 1
             continue
         if apply_inline_option(state, arg, allow_fields=allow_fields):
@@ -221,6 +246,10 @@ def apply_project_option(state: OptionState, option: str, value: str) -> None:
         state.config_path = value
     elif option == "--copy-fields-from":
         state.copy_fields_from_project = value
+    elif option == "--direction":
+        state.copy_direction = value
+    elif option == "--export":
+        state.export_path = value
     elif option == "--initiative-option":
         state.initiative_options.append(value)
 
@@ -244,6 +273,11 @@ def state_to_args(command: str, state: OptionState, issue_number: int | None = N
         replace_project=state.replace_project,
         allow_cross_repo=state.allow_cross_repo,
         dry_run=state.dry_run,
+        write=state.write,
+        copy_direction=state.copy_direction,
+        export_path=state.export_path,
+        start_date_today_if_empty=state.start_date_today_if_empty,
+        no_defaults=state.no_defaults,
         issue_number=issue_number,
         field_values=dict(state.field_values or {}),
     )

@@ -457,6 +457,9 @@ base_repo_init_plan_pr() {
 }
 
 base_repo_init_write_baseline() {
+    if [[ -z "$github_repo" ]]; then
+        github_repo="$(base_repo_infer_github_repo "$root" || true)"
+    fi
     if ((configure_release)) && [[ -z "$github_repo" ]]; then
         github_repo="$(base_repo_infer_github_repo "$root" || true)"
     fi
@@ -465,7 +468,7 @@ base_repo_init_write_baseline() {
         return $?
     fi
 
-    base_repo_write_baseline "$dry_run" "$name" "$description" "$root" "$license_id" "${language_options[@]}" || return 1
+    base_repo_write_baseline "$dry_run" "$name" "$description" "$root" "$license_id" "$github_repo" "${language_options[@]}" || return 1
     if ((configure_release)); then
         base_repo_configure_release "$dry_run" "$github_repo" "$root" || return 1
     fi

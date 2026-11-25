@@ -62,24 +62,24 @@ body:
     id: priority
     attributes:
       label: Priority
-      description: Select the intended Base Project Priority field value.
+      description: Select the intended Priority issue-field value.
       options:
-        - P0
-        - P1
-        - P2
-        - P3
+        - Urgent
+        - High
+        - Medium
+        - Low
     validations:
       required: true
   - type: dropdown
-    id: size
+    id: effort
     attributes:
-      label: Size
-      description: Select the intended Base Project Size field value.
+      label: Effort
+      description: Select the intended Effort issue-field value.
       options:
-        - T
-        - S
-        - M
-        - L
+        - Tiny
+        - Small
+        - Medium
+        - Large
     validations:
       required: true
   - type: dropdown

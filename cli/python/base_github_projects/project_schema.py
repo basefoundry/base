@@ -14,19 +14,25 @@ from .project_model import ConfigureAction, FieldUpdate, Finding
 from .project_model import ProjectArguments, ProjectField, ProjectSchema
 from .project_model import SelectFieldSpec, SelectOption
 
-ISSUE_DEFAULT_OUTPUT_ORDER = ("status", "priority", "size", "area", "initiative", "assignee")
+ISSUE_DEFAULT_OUTPUT_ORDER = (
+    "field_source", "status", "priority", "size", "effort", "risk_tier", "start_date",
+    "target_date", "area", "initiative", "assignee",
+)
 
 
 def schema_for_args(args: ProjectArguments) -> ProjectSchema:
     if args.schema != "base-project":
         raise ProjectUsageError("Only project schema 'base-project' is supported.")
     config = project_config_for_args(args)
+    schema = BASE_PROJECT_SCHEMA
+    if config.field_source == "issue_fields":
+        schema = ProjectSchema(tuple(field for field in schema.fields if field.name not in {"Priority", "Size"}))
     if args.initiative_options:
         return schema_with_project_config(
-            schema_with_initiatives(BASE_PROJECT_SCHEMA, args.initiative_options),
+            schema_with_initiatives(schema, args.initiative_options),
             config,
         )
-    return schema_with_project_config(BASE_PROJECT_SCHEMA, config)
+    return schema_with_project_config(schema, config)
 
 
 def project_config_for_args(args: ProjectArguments) -> ProjectConfig:
@@ -37,15 +43,15 @@ def project_config_for_args(args: ProjectArguments) -> ProjectConfig:
 
 def issue_field_values_for_args(args: ProjectArguments) -> dict[str, str]:
     config = project_config_for_args(args)
-    values = dict(config.issue_defaults)
-    values.update(args.field_values or {})
-    return values
+    defaults = {} if args.no_defaults else normalize_field_values(config.field_source, config.issue_defaults)
+    defaults.update(normalize_field_values(config.field_source, args.field_values or {}))
+    return defaults
 
 
 def issue_defaults_command(args: ProjectArguments) -> int:
     config = project_config_for_args(args)
     for key in ISSUE_DEFAULT_OUTPUT_ORDER:
-        value = config.issue_defaults.get(key)
+        value = config.field_source if key == "field_source" else config.issue_defaults.get(key)
         if value:
             print(f"{key}\t{value}")
     return base_cli.ExitCode.SUCCESS
@@ -54,10 +60,41 @@ def issue_defaults_command(args: ProjectArguments) -> int:
 def project_field_defaults_for_config(config: ProjectConfig) -> dict[str, str]:
     defaults: dict[str, str] = {}
     for value_key, field_name in FIELD_OPTION_TO_PROJECT_FIELD.items():
+        if config.field_source == "issue_fields" and value_key in {"priority", "size"}:
+            continue
         option_name = config.issue_defaults.get(value_key)
         if option_name:
             defaults[field_name] = option_name
+    if config.field_source == "project_fields" and "effort" in config.issue_defaults:
+        effort = config.issue_defaults["effort"]
+        size = {"Tiny": "T", "Small": "S", "Medium": "M", "Large": "L"}.get(effort)
+        if size is None:
+            raise ProjectUsageError(f"Unknown Effort default '{effort}'.")
+        defaults["Size"] = size
     return defaults
+
+
+def normalize_field_values(field_source: str | None, values: dict[str, str]) -> dict[str, str]:
+    """Resolve compatibility aliases against the configured field home."""
+    normalized = dict(values)
+    if field_source == "issue_fields" and normalized.get("priority") in {"P0", "P1", "P2", "P3"}:
+        priority = normalized["priority"]
+        normalized["priority"] = {"P0": "Urgent", "P1": "High", "P2": "Medium", "P3": "Low"}[priority]
+    effort = normalized.pop("effort", None)
+    size = normalized.pop("size", None)
+    if effort and size:
+        raise ProjectUsageError("Use either --effort or --size, not both.")
+    selected = effort or size
+    if selected is not None:
+        if field_source == "issue_fields":
+            if effort is None:
+                selected = {"T": "Tiny", "S": "Small", "M": "Medium", "L": "Large"}.get(selected, selected)
+            normalized["effort"] = selected
+        else:
+            if effort is not None:
+                selected = {"Tiny": "T", "Small": "S", "Medium": "M", "Large": "L"}.get(selected, selected)
+            normalized["size"] = selected
+    return normalized
 
 
 def read_project_config(path: Path) -> ProjectConfig:
@@ -175,6 +212,10 @@ def resolve_issue_field_updates(
         option_name = values.get(value_key)
         if not option_name:
             continue
+        if field_name not in by_name and value_key == "priority" and "Legacy priority" in by_name:
+            field_name = "Legacy priority"
+        elif field_name not in by_name and value_key == "size" and "Legacy size" in by_name:
+            field_name = "Legacy size"
         field = by_name.get(field_name)
         if field is None:
             raise ProjectUsageError(f"{field_name} field was not found in Project '{project_title}'.")

@@ -617,6 +617,20 @@ run_zsh_positional_completion() {
     [[ "$block" != *"--assignee"* ]]
 }
 
+@test "gh project issue copy-fields completion includes supported options" {
+    local bash_options zsh_options
+
+    command -v zsh >/dev/null 2>&1 || skip "zsh is not available"
+
+    bash_options="$(bash_completion_long_options basectl gh project issue copy-fields --)"
+    zsh_options="$(zsh_completion_long_options basectl gh project issue copy-fields --)"
+
+    for option in --project --owner --direction --write --export --help; do
+        [[ "$bash_options" == *"$option"* ]]
+        [[ "$zsh_options" == *"$option"* ]]
+    done
+}
+
 @test "Zsh gh review completion includes fetch and prune options" {
     local fetch_options prune_options
 

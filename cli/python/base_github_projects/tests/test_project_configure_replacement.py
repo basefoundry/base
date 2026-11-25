@@ -140,6 +140,45 @@ def test_configure_command_replace_project_skips_replacement_for_standard_views(
     assert "Configured GitHub Project base-demo" in output
 
 
+def test_configure_command_uses_restored_standard_project_fields_without_duplicates(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project:\n  field_source: project_fields\n", encoding="utf-8")
+    created_fields: list[str] = []
+
+    monkeypatch.setattr(
+        engine,
+        "find_owner_and_project",
+        lambda owner, title: engine.OwnerInfo(
+            owner_id="owner-id",
+            login=owner,
+            project=engine.ProjectInfo(project_id="project-id", title=title),
+        ),
+    )
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda project_id: complete_project_fields())
+    monkeypatch.setattr(
+        engine,
+        "create_single_select_field",
+        lambda project_id, spec: created_fields.append(spec.name),
+    )
+    monkeypatch.setattr(engine, "update_single_select_field", lambda field, spec: None)
+
+    status = engine.configure_command(
+        engine.ProjectArguments(
+            area="project",
+            command="configure",
+            project_title="base-demo",
+            owner="codeforester",
+            config_path=str(config_path),
+        )
+    )
+
+    assert status == 0
+    assert not created_fields
+
+
 def test_configure_command_replace_project_dry_run_reports_cutover_plan(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
