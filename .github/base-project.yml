@@ -1,4 +1,5 @@
 project:
+  field_source: issue_fields
   areas:
     - CLI
     - Setup
@@ -22,8 +23,8 @@ project:
     - Agentic Coding Platform
   issue_defaults:
     status: Backlog
-    priority: P2
+    priority: Medium
     area: Product
     initiative: Adoption Polish
-    size: S
+    effort: Small
     assignee: codeforester

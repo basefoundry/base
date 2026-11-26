@@ -10,6 +10,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Changed
 
+- Use organization issue fields for Base's own issue Priority and Effort defaults,
+  with `Medium` and `Small` as the configured values.
 - Save default `basectl export-context` bundles under checkout-specific Base
   cache paths so same-named checkouts do not overwrite one another; explicit
   output paths remain unchanged.

@@ -589,6 +589,15 @@ def test_implementation_issue_template_is_copilot_ready_and_project_aligned() ->
     assert "assign this issue to Copilot" in fields["agent_assignment"]["attributes"]["description"]
 
 
+def test_base_project_config_uses_organization_issue_field_defaults() -> None:
+    project_config = load_yaml_mapping(BASE_PROJECT_CONFIG)["project"]
+
+    assert project_config["field_source"] == "issue_fields"
+    assert project_config["issue_defaults"]["priority"] == "Medium"
+    assert project_config["issue_defaults"]["effort"] == "Small"
+    assert "size" not in project_config["issue_defaults"]
+
+
 def test_agentic_coding_platform_initiative_is_documented() -> None:
     project_config = load_yaml_mapping(BASE_PROJECT_CONFIG)["project"]
     implementation_template = load_yaml_mapping(IMPLEMENTATION_ISSUE_TEMPLATE)
