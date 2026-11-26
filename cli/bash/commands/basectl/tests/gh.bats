@@ -1309,7 +1309,7 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 52 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size T" ]
 }
 
-@test "basectl gh issue create reports explicit size as Effort in issue_fields mode" {
+@test "basectl gh issue create reports explicit issue-field overrides" {
     local repo
     local repo_root
 
@@ -1362,14 +1362,31 @@ EOF
             cd "$1"
             source "$BASE_HOME/base_init.sh"
             source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
-            base_gh_subcommand_main issue create --category enhancement --title "Fix typo" --size L
+            base_gh_subcommand_main issue create --category enhancement --title "Fix typo" --priority P1 --size L
         ' bash "$repo"
 
     [ "$status" -eq 0 ]
     [[ "$output" == *"https://github.com/codeforester/bankbuddy/issues/53"* ]]
-    [[ "$output" == *"Project 'bankbuddy': Status=Backlog, Priority=Medium, Effort=Large, Area=Product, Initiative=Adoption Polish applied."* ]]
+    [[ "$output" == *"Project 'bankbuddy': Status=Backlog, Priority=High, Effort=Large, Area=Product, Initiative=Adoption Polish applied."* ]]
     [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Fix typo --label enhancement --repo codeforester/bankbuddy" ]
-    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 53 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size L" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 53 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size L --priority P1" ]
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category enhancement --title "Fix typo" --priority High --effort Large
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Project 'bankbuddy': Status=Backlog, Priority=High, Effort=Large, Area=Product, Initiative=Adoption Polish applied."* ]]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 53 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --priority High --effort Large" ]
 }
 
 @test "basectl gh issue create warns when project metadata update fails" {

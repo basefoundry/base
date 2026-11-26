@@ -877,7 +877,7 @@ base_gh_join_csv() {
 }
 
 base_gh_project_field_summary() {
-    local project_title="$1" config_path="$2" project_size="$3"
+    local project_title="$1" config_path="$2" project_priority="$3" project_size="$4" project_effort="$5"
     local status="" priority="" size="" effort="" area="" initiative="" field_source=""
     local fields=()
 
@@ -894,13 +894,21 @@ base_gh_project_field_summary() {
         priority="P2"
         size="${project_size:-S}"
     fi
+    [[ -z "$project_priority" ]] || priority="$project_priority"
     if [[ -n "$project_size" ]]; then
         size="$project_size"
     fi
 
     [[ -n "$status" ]] && fields+=("Status=$status")
-    [[ -z "$priority" ]] || fields+=("Priority=$priority")
     if [[ "$field_source" == "issue_fields" ]]; then
+        case "$priority" in
+            P0) priority="Urgent" ;;
+            P1) priority="High" ;;
+            P2) priority="Medium" ;;
+            P3) priority="Low" ;;
+        esac
+        [[ -z "$priority" ]] || fields+=("Priority=$priority")
+        [[ -z "$project_effort" ]] || effort="$project_effort"
         case "$project_size" in
             T) effort="Tiny" ;;
             S) effort="Small" ;;
@@ -909,6 +917,15 @@ base_gh_project_field_summary() {
         esac
         [[ -z "$effort" ]] || fields+=("Effort=$effort")
     else
+        [[ -z "$priority" ]] || fields+=("Priority=$priority")
+        if [[ -n "$project_effort" ]]; then
+            case "$project_effort" in
+                Tiny) size="T" ;;
+                Small) size="S" ;;
+                Medium) size="M" ;;
+                Large) size="L" ;;
+            esac
+        fi
         [[ -z "$size" ]] || fields+=("Size=$size")
     fi
     [[ -n "$area" ]] && fields+=("Area=$area")
@@ -936,9 +953,10 @@ base_gh_log_warn_lines() {
 }
 
 base_gh_apply_project_issue_fields() {
-    local project_title="$1" config_path="$2" project_size="$3" issue_number="$4"
+    local project_title="$1" config_path="$2" project_priority="$3" project_size="$4"
+    local project_effort="$5" issue_number="$6"
     local output status line
-    shift 4
+    shift 6
 
     output="$(base_gh_project_issue_set_fields "$@" 2>&1)"
     status=$?
@@ -946,7 +964,8 @@ base_gh_apply_project_issue_fields() {
         if [[ -n "$output" ]]; then
             printf '%s\n' "$output"
         fi
-        base_gh_project_field_summary "$project_title" "$config_path" "$project_size"
+        base_gh_project_field_summary \
+            "$project_title" "$config_path" "$project_priority" "$project_size" "$project_effort"
         return 0
     fi
 

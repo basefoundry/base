@@ -351,7 +351,9 @@ base_gh_issue_create() {
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
-            base_gh_apply_project_issue_fields "$project_title" "$config_path" "$project_size" "$issue_number" "${field_args[@]}" || return $?
+            base_gh_apply_project_issue_fields \
+                "$project_title" "$config_path" "$project_priority" "$project_size" "$project_effort" \
+                "$issue_number" "${field_args[@]}" || return $?
         else
             [[ -n "$project_size" ]] || project_size="S"
             local field_args=(
@@ -374,7 +376,9 @@ base_gh_issue_create() {
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
-            base_gh_apply_project_issue_fields "$project_title" "" "$project_size" "$issue_number" "${field_args[@]}" || return $?
+            base_gh_apply_project_issue_fields \
+                "$project_title" "" "$project_priority" "$project_size" "$project_effort" \
+                "$issue_number" "${field_args[@]}" || return $?
         fi
     fi
 }
