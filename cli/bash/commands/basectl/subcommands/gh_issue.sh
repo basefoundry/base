@@ -26,7 +26,7 @@ Issue create project options:
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --priority <value>            Priority value for the configured field source.
-  --size <T|S|M|L>              Legacy Project Size value; compatibility alias for Effort.
+  --size <T|S|M|L>              Legacy Project Size value; sets Effort when project.field_source is issue_fields.
   --effort <value>              Effort value for issue fields (Tiny, Small, Medium, Large).
   --no-project                  Skip Project metadata updates.
   --allow-cross-repo            Allow an intentional update to a Project not linked to the issue repository.
@@ -109,7 +109,7 @@ Options:
   --project <title>        GitHub Project title.
   --project-owner <login>  GitHub Project owner.
   --priority <value>       Priority value for the configured field source.
-  --size <T|S|M|L>         Legacy Project Size value; compatibility alias for Effort.
+  --size <T|S|M|L>         Legacy Project Size value; sets Effort when project.field_source is issue_fields.
   --effort <value>         Effort value for issue fields.
   --no-project             Skip GitHub Project metadata updates.
   --allow-cross-repo       Allow an intentional update to a Project not linked to the issue repository.

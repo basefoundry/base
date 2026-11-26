@@ -86,7 +86,7 @@ Issue create project options:
   --no-assignee                 Do not assign the issue, even when repo config has a default.
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
-  --size <T|S|M|L>              Project Size value. Defaults to .github/base-project.yml or S.
+  --size <T|S|M|L>              Project Size value; sets Effort when project.field_source is issue_fields. Defaults to .github/base-project.yml or S.
   --no-project                  Skip Project metadata updates.
   --allow-cross-repo            Allow an intentional update to a Project not linked to the issue repository.
 
@@ -901,6 +901,12 @@ base_gh_project_field_summary() {
     [[ -n "$status" ]] && fields+=("Status=$status")
     [[ -z "$priority" ]] || fields+=("Priority=$priority")
     if [[ "$field_source" == "issue_fields" ]]; then
+        case "$project_size" in
+            T) effort="Tiny" ;;
+            S) effort="Small" ;;
+            M) effort="Medium" ;;
+            L) effort="Large" ;;
+        esac
         [[ -z "$effort" ]] || fields+=("Effort=$effort")
     else
         [[ -z "$size" ]] || fields+=("Size=$size")
