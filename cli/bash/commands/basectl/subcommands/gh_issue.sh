@@ -26,7 +26,7 @@ Issue create project options:
   --project <title>             Project to update. Defaults to the repository name.
   --project-owner <login>       Project owner. Defaults to the repository owner.
   --priority <value>            Priority value for the configured field source.
-  --size <T|S|M|L>              Legacy Project Size value; compatibility alias for Effort.
+  --size <T|S|M|L>              Legacy Project Size value; sets Effort when project.field_source is issue_fields.
   --effort <value>              Effort value for issue fields (Tiny, Small, Medium, Large).
   --no-project                  Skip Project metadata updates.
   --allow-cross-repo            Allow an intentional update to a Project not linked to the issue repository.
@@ -109,7 +109,7 @@ Options:
   --project <title>        GitHub Project title.
   --project-owner <login>  GitHub Project owner.
   --priority <value>       Priority value for the configured field source.
-  --size <T|S|M|L>         Legacy Project Size value; compatibility alias for Effort.
+  --size <T|S|M|L>         Legacy Project Size value; sets Effort when project.field_source is issue_fields.
   --effort <value>         Effort value for issue fields.
   --no-project             Skip GitHub Project metadata updates.
   --allow-cross-repo       Allow an intentional update to a Project not linked to the issue repository.
@@ -351,7 +351,9 @@ base_gh_issue_create() {
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
-            base_gh_apply_project_issue_fields "$project_title" "$config_path" "$project_size" "$issue_number" "${field_args[@]}" || return $?
+            base_gh_apply_project_issue_fields \
+                "$project_title" "$config_path" "$project_priority" "$project_size" "$project_effort" \
+                "$issue_number" "${field_args[@]}" || return $?
         else
             [[ -n "$project_size" ]] || project_size="S"
             local field_args=(
@@ -374,7 +376,9 @@ base_gh_issue_create() {
             if ((allow_cross_repo)); then
                 field_args+=(--allow-cross-repo)
             fi
-            base_gh_apply_project_issue_fields "$project_title" "" "$project_size" "$issue_number" "${field_args[@]}" || return $?
+            base_gh_apply_project_issue_fields \
+                "$project_title" "" "$project_priority" "$project_size" "$project_effort" \
+                "$issue_number" "${field_args[@]}" || return $?
         fi
     fi
 }

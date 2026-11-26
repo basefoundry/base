@@ -663,6 +663,7 @@ run_gh_subcommand() {
     [[ "$output" == *"--assignee <login>"* ]]
     [[ "$output" == *"--no-assignee"* ]]
     [[ "$output" == *"--size <T|S|M|L>"* ]]
+    [[ "$output" == *"sets Effort when project.field_source is issue_fields"* ]]
     [[ "$output" == *"--repo, -R <owner/name>"* ]]
     [[ "$output" == *"the explicit option, GH_REPO, then the origin remote"* ]]
     [[ "$output" == *"Default category: enhancement."* ]]
@@ -1308,6 +1309,86 @@ EOF
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 52 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size T" ]
 }
 
+@test "basectl gh issue create reports explicit issue-field overrides" {
+    local repo
+    local repo_root
+
+    repo="$TEST_TMPDIR/bankbuddy"
+    init_git_repo "$repo"
+    repo_root="$(cd "$repo" && pwd -P)"
+    git -C "$repo" remote add origin git@github.com:codeforester/bankbuddy.git
+    mkdir -p "$repo/.github"
+    cat > "$repo/.github/base-project.yml" <<'EOF'
+project:
+  field_source: issue_fields
+  issue_defaults:
+    status: Backlog
+    priority: Medium
+    effort: Small
+EOF
+    cat > "$TEST_MOCKBIN/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "auth status -h github.com" ]]; then
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/gh-args"
+if [[ "$1" == "issue" && "$2" == "create" ]]; then
+    printf 'https://github.com/codeforester/bankbuddy/issues/53\n'
+fi
+EOF
+    chmod +x "$TEST_MOCKBIN/gh"
+    cat > "$TEST_MOCKBIN/project-wrapper" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *" base_github_projects project issue defaults "* ]]; then
+    printf 'field_source\tissue_fields\n'
+    printf 'status\tBacklog\n'
+    printf 'priority\tMedium\n'
+    printf 'effort\tSmall\n'
+    printf 'area\tProduct\n'
+    printf 'initiative\tAdoption Polish\n'
+    exit 0
+fi
+printf '%s\n' "$*" > "${BASE_GH_TEST_STATE_DIR:?}/wrapper-args"
+EOF
+    chmod +x "$TEST_MOCKBIN/project-wrapper"
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category enhancement --title "Fix typo" --priority P1 --size L
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"https://github.com/codeforester/bankbuddy/issues/53"* ]]
+    [[ "$output" == *"Project 'bankbuddy': Status=Backlog, Priority=High, Effort=Large, Area=Product, Initiative=Adoption Polish applied."* ]]
+    [ "$(cat "$TEST_STATE_DIR/gh-args")" = "issue create --title Fix typo --label enhancement --repo codeforester/bankbuddy" ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 53 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --size L --priority P1" ]
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$PATH" \
+        bash -c '
+            cd "$1"
+            source "$BASE_HOME/base_init.sh"
+            source "$BASE_HOME/cli/bash/commands/basectl/subcommands/gh.sh"
+            base_gh_subcommand_main issue create --category enhancement --title "Fix typo" --priority High --effort Large
+        ' bash "$repo"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Project 'bankbuddy': Status=Backlog, Priority=High, Effort=Large, Area=Product, Initiative=Adoption Polish applied."* ]]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project issue set-fields 53 --project bankbuddy --owner codeforester --repo codeforester/bankbuddy --config $repo_root/.github/base-project.yml --priority High --effort Large" ]
+}
+
 @test "basectl gh issue create warns when project metadata update fails" {
     local repo
     local repo_root
@@ -1387,6 +1468,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"Usage:"* ]]
     [[ "$output" == *"basectl gh issue create"* ]]
+    [[ "$output" == *"sets Effort when project.field_source is issue_fields"* ]]
     [[ "$output" != *"GitHub CLI authentication is not ready."* ]]
     [[ "$output" != *"unexpected gh args"* ]]
 }

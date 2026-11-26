@@ -254,11 +254,15 @@ overwriting values already set there. Older Base issues may have been tracked in
 `Base Roadmap`; use that title only as the migration source when copying legacy
 field values into the current repo-named Project.
 
+`doctor` cannot take a config until #2711 lands, so after Priority and Size are
+renamed to Legacy it reports those fields missing; that is expected. `configure`
+needs `--config .github/base-project.yml` or it recreates them.
+
 ```bash
 basectl gh project doctor --project base --owner basefoundry
-basectl gh project configure --project base --owner basefoundry --schema base-project
+basectl gh project configure --project base --owner basefoundry --schema base-project --config .github/base-project.yml
 basectl repo configure ~/work/base --repo basefoundry/base --copy-project-fields-from "Base Roadmap"
-basectl gh project issue set-fields 604 --repo basefoundry/base --project base --owner basefoundry --status Backlog --priority P2 --area CLI --initiative "v1.0 Readiness" --size M
+basectl gh project issue set-fields 604 --repo basefoundry/base --project base --owner basefoundry --status Backlog --priority Medium --area CLI --initiative "v1.0 Readiness" --effort Medium
 ```
 
 ## Preferred GitHub Interface

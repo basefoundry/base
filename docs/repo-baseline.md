@@ -606,8 +606,8 @@ reported when the repo Project does not have a matching option.
 In `issue_fields` mode, the Project schema omits Priority and Size. In
 `project_fields` mode, the rollback schema prefers standard `Priority` and
 `Size` fields and falls back to `Legacy priority` and `Legacy size` only when a
-standard field is absent. Base's own `.github/base-project.yml` can remain unset until its
-issue-field migration is complete.
+standard field is absent. Base's own `.github/base-project.yml` selects
+`issue_fields`; its issue defaults use Priority `Medium` and Effort `Small`.
 
 When Project V2 access is unavailable, `repo init` and `repo configure` log a
 warning that includes `gh auth refresh -h github.com -s project`, keep the
