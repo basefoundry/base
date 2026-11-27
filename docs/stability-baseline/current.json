@@ -628,6 +628,9 @@
     },
     "basectl gh project doctor": {
       "flags": {
+        "--config": {
+          "takes_value": true
+        },
         "--help": {
           "takes_value": false
         },

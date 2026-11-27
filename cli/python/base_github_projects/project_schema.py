@@ -21,9 +21,12 @@ ISSUE_DEFAULT_OUTPUT_ORDER = (
 
 
 def schema_for_args(args: ProjectArguments) -> ProjectSchema:
+    return schema_for_config(args, project_config_for_args(args))
+
+
+def schema_for_config(args: ProjectArguments, config: ProjectConfig) -> ProjectSchema:
     if args.schema != "base-project":
         raise ProjectUsageError("Only project schema 'base-project' is supported.")
-    config = project_config_for_args(args)
     schema = BASE_PROJECT_SCHEMA
     if config.field_source == "issue_fields":
         schema = ProjectSchema(tuple(field for field in schema.fields if field.name not in {"Priority", "Size"}))
@@ -134,12 +137,13 @@ def schema_with_extra_options(
 
 
 def compare_schema(fields: tuple[ProjectField, ...], schema: ProjectSchema) -> tuple[Finding, ...]:
-    by_name = {field.name: field for field in fields}
     findings: list[Finding] = []
     for spec in schema.fields:
-        field = by_name.get(spec.name)
+        field = find_schema_field(fields, spec.name)
         if field is None:
             findings.append(Finding("missing", spec.name, f"{spec.name} field is missing."))
+            continue
+        if field.name != spec.name:
             continue
         if field.data_type != "SINGLE_SELECT":
             findings.append(
@@ -159,11 +163,12 @@ def configuration_plan(
     actions: list[ConfigureAction] = []
     if not project_exists:
         actions.append(ConfigureAction("create-project", "Project", "Create GitHub Project."))
-    by_name = {field.name: field for field in fields}
     for spec in schema.fields:
-        field = by_name.get(spec.name)
+        field = find_schema_field(fields, spec.name)
         if field is None:
             actions.append(ConfigureAction("create-field", spec.name, f"Create {spec.name} as SINGLE_SELECT."))
+            continue
+        if field.name != spec.name:
             continue
         if field.data_type != "SINGLE_SELECT":
             message = f"{spec.name} exists with type {field.data_type}; expected SINGLE_SELECT."
@@ -176,6 +181,27 @@ def configuration_plan(
                 ConfigureAction("update-field", spec.name, f"Add missing options: {', '.join(missing_options)}.")
             )
     return tuple(actions)
+
+
+def find_schema_field(fields: tuple[ProjectField, ...], name: str) -> ProjectField | None:
+    """Resolve schema fields, preserving migrated Priority/Size under their Legacy names.
+
+    Doctor, configure planning and field creation share this precedence. Keep
+    future issue-field marker handling here rather than at individual call sites.
+    """
+    by_name = {field.name: field for field in fields}
+    standard = by_name.get(name)
+    if standard is not None:
+        return standard
+    legacy_name = {"Priority": "Legacy priority", "Size": "Legacy size"}.get(name)
+    return by_name.get(legacy_name) if legacy_name else None
+
+
+def render_legacy_schema_fields(fields: tuple[ProjectField, ...], schema: ProjectSchema) -> None:
+    for spec in schema.fields:
+        field = find_schema_field(fields, spec.name)
+        if field is not None and field.name != spec.name:
+            print(f"INFO    Using {field.name} for {spec.name}; leaving it unchanged.")
 
 
 def merged_options(field: ProjectField, spec: SelectFieldSpec) -> tuple[SelectOption, ...]:

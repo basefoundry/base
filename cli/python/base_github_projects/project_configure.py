@@ -1,18 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from .project_config import ProjectConfig
+from .project_config_resolution import ResolvedProjectConfig, render_config_resolution
 from .project_model import (
+    BASE_PROJECT_SCHEMA,
     DEFAULT_TEMPLATE_PROJECT,
-    FIELD_OPTION_TO_PROJECT_FIELD,
     STANDARD_TEMPLATE_VIEWS,
     ConfigureAction,
     ProjectArguments,
     ProjectInfo,
+    ProjectSchema,
     ProjectView,
 )
+from .project_schema import project_field_defaults_for_config
 
 
 @dataclass(frozen=True)
@@ -27,7 +30,8 @@ class ConfigureDryRunPlan:
     actions: tuple[ConfigureAction, ...]
     would_copy_template: bool = False
     replacement: ProjectReplacement | None = None
-    project_config: ProjectConfig | None = None
+    resolved_config: ResolvedProjectConfig = field(default_factory=ResolvedProjectConfig)
+    schema: ProjectSchema = BASE_PROJECT_SCHEMA
 
 
 def standard_template_view_errors(views: tuple[ProjectView, ...]) -> tuple[str, ...]:
@@ -47,7 +51,11 @@ def legacy_project_title(project_title: str) -> str:
     return f"{project_title}-legacy-{timestamp}"
 
 
-def render_dry_run_configure(args: ProjectArguments, plan: ConfigureDryRunPlan) -> None:
+def render_dry_run_configure(
+    args: ProjectArguments, plan: ConfigureDryRunPlan, *, report_config: bool = True
+) -> None:
+    if report_config:
+        render_config_resolution(plan.resolved_config)
     print(
         f"[DRY-RUN] Would configure GitHub Project '{args.project_title}' "
         f"for '{args.repo or args.owner or ''}' with --schema {args.schema}."
@@ -61,10 +69,8 @@ def render_dry_run_configure(args: ProjectArguments, plan: ConfigureDryRunPlan) 
         print(f"[DRY-RUN] Would backfill issues from '{args.repo}' into GitHub Project '{args.project_title}'.")
     if args.copy_fields_from_project:
         print(f"[DRY-RUN] Would copy missing item field values from GitHub Project '{args.copy_fields_from_project}'.")
-    if args.config_path:
-        print(f"[DRY-RUN] Would read GitHub Project config from '{args.config_path}'.")
-    render_project_config_dry_run(plan.project_config or ProjectConfig())
-    print("[DRY-RUN] Fields: Status, Priority, Area, Size, Initiative")
+    render_project_config_dry_run(plan.resolved_config.config, apply_defaults=plan.resolved_config.explicit)
+    print(f"[DRY-RUN] Fields: {', '.join(field.name for field in plan.schema.fields)}")
     if args.initiative_options:
         for option in args.initiative_options:
             print(f"[DRY-RUN] Would ensure Initiative option {option}.")
@@ -85,16 +91,14 @@ def render_replacement_dry_run(args: ProjectArguments, replacement: ProjectRepla
     print(f"[DRY-RUN] Would close legacy GitHub Project '{replacement.legacy_title}' after replacement succeeds.")
 
 
-def render_project_config_dry_run(config: ProjectConfig) -> None:
+def render_project_config_dry_run(config: ProjectConfig, *, apply_defaults: bool) -> None:
     for option in config.areas:
         print(f"[DRY-RUN] Would ensure Area option {option}.")
     for option in config.initiatives:
         print(f"[DRY-RUN] Would ensure Initiative option {option}.")
-    if config.issue_defaults:
+    if apply_defaults:
         rendered_defaults = [
-            f"{FIELD_OPTION_TO_PROJECT_FIELD[key]}={value}"
-            for key, value in config.issue_defaults.items()
-            if key in FIELD_OPTION_TO_PROJECT_FIELD
+            f"{name}={value}" for name, value in project_field_defaults_for_config(config).items()
         ]
         if rendered_defaults:
             rendered = ", ".join(rendered_defaults)
