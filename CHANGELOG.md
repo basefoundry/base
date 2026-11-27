@@ -25,6 +25,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Make `set-fields --risk-tier`, `--start-date`, and `--target-date` set their
+  issue fields, and reject unrecognized command-line field keys.
 - Refuse branch/worktree pruning when attached worktree metadata is invalid,
   reporting the affected path while preserving the local branch for recovery.
 - Run activation-source discovery with Base's interpreter while preserving the

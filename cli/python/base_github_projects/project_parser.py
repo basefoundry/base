@@ -25,6 +25,10 @@ ISSUE_FIELD_OPTIONS = (
     "--status", "--priority", "--area", "--initiative", "--size", "--effort",
     "--risk-tier", "--start-date", "--target-date",
 )
+ISSUE_FIELD_OPTION_TO_KEY = {
+    option: option.removeprefix("--").replace("-", "_")
+    for option in ISSUE_FIELD_OPTIONS
+}
 OPTION_NOT_CONSUMED = 0
 SPACED_OPTION_TOKEN_COUNT = 2
 BOOLEAN_OPTION_ATTRIBUTES = {
@@ -206,7 +210,7 @@ def apply_spaced_option(state: OptionState, remaining: list[str], index: int, *,
         apply_project_option(state, option, option_value(remaining, index))
         return SPACED_OPTION_TOKEN_COUNT
     if allow_fields and option in ISSUE_FIELD_OPTIONS:
-        state.field_values[option[2:]] = option_value(remaining, index)
+        state.field_values[ISSUE_FIELD_OPTION_TO_KEY[option]] = option_value(remaining, index)
         return SPACED_OPTION_TOKEN_COUNT
     return OPTION_NOT_CONSUMED
 
@@ -221,7 +225,7 @@ def apply_inline_option(state: OptionState, argument: str, *, allow_fields: bool
         apply_project_option(state, option, value)
         return True
     if allow_fields and option in ISSUE_FIELD_OPTIONS:
-        state.field_values[option[2:]] = value
+        state.field_values[ISSUE_FIELD_OPTION_TO_KEY[option]] = value
         return True
     return False
 

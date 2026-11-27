@@ -158,6 +158,121 @@ def test_missing_field_updates_is_a_usage_error_before_issue_lookup() -> None:
     assert str(excinfo.value) == "At least one field option must be provided."
 
 
+@pytest.mark.parametrize(
+    ("option", "value"),
+    (
+        ("--risk-tier", "High"),
+        ("--start-date", "2026-12-01"),
+        ("--target-date", "2026-12-31"),
+    ),
+)
+@pytest.mark.parametrize("path", ("graphql", "rest"))
+def test_unset_field_source_rejects_risk_and_date_options_from_argv(
+    tmp_path: Path,
+    option: str,
+    value: str,
+    path: str,
+) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project: {}\n", encoding="utf-8")
+    args = engine.parse_args(
+        (
+            "project", "issue", "set-fields", "1604", "--project", "Base Roadmap",
+            "--owner", "basefoundry", "--repo", "basefoundry/base", "--config", str(config_path),
+            option, value,
+        )
+    )
+
+    with pytest.raises(engine.ProjectUsageError, match="require project.field_source"):
+        if path == "graphql":
+            ops = replace(
+                base_operations(),
+                fetch_project_fields=lambda _project_id: (),
+                project_config_for_args=project_schema.project_config_for_args,
+                issue_field_values_for_args=project_schema.issue_field_values_for_args,
+            )
+            project_issue_fields_command.issue_set_fields_command(args, ops)
+        else:
+            engine.rest_issue_set_fields_command(args)
+
+
+def test_issue_field_options_from_argv_write_risk_and_dates_with_explicit_start_date(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text("project:\n  field_source: issue_fields\n", encoding="utf-8")
+    args = engine.parse_args(
+        (
+            "project", "issue", "set-fields", "1604", "--project", "Base Roadmap",
+            "--owner", "basefoundry", "--repo", "basefoundry/base", "--config", str(config_path),
+            "--risk-tier", "High", "--start-date", "2026-12-01",
+            "--target-date=2026-12-31", "--start-date-today-if-empty",
+        )
+    )
+    writes: list[dict[str, str]] = []
+    ops = replace(
+        base_operations(),
+        fetch_project_fields=lambda _project_id: (),
+        project_config_for_args=project_schema.project_config_for_args,
+        issue_field_values_for_args=project_schema.issue_field_values_for_args,
+        resolve_issue_field_updates=lambda _fields, _values, *, project_title: (),
+        fetch_issue_id=lambda _owner, _repo, _number: "issue-id",
+        find_project_item_state=lambda _project_id, _issue_id: engine.ProjectItemState("item-id", {}),
+        organization_issue_field_ids=lambda _owner: {
+            "Risk tier": 1,
+            "Start date": 2,
+            "Target date": 3,
+        },
+        read_issue_field_values=lambda _owner, _repo, _number: {},
+        write_issue_field_values=lambda _owner, _repo, _number, values, **_kwargs: writes.append(dict(values)),
+    )
+
+    status = project_issue_fields_command.issue_set_fields_command(args, ops)
+
+    assert status == base_cli.ExitCode.SUCCESS
+    assert writes == [{
+        "Risk tier": "High",
+        "Start date": "2026-12-01",
+        "Target date": "2026-12-31",
+    }]
+
+
+@pytest.mark.parametrize("path", ("graphql", "rest"))
+def test_unknown_command_line_issue_field_key_is_a_usage_error(path: str) -> None:
+    args = replace(issue_arguments(), field_values={"unknown_field": "value"})
+
+    with pytest.raises(engine.ProjectUsageError, match="Unknown issue field key.*unknown_field"):
+        if path == "graphql":
+            project_issue_fields_command.issue_set_fields_command(
+                args,
+                replace(base_operations(), require_owner=unexpected("require_owner")),
+            )
+        else:
+            engine.rest_issue_set_fields_command(args)
+
+
+def test_assignee_config_default_is_still_ignored(tmp_path: Path) -> None:
+    config_path = tmp_path / "base-project.yml"
+    config_path.write_text(
+        "project:\n  field_source: project_fields\n  issue_defaults:\n    assignee: codeforester\n",
+        encoding="utf-8",
+    )
+    args = replace(issue_arguments(), config_path=str(config_path), field_values={"status": "Backlog"})
+    ops = replace(
+        base_operations(),
+        project_config_for_args=project_schema.project_config_for_args,
+        issue_field_values_for_args=project_schema.issue_field_values_for_args,
+    )
+    config = project_schema.project_config_for_args(args)
+
+    project_values, issue_values, _field_ids = project_issue_fields_command.requested_values(
+        args, ops, config, "basefoundry", "base"
+    )
+
+    assert project_values == {"status": "Backlog"}
+    assert issue_values == {}
+
+
 def test_unlinked_repository_is_rejected_before_field_or_issue_lookup() -> None:
     ops = replace(
         base_operations(),
