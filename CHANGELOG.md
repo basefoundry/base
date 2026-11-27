@@ -27,6 +27,11 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 - Make `set-fields --risk-tier`, `--start-date`, and `--target-date` set their
   issue fields, and reject unrecognized command-line field keys.
+- Resolve `gh project doctor` and `configure` schema config from the checkout
+  only when every target coordinate matches its origin repository. Discovered
+  config never applies item defaults; explicit `--config` remains required.
+  Preserve Legacy priority/size fields without reporting or recreating duplicate
+  standard fields, and make configure's dry-run schema and defaults accurate.
 - Refuse branch/worktree pruning when attached worktree metadata is invalid,
   reporting the affected path while preserving the local branch for recovery.
 - Run activation-source discovery with Base's interpreter while preserving the
@@ -44,6 +49,9 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Added
 
+- Stability compatibility: add `basectl gh project doctor --config <path>` to
+  the Stable command contract and shell completions. Existing invocations need
+  no migration; pass `--config` to select a file explicitly instead of discovery.
 - Let eligible repositories use organization issue fields for Priority, Effort,
   Risk tier and dates through `.github/base-project.yml`, and copy values
   between Project and issue fields with `basectl gh project issue copy-fields`.

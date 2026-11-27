@@ -62,7 +62,7 @@ Usage:
   basectl gh pr checks [gh options...]
   basectl gh pr ready [gh options...]
   basectl gh pr merge [gh options...]
-  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project] [--config <path>]
   basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] [--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [--config <path>] [--allow-cross-repo] [field options...]
   basectl gh project issue copy-fields --project <title> --direction <project-to-issue|issue-to-project> [--write --export <path>]
@@ -359,7 +359,7 @@ base_gh_do_auth() {
 base_gh_project_usage() {
     cat <<'EOF'
 Usage:
-  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project]
+  basectl gh project doctor --project <title> [--owner <login>] [--schema base-project] [--config <path>]
   basectl gh project configure --project <title> [--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] [--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]
   basectl gh project issue set-fields <number> --project <title> [--owner <login>] [--repo <owner/name>] [--allow-cross-repo] [field options...]
 
@@ -390,6 +390,7 @@ Options:
   --project <title>  Project title to inspect.
   --owner <login>    Project owner.
   --schema base-project  Project schema. This is the only supported value.
+  --config <path>    Project intake config; overrides checkout discovery.
   -h, --help         Show this help text.
 EOF
             ;;

@@ -646,6 +646,14 @@ run_zsh_positional_completion() {
     [[ "$prune_options" == *"--pr"* ]]
 }
 
+@test "Zsh gh project doctor completion includes config option" {
+    local block
+
+    block="$(zsh_completion_deep_nested_block gh project doctor)"
+
+    [[ "$block" == *"--config[Project intake config]:path:_files"* ]]
+}
+
 @test "Zsh gh project configure completion includes replace-project option" {
     local block
 

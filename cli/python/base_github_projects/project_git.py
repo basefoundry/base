@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 from base_projects.command_helpers import ProjectUsageError, github_repo_spec
 
@@ -54,3 +55,17 @@ def infer_repo_from_git() -> str | None:
     if result.returncode != 0:
         return None
     return github_repo_spec(result.stdout)
+
+
+def checkout_root() -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=GIT_COMMAND_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return Path(result.stdout.strip()) if result.returncode == 0 and result.stdout.strip() else None

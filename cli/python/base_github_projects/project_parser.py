@@ -70,7 +70,7 @@ def print_usage(file=sys.stdout) -> None:
             (
                 "Usage:",
                 f"  {command} project doctor --project <title> "
-                "[--owner <login>] [--schema base-project]",
+                "[--owner <login>] [--schema base-project] [--config <path>]",
                 f"  {command} project configure --project <title> "
                 "[--owner <login>] [--repo <owner/name>] [--schema base-project] [--config <path>] "
                 "[--copy-fields-from <title>] [--replace-project] [--initiative-option <name>] [--dry-run]",

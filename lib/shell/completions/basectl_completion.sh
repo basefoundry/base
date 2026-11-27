@@ -923,7 +923,7 @@ _base_basectl_completion() {
                     else
                         case "${COMP_WORDS[3]:-}" in
                         doctor)
-                            _base_basectl_completion_compgen "--project --owner --schema -h --help" "$cur"
+                            _base_basectl_completion_compgen "--project --owner --schema --config -h --help" "$cur"
                             ;;
                         configure)
                             _base_basectl_completion_compgen "--project --owner --schema --config --copy-fields-from --initiative-option --repo --replace-project --dry-run -h --help" "$cur"
