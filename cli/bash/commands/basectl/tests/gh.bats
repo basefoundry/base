@@ -974,6 +974,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"basectl gh project doctor --project <title> [options]"* ]]
     [[ "$output" == *"--schema base-project"* ]]
+    [[ "$output" == *"--config <path>"* ]]
     [[ "$output" != *"--dry-run"* ]]
     [[ "$output" != *"basectl gh project configure"* ]]
 
@@ -1529,6 +1530,19 @@ EOF
 
     [ "$status" -eq 0 ]
     [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project configure --project base-bash-libs --owner basefoundry --repo basefoundry/base-bash-libs --config $config_path" ]
+
+    run env \
+        HOME="$TEST_HOME" \
+        BASE_HOME="$BASE_REPO_ROOT" \
+        BASE_CACHE_DIR="$TEST_TMPDIR/cache" \
+        BASE_GH_TEST_STATE_DIR="$TEST_STATE_DIR" \
+        BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+        PATH="$TEST_MOCKBIN:$TEST_BASH_BIN_DIR:/usr/bin:/bin:/usr/sbin:/sbin" \
+        "$BASE_REPO_ROOT/bin/basectl" gh project doctor \
+        --project base-bash-libs --owner basefoundry --config "$config_path"
+
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_STATE_DIR/wrapper-args")" = "--project base base_github_projects project doctor --project base-bash-libs --owner basefoundry --config $config_path" ]
 }
 
 @test "basectl forwards project issue config to the Python Project engine" {

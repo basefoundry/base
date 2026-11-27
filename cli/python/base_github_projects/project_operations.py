@@ -86,7 +86,6 @@ class ProjectOperations:
     require_owner: Callable[[ProjectArguments], str]
     require_repo: Callable[[ProjectArguments], str]
     resolve_issue_field_updates: ResolveIssueFieldUpdates
-    schema_for_args: Callable[[ProjectArguments], ProjectSchema]
     split_repo: Callable[[str], tuple[str, str]]
     update_item_field: Callable[[str, str, FieldUpdate], None]
     write_issue_field_values: Callable[..., None]

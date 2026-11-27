@@ -12,7 +12,8 @@ syntax.
 `basectl` exposes `-v` as the command-level debug switch. Direct `base_cli`
 package standard options such as `--debug`, `--quiet`, `--log-file`,
 `--config`, `--environment`, and `--keep-temp` are not public `basectl`
-options. Pre-runtime diagnostics use `--debug-wrapper`, and
+options, except for command-specific Project `--config` options described below.
+Pre-runtime diagnostics use `--debug-wrapper`, and
 `--utc-wrapper` switches wrapper/runtime log presentation to UTC.
 `--verbose-wrapper` remains a deprecated alias for `--debug-wrapper` through
 the v1.x compatibility window; new automation should use `--debug-wrapper`.
@@ -219,12 +220,25 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     the peer `../<repo>-review-worktrees` root by default. An explicit
     `--root` must resolve outside the repository; nested and symlinked nested
     roots are rejected before GitHub or Git mutation.
-  - `basectl gh project doctor --project <title>` - inspect Project metadata
-    fields against the Base Project schema.
+  - `basectl gh project doctor --project <title> [--config <path>]` - inspect
+    Project metadata fields against the resolved Base Project schema, with the
+    same config and Legacy guard on the REST fallback.
   - `basectl gh project configure --project <title>` - create or repair the
     standard Project metadata schema; pass `--replace-project` with `--repo`
     to archive and recreate a repo Project whose views are nonstandard; Projects
     that already have standard Base views are left intact.
+    Doctor and configure use explicit `--config` first, otherwise discover the
+    checkout root's `.github/base-project.yml` only when the effective owner,
+    Project title and configure's optional `--repo` all identify the checkout's
+    `origin` repository. They print the config or the no-config reason, naming
+    mismatched coordinates; no remote config is fetched. Discovery selects
+    schema settings only; item defaults still require explicit `--config`.
+    Invalid config stops before any Project API call. When the schema includes
+    Priority or Size, each command names and preserves its Legacy field when
+    the standard field is absent, preventing missing-field reports and duplicate
+    creation. A standard field takes precedence; neither name means missing.
+    `issue_fields` omits Priority and Size. Configure's preview lists the resolved
+    schema and exactly the item defaults its explicit config would apply.
   - `basectl gh project issue set-fields <number>` - add an issue to the
     Project if needed and update its metadata fields. The command rejects
     repository/Project mismatches by default; pass `--allow-cross-repo` only
