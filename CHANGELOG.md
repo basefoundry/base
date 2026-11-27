@@ -25,6 +25,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Find newly added Project items by ID in Project Intake, avoiding the 1,000-item
+  list limit while preserving bounded retries for genuine visibility delays.
 - Refuse branch/worktree pruning when attached worktree metadata is invalid,
   reporting the affected path while preserving the local branch for recovery.
 - Run activation-source discovery with Base's interpreter while preserving the

@@ -289,6 +289,22 @@ project_intake_mock_graphql_item() {
     '{items:[{id:"PVTI_item",status:$status,priority:$priority,size:$size,area:$area,initiative:$initiative}]}'
 }
 
+project_intake_mock_graphql_node() {
+  jq -nc \
+    --arg status "$(project_intake_mock_value status)" \
+    --arg priority "$(project_intake_mock_value priority)" \
+    --arg size "$(project_intake_mock_value size)" \
+    --arg area "$(project_intake_mock_value area)" \
+    --arg initiative "$(project_intake_mock_value initiative)" \
+    '{data:{node:{id:"PVTI_item",fieldValues:{nodes:[
+      (if $status == "" then empty else {name:$status,field:{name:"Status"}} end),
+      (if $priority == "" then empty else {name:$priority,field:{name:"Priority"}} end),
+      (if $size == "" then empty else {name:$size,field:{name:"Size"}} end),
+      (if $area == "" then empty else {name:$area,field:{name:"Area"}} end),
+      (if $initiative == "" then empty else {name:$initiative,field:{name:"Initiative"}} end)
+    ]}}}}'
+}
+
 project_intake_mock_rest_item() {
   jq -c \
     --arg status "$(project_intake_mock_value status)" \
@@ -416,6 +432,29 @@ case "$*" in
   project\\ item-add*)
     printf 'PVTI_item\\n'
     ;;
+  api\\ graphql*)
+    case "${PROJECT_INTAKE_GRAPHQL_FAILURE:-}" in
+      quota)
+        printf 'GraphQL: API rate limit already exceeded\\n' >&2
+        exit 1
+        ;;
+      unknown-owner)
+        printf 'unknown owner type\\n' >&2
+        exit 1
+        ;;
+    esac
+    count_file="${PROJECT_INTAKE_STATE:?}/graphql-node-count"
+    count=0
+    [[ ! -f "$count_file" ]] || count="$(cat "$count_file")"
+    count=$((count + 1))
+    printf '%s\\n' "$count" > "$count_file"
+    if [[ "${PROJECT_INTAKE_ITEM_NEVER_VISIBLE:-0}" == "1" ||
+          ( "${PROJECT_INTAKE_DELAYED_ITEM_VISIBILITY:-0}" == "1" && "$count" == "1" ) ]]; then
+      printf '{"data":{"node":null}}\\n'
+    else
+      project_intake_mock_graphql_node
+    fi
+    ;;
   project\\ item-list*)
     case "${PROJECT_INTAKE_GRAPHQL_FAILURE:-}" in
       quota)
@@ -432,7 +471,9 @@ case "$*" in
     [[ ! -f "$count_file" ]] || count="$(cat "$count_file")"
     count=$((count + 1))
     printf '%s\\n' "$count" > "$count_file"
-    if [[ "${PROJECT_INTAKE_ITEM_NEVER_VISIBLE:-0}" == "1" ||
+    if [[ "${PROJECT_INTAKE_CAPPED_ITEM_LIST:-0}" == "1" ]]; then
+      jq -nc '{items:[range(0; 1000) | {id:("PVTI_old_" + tostring)}]}'
+    elif [[ "${PROJECT_INTAKE_ITEM_NEVER_VISIBLE:-0}" == "1" ||
           ( "${PROJECT_INTAKE_DELAYED_ITEM_VISIBILITY:-0}" == "1" && "$count" == "1" ) ]]; then
       printf '{"items":[]}\\n'
     else

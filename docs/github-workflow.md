@@ -195,6 +195,10 @@ the issue to the repo-named Project and manages `Status`, `Area`, and
 `Initiative` on issue open, reopen, and close events. With the setting unset or
 `project_fields`, it also fills missing Project `Priority` and `Size`; in
 `issue_fields` mode it fills missing issue-field `Priority` and `Effort` instead.
+Manually dispatching Intake applies the same Status rule: an open issue whose
+Status is not already `Backlog` is changed to `Backlog`. Do not dispatch Intake
+for an issue in `Triage` or later; use a fixture whose intended Status is
+`Backlog`.
 If the repository config endpoint returns 404, the workflow keeps working with
 the existing unset-source defaults (`Priority: P2`, `Size: S`); other config
 read failures still fail the run.
