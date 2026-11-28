@@ -1,5 +1,7 @@
 """Issue #2713: role precedence and value identity regressions (recorded API shapes)."""
 
+from __future__ import annotations
+
 from dataclasses import replace
 
 # The parser functions are intentional test entry points.
