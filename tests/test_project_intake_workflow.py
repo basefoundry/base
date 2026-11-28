@@ -55,6 +55,17 @@ def test_project_intake_template_matches_repository_workflow() -> None:
     ).read_text(encoding="utf-8")
 
 
+def test_project_intake_uses_by_id_graphql_reads_in_both_workflow_copies() -> None:
+    template = load_workflow(REPO_ROOT / "templates" / "project-intake.yml")
+    template_run = template["jobs"]["sync"]["steps"][0]["run"]
+
+    for run_command in (project_intake_run_command(), template_run):
+        assert "gh project item-list" not in run_command
+        assert run_command.count('project_intake_graphql_read_item_by_id "$item_id"') == 2
+        assert "query($id: ID!)" in run_command
+        assert "node(id: $id)" in run_command
+
+
 def test_project_intake_issue_fields_mode_sets_only_missing_issue_defaults(tmp_path: Path) -> None:
     result = run_project_intake_script(tmp_path, PROJECT_INTAKE_FIELD_SOURCE="issue_fields")
 
@@ -203,7 +214,7 @@ def test_project_intake_falls_back_to_rest_for_graphql_quota_exhaustion(
     result = run_project_intake_script(tmp_path, PROJECT_INTAKE_GRAPHQL_FAILURE="quota")
 
     assert result.returncode == 0, result.stderr
-    assert "GraphQL Project transport failed during Project Intake: list Project items" in (
+    assert "GraphQL Project transport failed during Project Intake: read Project item by ID" in (
         result.stderr
     )
     assert "Falling back to the REST Projects API." in result.stderr
@@ -279,7 +290,8 @@ def test_project_intake_retries_graphql_item_visibility_after_add(tmp_path: Path
     assert (tmp_path / "sleep.log").read_text(encoding="utf-8") == "1\n"
     gh_log = (tmp_path / "gh.log").read_text(encoding="utf-8")
     assert gh_log.count("project item-add") == 1
-    assert gh_log.count("project item-list") == 3
+    assert gh_log.count("api graphql") == 3
+    assert "project item-list" not in gh_log
 
 
 def test_project_intake_graphql_item_never_visible_is_advisory(
@@ -296,7 +308,37 @@ def test_project_intake_graphql_item_never_visible_is_advisory(
     assert "category=visibility" in result.stderr
     assert "Core product validation is unaffected" in summary_path.read_text(encoding="utf-8")
     assert (tmp_path / "sleep.log").read_text(encoding="utf-8") == "1\n2\n"
+    assert (tmp_path / "graphql-node-count").read_text(encoding="utf-8") == "3\n"
     assert "Synced issue" not in result.stdout
+
+
+def test_project_intake_finds_item_beyond_first_thousand_by_id_and_verifies_graphql(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "priority").write_text("P1\n", encoding="utf-8")
+    (tmp_path / "area").write_text("Security\n", encoding="utf-8")
+    result = run_project_intake_script(
+        tmp_path,
+        PROJECT_INTAKE_CAPPED_ITEM_LIST="1",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "Synced issue #1311 into Project base via GraphQL." in result.stdout
+    assert "visibility" not in result.stderr
+    assert "Falling back to the REST Projects API." not in result.stderr
+    assert not (tmp_path / "sleep.log").exists()
+    assert (tmp_path / "status").read_text(encoding="utf-8") == "Backlog\n"
+    assert (tmp_path / "priority").read_text(encoding="utf-8") == "P1\n"
+    assert (tmp_path / "size").read_text(encoding="utf-8") == "S\n"
+    assert (tmp_path / "area").read_text(encoding="utf-8") == "Security\n"
+    assert (tmp_path / "initiative").read_text(encoding="utf-8") == "Adoption Polish\n"
+    gh_log = (tmp_path / "gh.log").read_text(encoding="utf-8")
+    assert gh_log.count("api graphql") == 2
+    assert gh_log.count("-F id=PVTI_item") == 2
+    assert "project item-list" not in gh_log
+    edits = (tmp_path / "edits.log").read_text(encoding="utf-8")
+    assert "F_priority" not in edits
+    assert "F_area" not in edits
 
 
 def test_project_intake_field_validation_remains_fail_closed(tmp_path: Path) -> None:

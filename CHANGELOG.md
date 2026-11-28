@@ -25,6 +25,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Find newly added Project items by ID in Project Intake, avoiding the 1,000-item
+  list limit while preserving bounded retries for genuine visibility delays.
 - Make `set-fields --risk-tier`, `--start-date`, and `--target-date` set their
   issue fields, and reject unrecognized command-line field keys.
 - Resolve `gh project doctor` and `configure` schema config from the checkout
