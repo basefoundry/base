@@ -372,7 +372,9 @@ def fetch_project_fields(project_id: str) -> tuple[ProjectField, ...]:
             )
             for option in raw.get("options", ())
         )
-        fields.append(ProjectField(raw["id"], raw["name"], raw["dataType"], options))
+        fields.append(ProjectField(
+            raw["id"], raw["name"], raw["dataType"], options, bool(raw.get("isIssueField", False))
+        ))
     return tuple(fields)
 
 
@@ -397,8 +399,9 @@ def fetch_project_issue_items(project_id: str) -> tuple[ProjectIssueData, ...]:
             for raw in item.get("fieldValues", {}).get("nodes", []):
                 if raw.get("__typename") != "ProjectV2ItemFieldSingleSelectValue":
                     continue
-                field_name = (raw.get("field") or {}).get("name")
-                if field_name and raw.get("name"):
+                field = raw.get("field") or {}
+                field_name = field.get("name")
+                if field_name and raw.get("name") and not field.get("isIssueField", False):
                     project_values[field_name] = raw["name"]
             issue_values: dict[str, str] = {}
             for raw in content.get("issueFieldValues", {}).get("nodes", []):
@@ -592,8 +595,9 @@ def find_project_item_state(project_id: str, issue_id: str) -> ProjectItemState 
         for raw_value in item.get("fieldValues", {}).get("nodes", []):
             if raw_value.get("__typename") != "ProjectV2ItemFieldSingleSelectValue":
                 continue
-            field_name = (raw_value.get("field") or {}).get("name")
-            if field_name and raw_value.get("name"):
+            field = raw_value.get("field") or {}
+            field_name = field.get("name")
+            if field_name and raw_value.get("name") and not field.get("isIssueField", False):
                 values[field_name] = raw_value["name"]
         return ProjectItemState(item_id=item["id"], values=values)
     return None
@@ -622,6 +626,7 @@ def copy_missing_project_item_fields(source_project_id: str, target_project_id: 
         source_project_id=source_project_id,
         target_project_id=target_project_id,
         target_fields=fetch_project_fields(target_project_id),
+        source_fields=fetch_project_fields(source_project_id),
     )
 
 

@@ -275,7 +275,9 @@ class RestProjectTransport:
                 print(f"[DRY-RUN] Would set {update.field_name} to {update.option_name}.")
             return base_cli.ExitCode.SUCCESS
 
-        field_ids = tuple(field.field_id for field in fields if field.name in REST_MANAGED_FIELDS)
+        field_ids = tuple(
+            field.field_id for field in fields if field.name in REST_MANAGED_FIELDS and not field.is_issue_field
+        )
         lookup = RestItemLookup(
             project=project,
             issue_id=str(issue["id"]),
@@ -306,7 +308,7 @@ class RestProjectTransport:
         if not item_id:
             raise ProjectError("REST Project item did not return an item id.")
 
-        current_values = _item_field_values(item)
+        current_values = _item_field_values(item, field_ids)
         pending = tuple(update for update in updates if current_values.get(update.field_name) != update.option_name)
         if pending:
             self.update_project_item(project, item_id, pending)
@@ -320,7 +322,7 @@ class RestProjectTransport:
             )
         )
         if verified is None or any(
-            _item_field_values(verified).get(update.field_name) != update.option_name for update in updates
+            _item_field_values(verified, field_ids).get(update.field_name) != update.option_name for update in updates
         ):
             raise ProjectError("REST Project field validation failed after the update.")
         print(f"✓ Updated Project metadata for issue #{request.issue_number} (REST fallback)")
@@ -417,7 +419,9 @@ def _parse_project_field(raw: Mapping[str, Any]) -> ProjectField:
                 )
             )
     data_type = str(raw.get("data_type", raw.get("dataType", "SINGLE_SELECT" if raw_options is not None else "")))
-    return ProjectField(str(raw.get("id", "")), str(raw.get("name", "")), data_type.upper(), tuple(options))
+    return ProjectField(
+        str(raw.get("id", "")), str(raw.get("name", "")), data_type.upper(), tuple(options), "issue_field_id" in raw
+    )
 
 
 def _nested_text(value: object) -> str:
@@ -443,13 +447,17 @@ def _item_matches(item: Any, issue_id: str, item_id: str | None) -> bool:
     return isinstance(content, dict) and str(content.get("id", "")) == issue_id
 
 
-def _item_field_values(item: Mapping[str, Any]) -> dict[str, str]:
+def _item_field_values(
+    item: Mapping[str, Any], field_ids: tuple[str, ...] | None = None
+) -> dict[str, str]:
     values: dict[str, str] = {}
     raw_fields = item.get("fields", [])
     if not isinstance(raw_fields, list):
         return values
     for field in raw_fields:
-        if not isinstance(field, dict):
+        if not isinstance(field, dict) or "issue_field_id" in field:
+            continue
+        if field_ids is not None and str(field.get("id", "")) not in field_ids:
             continue
         value = field.get("value")
         if isinstance(value, dict):

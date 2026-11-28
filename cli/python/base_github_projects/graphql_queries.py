@@ -7,11 +7,12 @@ query($id: ID!) {
       fields(first: 50) {
         nodes {
           __typename
-          ... on ProjectV2Field { id name dataType }
+          ... on ProjectV2Field { id name dataType isIssueField }
           ... on ProjectV2SingleSelectField {
             id
             name
             dataType
+            isIssueField
             options { id name color description }
           }
         }
@@ -154,7 +155,7 @@ query($projectId: ID!, $cursor: String) {
               __typename
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
-                field { ... on ProjectV2SingleSelectField { name } }
+                field { ... on ProjectV2SingleSelectField { id name isIssueField } }
               }
             }
           }
@@ -199,7 +200,7 @@ query($projectId: ID!, $cursor: String) {
               __typename
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
-                field { ... on ProjectV2SingleSelectField { name } }
+                field { ... on ProjectV2SingleSelectField { id name isIssueField } }
               }
             }
           }
@@ -238,7 +239,7 @@ query($projectId: ID!) {
               __typename
               ... on ProjectV2ItemFieldSingleSelectValue {
                 name
-                field { ... on ProjectV2SingleSelectField { name } }
+                field { ... on ProjectV2SingleSelectField { id name isIssueField } }
               }
             }
           }

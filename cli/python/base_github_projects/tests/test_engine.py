@@ -608,6 +608,7 @@ def test_configure_command_copies_template_for_repo_project_and_backfills_issues
     assert calls == [
         ("codeforester", "base-demo"),
         ("codeforester", engine.DEFAULT_TEMPLATE_PROJECT),
+        ("codeforester", engine.DEFAULT_TEMPLATE_PROJECT),
     ]
     assert linked == [("project-id", "codeforester/base-demo")]
     assert backfilled == [("project-id", "codeforester/base-demo")]
@@ -768,8 +769,12 @@ def test_configure_command_dry_run_reports_template_copy_link_and_backfill(
     monkeypatch.setattr(
         engine,
         "find_owner_and_project",
-        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=None),
+        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=engine.ProjectInfo("template", title) if title == engine.DEFAULT_TEMPLATE_PROJECT else None),
     )
+
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda _: tuple(
+        engine.ProjectField(spec.name, spec.name, "SINGLE_SELECT", spec.options)
+        for spec in engine.BASE_PROJECT_SCHEMA.fields))
 
     status = engine.configure_command(
         engine.ProjectArguments(
@@ -796,8 +801,12 @@ def test_configure_command_dry_run_reports_field_copy_source(
     monkeypatch.setattr(
         engine,
         "find_owner_and_project",
-        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=None),
+        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=engine.ProjectInfo("template", title) if title == engine.DEFAULT_TEMPLATE_PROJECT else None),
     )
+
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda _: tuple(
+        engine.ProjectField(spec.name, spec.name, "SINGLE_SELECT", spec.options)
+        for spec in engine.BASE_PROJECT_SCHEMA.fields))
 
     status = engine.configure_command(
         engine.ProjectArguments(

@@ -297,11 +297,13 @@ project_intake_mock_graphql_node() {
     --arg area "$(project_intake_mock_value area)" \
     --arg initiative "$(project_intake_mock_value initiative)" \
     '{data:{node:{id:"PVTI_item",fieldValues:{nodes:[
-      (if $status == "" then empty else {name:$status,field:{name:"Status"}} end),
-      (if $priority == "" then empty else {name:$priority,field:{name:"Priority"}} end),
-      (if $size == "" then empty else {name:$size,field:{name:"Size"}} end),
-      (if $area == "" then empty else {name:$area,field:{name:"Area"}} end),
-      (if $initiative == "" then empty else {name:$initiative,field:{name:"Initiative"}} end)
+      (if $status == "" then empty else {name:$status,field:{id:"F_status",name:"Status",isIssueField:false}} end),
+      (if $priority == "" then empty else {name:$priority,
+        field:{id:"F_priority",name:"Priority",isIssueField:false}} end),
+      (if $size == "" then empty else {name:$size,field:{id:"F_size",name:"Size",isIssueField:false}} end),
+      (if $area == "" then empty else {name:$area,field:{id:"F_area",name:"Area",isIssueField:false}} end),
+      (if $initiative == "" then empty else {name:$initiative,
+        field:{id:"F_initiative",name:"Initiative",isIssueField:false}} end)
     ]}}}}'
 }
 
@@ -443,6 +445,17 @@ case "$*" in
         exit 1
         ;;
     esac
+    if [[ "$*" == *"fields(first:"* ]]; then
+      jq -n --slurpfile fixture "$PROJECT_INTAKE_FIXTURE_PATH" '
+        {data:{node:{fields:{nodes:[$fixture[0].fields[] |
+          {id:(if .id==10 then "F_status" elif .id==11 then "F_priority" elif .id==12 then "F_size"
+               elif .id==13 then "F_area" else "F_initiative" end), name, isIssueField:false,
+           options:[.options[] | {id,name:.name.raw}]}]}}}}
+      ' | if [[ "${PROJECT_INTAKE_MISSING_FIELD_OPTION:-0}" == "1" ]]; then
+        jq '(.data.node.fields.nodes[] | select(.name == "Area") | .options) = []'
+      else cat; fi
+      exit 0
+    fi
     count_file="${PROJECT_INTAKE_STATE:?}/graphql-node-count"
     count=0
     [[ ! -f "$count_file" ]] || count="$(cat "$count_file")"

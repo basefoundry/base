@@ -25,6 +25,12 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Keep displayed organization issue fields separate from Project fields in
+  configure, doctor, field copying, set-fields, readiness and both Intake
+  transports. Resolve genuine standard fields before Legacy fields, including
+  unset-source readiness and Intake, and reject configure clashes before writes.
+  Breaking / action required: no.
+
 - Find newly added Project items by ID in Project Intake, avoiding the 1,000-item
   list limit while preserving bounded retries for genuine visibility delays.
 - Make `set-fields --risk-tier`, `--start-date`, and `--target-date` set their

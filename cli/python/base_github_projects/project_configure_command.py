@@ -9,7 +9,7 @@ from .project_config import ProjectConfig
 from .project_config_resolution import render_config_resolution, resolve_project_config
 from .project_configure import ConfigureDryRunPlan, ProjectReplacement
 from .project_configure import legacy_project_title, render_dry_run_configure, standard_template_view_errors
-from .project_model import OwnerInfo
+from .project_model import DEFAULT_TEMPLATE_PROJECT, OwnerInfo
 from .project_model import ProjectArguments
 from .project_model import ProjectField
 from .project_model import ProjectInfo
@@ -42,9 +42,11 @@ def configure_command(args: ProjectArguments, ops: ProjectOperations) -> int:
     fields = fetch_existing_configure_fields(project, replacement, ops)
     render_legacy_schema_fields(fields, schema)
     if should_copy_template or replacement is not None:
-        actions = ()
-    else:
-        actions = ops.configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
+        template = ops.find_owner_and_project(owner, DEFAULT_TEMPLATE_PROJECT).project
+        if template is None:
+            raise ops.ProjectError(f"Template Project '{DEFAULT_TEMPLATE_PROJECT}' was not found for owner '{owner}'.")
+        fields = ops.fetch_project_fields(template.project_id)
+    actions = ops.configuration_plan(project_exists=project is not None, fields=fields, schema=schema)
     errors = [action for action in actions if action.action == "error"]
     if errors:
         for action in errors:

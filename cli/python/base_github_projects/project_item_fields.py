@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Callable, Iterable
 
 from . import graphql_queries as queries
+from .project_field_resolution import LEGACY_NAMES, resolve_project_field
 
 
 FIELD_COPY_NAMES = ("Status", "Priority", "Area", "Initiative", "Size")
@@ -22,6 +23,7 @@ class ProjectIssueItem:
 class ProjectSelectField:
     field_id: str
     options: dict[str, str]
+    name: str = ""
 
 
 @dataclass(frozen=True)
@@ -114,9 +116,9 @@ def _resolve_missing_field_update(
     option_name: str,
     target_fields: dict[str, ProjectSelectField],
 ) -> tuple[ProjectFieldCopy | None, ProjectFieldCopySkip | None]:
-    if target.values.get(field_name):
-        return None, None
     target_field = target_fields.get(field_name)
+    if target.values.get(target_field.name if target_field and target_field.name else field_name):
+        return None, None
     if target_field is None:
         return None, ProjectFieldCopySkip(
             target.issue_number, field_name, option_name, "target field is missing"
@@ -130,7 +132,7 @@ def _resolve_missing_field_update(
         ProjectFieldCopy(
             item_id=target.item_id,
             issue_number=target.issue_number,
-            field_name=field_name,
+            field_name=target_field.name or field_name,
             option_name=option_name,
             field_id=target_field.field_id,
             option_id=option_id,
@@ -145,10 +147,12 @@ def copy_missing_project_item_fields(
     source_project_id: str,
     target_project_id: str,
     target_fields: Iterable[object],
+    source_fields: Iterable[object] | None = None,
 ) -> FieldCopySummary:
+    target_fields = tuple(target_fields)
     plan = plan_missing_field_copies(
-        source_items=fetch_project_issue_items(run_graphql, source_project_id),
-        target_items=fetch_project_issue_items(run_graphql, target_project_id),
+        source_items=fetch_project_issue_items(run_graphql, source_project_id, fields=source_fields),
+        target_items=fetch_project_issue_items(run_graphql, target_project_id, fields=target_fields),
         target_fields=select_fields_by_name(target_fields),
     )
     return _apply_field_copy_plan(run_graphql, target_project_id, plan)
@@ -161,8 +165,9 @@ def apply_missing_project_item_defaults(
     target_fields: Iterable[object],
     field_defaults: dict[str, str],
 ) -> FieldCopySummary:
+    target_fields = tuple(target_fields)
     plan = plan_missing_field_defaults(
-        target_items=fetch_project_issue_items(run_graphql, target_project_id),
+        target_items=fetch_project_issue_items(run_graphql, target_project_id, fields=target_fields),
         target_fields=select_fields_by_name(target_fields),
         field_defaults=field_defaults,
     )
@@ -188,23 +193,27 @@ def _apply_field_copy_plan(
 
 
 def select_fields_by_name(fields: Iterable[object]) -> dict[str, ProjectSelectField]:
+    fields = tuple(fields)
     selected: dict[str, ProjectSelectField] = {}
-    for field in fields:
-        if getattr(field, "data_type", "") != "SINGLE_SELECT":
+    for name in {field.name for field in fields} | set(LEGACY_NAMES):
+        field = resolve_project_field(fields, name)
+        if field is None or getattr(field, "data_type", "") != "SINGLE_SELECT":
             continue
         options = {
             option.name: option.option_id
             for option in getattr(field, "options", ())
             if option.option_id is not None
         }
-        selected[field.name] = ProjectSelectField(field.field_id, options)
+        selected[name] = ProjectSelectField(field.field_id, options, field.name if name != field.name else "")
     return selected
 
 
 def fetch_project_issue_items(
     run_graphql: Callable[[str, dict[str, object]], dict[str, object]],
     project_id: str,
+    *, fields: Iterable[object] | None = None,
 ) -> dict[str, ProjectIssueItem]:
+    fields = tuple(fields) if fields is not None else None
     items: dict[str, ProjectIssueItem] = {}
     cursor: str | None = None
     while True:
@@ -224,20 +233,31 @@ def fetch_project_issue_items(
                 issue_id=issue_id,
                 issue_number=content["number"],
                 title=content["title"],
-                values=single_select_values(raw),
+                values=single_select_values(raw, fields=fields),
             )
         if not project_items["pageInfo"]["hasNextPage"]:
             return items
         cursor = project_items["pageInfo"]["endCursor"]
 
 
-def single_select_values(raw_item: dict[str, object]) -> dict[str, str]:
+def single_select_values(
+    raw_item: dict[str, object], *, fields: tuple[object, ...] | None = None
+) -> dict[str, str]:
     values: dict[str, str] = {}
     for raw_value in raw_item["fieldValues"]["nodes"]:
         if raw_value.get("__typename") != "ProjectV2ItemFieldSingleSelectValue":
             continue
         field = raw_value.get("field") or {}
         field_name = field.get("name")
-        if field_name:
+        if field_name and not field.get("isIssueField", False):
             values[field_name] = raw_value["name"]
+    if fields is not None:
+        for role in LEGACY_NAMES:
+            selected = resolve_project_field(fields, role)
+            if selected is None:
+                values.pop(role, None)
+            elif selected.name != role:
+                values.pop(role, None)
+                if selected.name in values:
+                    values[role] = values[selected.name]
     return values

@@ -12,6 +12,7 @@ from typing import Any
 
 import base_cli
 
+from .project_field_resolution import clash_message, has_issue_field_clash, resolve_project_field
 from .project_model import FieldUpdate, ProjectArguments, ProjectField, ProjectIssueData
 from .project_operations import ProjectOperations
 
@@ -190,7 +191,7 @@ def make_copy_plan(
             changes: list[FieldUpdate] = []
             mismatches = []
             for name, value in expected.items():
-                field = next(field for field in fields if field.name == name)
+                field = resolve_project_field(fields, name)
                 option = next((option for option in field.options if option.name == value), None)
                 if option is None or option.option_id is None:
                     raise ValueError(f"Project field '{name}' has no option '{value}'.")
@@ -214,11 +215,11 @@ def make_copy_plan(
 
 
 def project_field_name(fields: tuple[ProjectField, ...], preferred: str, fallback: str, title: str) -> str:
-    names = {field.name for field in fields}
-    if preferred in names:
-        return preferred
-    if fallback in names:
-        return fallback
+    field = resolve_project_field(fields, preferred)
+    if field is not None:
+        return field.name
+    if has_issue_field_clash(fields, preferred):
+        raise ValueError(clash_message(preferred))
     raise ValueError(f"Project '{title}' is missing '{preferred}' and '{fallback}' fields.")
 
 

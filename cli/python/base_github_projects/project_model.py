@@ -34,6 +34,7 @@ class ProjectField:
     name: str
     data_type: str
     options: tuple[SelectOption, ...] = ()
+    is_issue_field: bool = False
 
 
 @dataclass(frozen=True)

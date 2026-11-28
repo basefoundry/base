@@ -236,7 +236,12 @@ the v1.x compatibility window; new automation should use `--debug-wrapper`.
     Invalid config stops before any Project API call. When the schema includes
     Priority or Size, each command names and preserves its Legacy field when
     the standard field is absent, preventing missing-field reports and duplicate
-    creation. A standard field takes precedence; neither name means missing.
+    creation. Displayed organization issue fields are excluded from Project
+    field resolution. A genuine standard field wins before its Legacy field;
+    an issue-only standard-name clash is reported by doctor and rejected by
+    configure before copy, rename or other writes. Without a clash, neither
+    Project name means missing. Readiness and Intake share this Legacy fallback
+    in unset mode as well as `project_fields` mode.
     `issue_fields` omits Priority and Size. Configure's preview lists the resolved
     schema and exactly the item defaults its explicit config would apply.
   - `basectl gh project issue set-fields <number>` - add an issue to the

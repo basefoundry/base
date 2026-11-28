@@ -1,0 +1,1078 @@
+{
+  "A1": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "Priority": 11,
+      "Size": 12
+    }
+  },
+  "A2": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "name": "Legacy priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "name": "Legacy size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      },
+      {
+        "id": 901,
+        "name": "Effort",
+        "data_type": "single_select",
+        "issue_field_id": 43373538,
+        "options": []
+      },
+      {
+        "id": 902,
+        "name": "Risk tier",
+        "data_type": "single_select",
+        "issue_field_id": 43373539,
+        "options": []
+      },
+      {
+        "id": 903,
+        "name": "Start date",
+        "data_type": "single_select",
+        "issue_field_id": 43373540,
+        "options": []
+      },
+      {
+        "id": 904,
+        "name": "Target date",
+        "data_type": "single_select",
+        "issue_field_id": 43373541,
+        "options": []
+      }
+    ],
+    "expected": {
+      "Priority": 11,
+      "Size": 12
+    }
+  },
+  "A2-synthetic": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "name": "Legacy priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "name": "Legacy size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      },
+      {
+        "id": 900,
+        "name": "Priority",
+        "data_type": "single_select",
+        "issue_field_id": 43373537,
+        "options": []
+      },
+      {
+        "id": 901,
+        "name": "Effort",
+        "data_type": "single_select",
+        "issue_field_id": 43373538,
+        "options": []
+      },
+      {
+        "id": 902,
+        "name": "Risk tier",
+        "data_type": "single_select",
+        "issue_field_id": 43373539,
+        "options": []
+      },
+      {
+        "id": 903,
+        "name": "Start date",
+        "data_type": "single_select",
+        "issue_field_id": 43373540,
+        "options": []
+      },
+      {
+        "id": 904,
+        "name": "Target date",
+        "data_type": "single_select",
+        "issue_field_id": 43373541,
+        "options": []
+      }
+    ],
+    "expected": {
+      "Priority": 11,
+      "Size": 12
+    }
+  },
+  "B1": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Legacy priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Legacy size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      },
+      {
+        "id": 900,
+        "name": "Priority",
+        "data_type": "single_select",
+        "issue_field_id": 43373537,
+        "options": []
+      },
+      {
+        "id": 901,
+        "name": "Effort",
+        "data_type": "single_select",
+        "issue_field_id": 43373538,
+        "options": []
+      },
+      {
+        "id": 902,
+        "name": "Risk tier",
+        "data_type": "single_select",
+        "issue_field_id": 43373539,
+        "options": []
+      },
+      {
+        "id": 903,
+        "name": "Start date",
+        "data_type": "single_select",
+        "issue_field_id": 43373540,
+        "options": []
+      },
+      {
+        "id": 904,
+        "name": "Target date",
+        "data_type": "single_select",
+        "issue_field_id": 43373541,
+        "options": []
+      }
+    ],
+    "expected": {
+      "Priority": 11,
+      "Size": 12
+    }
+  },
+  "B2": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Legacy priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Legacy size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      }
+    ],
+    "expected": {
+      "Priority": 11,
+      "Size": 12
+    }
+  },
+  "C": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      },
+      {
+        "id": 900,
+        "name": "Priority",
+        "data_type": "single_select",
+        "issue_field_id": 43373537,
+        "options": []
+      },
+      {
+        "id": 901,
+        "name": "Effort",
+        "data_type": "single_select",
+        "issue_field_id": 43373538,
+        "options": []
+      },
+      {
+        "id": 902,
+        "name": "Risk tier",
+        "data_type": "single_select",
+        "issue_field_id": 43373539,
+        "options": []
+      },
+      {
+        "id": 903,
+        "name": "Start date",
+        "data_type": "single_select",
+        "issue_field_id": 43373540,
+        "options": []
+      },
+      {
+        "id": 904,
+        "name": "Target date",
+        "data_type": "single_select",
+        "issue_field_id": 43373541,
+        "options": []
+      }
+    ],
+    "expected": null
+  },
+  "D1": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      },
+      {
+        "id": 900,
+        "name": "Priority",
+        "data_type": "single_select",
+        "issue_field_id": 43373537,
+        "options": []
+      },
+      {
+        "id": 901,
+        "name": "Effort",
+        "data_type": "single_select",
+        "issue_field_id": 43373538,
+        "options": []
+      },
+      {
+        "id": 902,
+        "name": "Risk tier",
+        "data_type": "single_select",
+        "issue_field_id": 43373539,
+        "options": []
+      },
+      {
+        "id": 903,
+        "name": "Start date",
+        "data_type": "single_select",
+        "issue_field_id": 43373540,
+        "options": []
+      },
+      {
+        "id": 904,
+        "name": "Target date",
+        "data_type": "single_select",
+        "issue_field_id": 43373541,
+        "options": []
+      }
+    ],
+    "expected": null
+  },
+  "D2": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      }
+    ],
+    "expected": null
+  },
+  "M": {
+    "fields": [
+      {
+        "id": 10,
+        "name": "Status",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_backlog",
+            "name": {
+              "raw": "Backlog"
+            }
+          },
+          {
+            "id": "O_done",
+            "name": {
+              "raw": "Done"
+            }
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Priority",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_p1",
+            "name": {
+              "raw": "P1"
+            }
+          },
+          {
+            "id": "O_p2",
+            "name": {
+              "raw": "P2"
+            }
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Legacy size",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_s",
+            "name": {
+              "raw": "S"
+            }
+          },
+          {
+            "id": "O_m",
+            "name": {
+              "raw": "M"
+            }
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Area",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_product",
+            "name": {
+              "raw": "Product"
+            }
+          },
+          {
+            "id": "O_cli",
+            "name": {
+              "raw": "CLI"
+            }
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Initiative",
+        "data_type": "single_select",
+        "options": [
+          {
+            "id": "O_adoption",
+            "name": {
+              "raw": "Adoption Polish"
+            }
+          },
+          {
+            "id": "O_contract",
+            "name": {
+              "raw": "Contract Hardening"
+            }
+          }
+        ]
+      },
+      {
+        "id": 901,
+        "name": "Effort",
+        "data_type": "single_select",
+        "issue_field_id": 43373538,
+        "options": []
+      },
+      {
+        "id": 902,
+        "name": "Risk tier",
+        "data_type": "single_select",
+        "issue_field_id": 43373539,
+        "options": []
+      },
+      {
+        "id": 903,
+        "name": "Start date",
+        "data_type": "single_select",
+        "issue_field_id": 43373540,
+        "options": []
+      },
+      {
+        "id": 904,
+        "name": "Target date",
+        "data_type": "single_select",
+        "issue_field_id": 43373541,
+        "options": []
+      }
+    ],
+    "expected": {
+      "Priority": 11,
+      "Size": 12
+    }
+  }
+}
