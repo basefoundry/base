@@ -1174,6 +1174,7 @@ _base_basectl_completion() {
                                 '--project[GitHub Project title]:title:' \
                                 '--owner[GitHub Project owner]:owner:' \
                                 '--schema[Project metadata schema]:schema:(base-project)' \
+                                '--config[Project intake config]:path:_files' \
                                 '(-h --help)'{-h,--help}'[Show help text]'
                             ;;
                         configure)

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import base_cli
 
 from .project_config import ProjectConfig
+from .project_config_resolution import render_config_resolution, resolve_project_config
 from .project_configure import ConfigureDryRunPlan, ProjectReplacement
 from .project_configure import legacy_project_title, render_dry_run_configure, standard_template_view_errors
 from .project_model import OwnerInfo
@@ -14,6 +15,7 @@ from .project_model import ProjectField
 from .project_model import ProjectInfo
 from .project_model import ProjectSchema
 from .project_operations import ProjectOperations
+from .project_schema import find_schema_field, render_legacy_schema_fields, schema_for_config
 
 
 @dataclass(frozen=True)
@@ -30,13 +32,15 @@ def configure_command(args: ProjectArguments, ops: ProjectOperations) -> int:
     owner = ops.require_owner(args)
     if args.replace_project and not args.repo:
         raise ops.ProjectUsageError("--replace-project requires --repo.")
-    project_config = ops.project_config_for_args(args)
-    schema = ops.schema_for_args(args)
+    resolved = resolve_project_config(args, owner)
+    schema = schema_for_config(args, resolved.config)
+    render_config_resolution(resolved)
     owner_info = ops.find_owner_and_project(owner, args.project_title or "")
     project = owner_info.project
     replacement = replacement_plan_for_args(args, owner, project, ops)
     should_copy_template = args.repo is not None and project is None
     fields = fetch_existing_configure_fields(project, replacement, ops)
+    render_legacy_schema_fields(fields, schema)
     if should_copy_template or replacement is not None:
         actions = ()
     else:
@@ -53,8 +57,10 @@ def configure_command(args: ProjectArguments, ops: ProjectOperations) -> int:
                 actions=actions,
                 would_copy_template=should_copy_template,
                 replacement=replacement,
-                project_config=project_config,
+                resolved_config=resolved,
+                schema=schema,
             ),
+            report_config=False,
         )
         return base_cli.ExitCode.SUCCESS
     project = prepare_configure_project(
@@ -73,7 +79,8 @@ def configure_command(args: ProjectArguments, ops: ProjectOperations) -> int:
     link_and_backfill_project(project.project_id, args.repo, ops)
     copy_replacement_project_fields(project.project_id, replacement, ops)
     copy_project_fields_from_source(owner, project.project_id, args.copy_fields_from_project, ops)
-    apply_project_config_defaults(project.project_id, fields, project_config, ops)
+    if resolved.explicit:
+        apply_project_config_defaults(project.project_id, fields, resolved.config, ops)
     close_replacement_project(replacement, ops)
     print(f"✓ Configured GitHub Project {args.project_title}")
     return base_cli.ExitCode.SUCCESS
@@ -147,12 +154,11 @@ def ensure_schema_fields(
     schema: ProjectSchema,
     ops: ProjectOperations,
 ) -> None:
-    by_name = {field.name: field for field in fields}
     for spec in schema.fields:
-        field = by_name.get(spec.name)
+        field = find_schema_field(fields, spec.name)
         if field is None:
             ops.create_single_select_field(project_id, spec)
-        elif ops.missing_option_names(field, spec):
+        elif field.name == spec.name and ops.missing_option_names(field, spec):
             ops.update_single_select_field(field, spec)
 
 

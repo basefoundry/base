@@ -4,6 +4,7 @@ from datetime import date
 import sys
 
 import base_cli
+from base_projects.command_helpers import ProjectUsageError
 
 from .project_config import ProjectConfig
 from .project_model import FieldUpdate, OwnerInfo, ProjectArguments, ProjectInfo, ProjectItemState
@@ -19,9 +20,19 @@ ISSUE_FIELD_NAMES = {
 }
 PROJECT_FIELD_KEYS = {"status", "priority", "area", "initiative", "size"}
 DATE_FIELD_KEYS = {"risk_tier", "start_date", "target_date"}
+COMMAND_FIELD_KEYS = PROJECT_FIELD_KEYS | set(ISSUE_FIELD_NAMES)
+
+
+def validate_issue_field_keys(field_values: dict[str, str] | None) -> None:
+    """Reject command-line fields that this command would otherwise drop."""
+    unknown = sorted(set(field_values or {}) - COMMAND_FIELD_KEYS)
+    if unknown:
+        names = ", ".join(unknown)
+        raise ProjectUsageError(f"Unknown issue field key(s): {names}.")
 
 
 def issue_set_fields_command(args: ProjectArguments, ops: ProjectOperations) -> int:
+    validate_issue_field_keys(args.field_values)
     owner = ops.require_owner(args)
     repo_owner, repo_name = ops.split_repo(ops.require_repo(args))
     repository = f"{repo_owner}/{repo_name}"

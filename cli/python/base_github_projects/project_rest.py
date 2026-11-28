@@ -13,6 +13,7 @@ import base_cli
 
 from base_projects.command_helpers import ProjectUsageError
 
+from .project_config_resolution import ResolvedProjectConfig, render_config_resolution, resolve_project_config
 from .project_errors import ProjectAuthError
 from .project_errors import ProjectDuplicateItemError
 from .project_errors import ProjectError
@@ -23,6 +24,8 @@ from .project_model import ProjectArguments
 from .project_model import ProjectField
 from .project_model import ProjectInfo
 from .project_model import SelectOption
+from .project_git import require_owner
+from .project_schema import render_legacy_schema_fields, schema_for_config
 from .project_transport_errors import is_project_transport_error as _is_project_transport_error
 
 
@@ -341,17 +344,23 @@ def rest_doctor_command(
     *,
     transport: RestProjectTransport,
     compare_schema: Callable[[tuple[ProjectField, ...], Any], tuple[Any, ...]],
-    schema_for_args: Callable[[ProjectArguments], Any],
+    schema_for_args: Callable[[ProjectArguments], Any] | None = None,
+    resolved: ResolvedProjectConfig | None = None,
 ) -> int:
-    owner = args.owner
-    if not owner:
-        raise ProjectUsageError("Project owner is required for REST Project recovery.")
+    owner = require_owner(args)
+    report_config = resolved is None
+    resolved = resolved or resolve_project_config(args, owner)
+    schema = schema_for_args(args) if schema_for_args else schema_for_config(args, resolved.config)
+    if report_config:
+        render_config_resolution(resolved)
     owner_info = transport.find_owner_and_project(owner, args.project_title or "")
     if owner_info.project is None:
         print(f"MISSING Project {args.project_title}")
         return base_cli.ExitCode.FAILURE
     fields = transport.fetch_project_fields(owner_info.project)
-    findings = compare_schema(fields, schema_for_args(args))
+    if schema_for_args is None:
+        render_legacy_schema_fields(fields, schema)
+    findings = compare_schema(fields, schema)
     if not findings:
         print(f"OK      Project {args.project_title} (REST fallback)")
         return base_cli.ExitCode.SUCCESS

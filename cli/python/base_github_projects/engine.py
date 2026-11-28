@@ -16,6 +16,7 @@ from .project_parser import OptionState, apply_project_option, apply_spaced_opti
 from .project_parser import parse_project_options, print_usage, require_project_title, state_to_args
 # pylint: enable=unused-import
 from .project_configure import standard_template_view_errors
+from .project_config_resolution import resolve_project_config
 from .project_item_fields import FieldCopySummary
 from .project_item_fields import apply_missing_project_item_defaults as _apply_missing_project_item_defaults
 from .project_item_fields import copy_missing_project_item_fields as _copy_missing_project_item_fields
@@ -152,7 +153,6 @@ def project_operations() -> ProjectOperations:
         require_owner=require_owner,
         require_repo=require_repo,
         resolve_issue_field_updates=resolve_issue_field_updates,
-        schema_for_args=schema_for_args,
         split_repo=split_repo,
         update_item_field=update_item_field,
         write_issue_field_values=write_issue_field_values,
@@ -165,8 +165,9 @@ def project_operations() -> ProjectOperations:
 def doctor_command(args: ProjectArguments) -> int:
     from .project_doctor_command import doctor_command as command
 
+    resolved = resolve_project_config(args, require_owner(args))
     try:
-        return command(args, ops=project_operations())
+        return command(args, ops=project_operations(), resolved=resolved)
     except ProjectTransportError as exc:
         print(
             f"WARNING: GraphQL Project transport unavailable; using REST Projects API: {exc}",
@@ -176,7 +177,7 @@ def doctor_command(args: ProjectArguments) -> int:
             args,
             transport=RestProjectTransport(),
             compare_schema=compare_schema,
-            schema_for_args=schema_for_args,
+            resolved=resolved,
         )
 
 
@@ -206,6 +207,9 @@ def copy_issue_fields_command(args: ProjectArguments) -> int:
 
 
 def rest_issue_set_fields_command(args: ProjectArguments) -> int:
+    from .project_issue_fields_command import validate_issue_field_keys
+
+    validate_issue_field_keys(args.field_values)
     owner = require_owner(args)
     repo = require_repo(args)
     repo_owner, repo_name = split_repo(repo)

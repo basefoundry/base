@@ -258,9 +258,28 @@ overwriting values already set there. Older Base issues may have been tracked in
 `Base Roadmap`; use that title only as the migration source when copying legacy
 field values into the current repo-named Project.
 
-`doctor` cannot take a config until #2711 lands, so after Priority and Size are
-renamed to Legacy it reports those fields missing; that is expected. `configure`
-needs `--config .github/base-project.yml` or it recreates them.
+`project doctor` and `project configure` accept `--config <path>` as an explicit
+override. Otherwise they discover the checkout root's `.github/base-project.yml`
+only when the effective Project owner and title match the owner and repository
+name of the checkout's `origin`; for `configure`, `--repo` must also be absent or
+match that same `owner/name`. A different target uses no config and the full
+schema. Both commands print the resolved file or the reason for using no config,
+including any mismatched coordinates. They never fetch another repository's
+config.
+
+A discovered config selects the field source and Area/Initiative options only.
+Applying item defaults with `configure` still requires explicit `--config`.
+Invalid explicit or discovered config stops either command before any Project
+API call. Doctor's REST fallback uses the same resolution and schema rules.
+
+When the schema includes Priority or Size, each command independently preserves
+`Legacy priority` or `Legacy size` if its standard field is absent, and names
+the Legacy field in use. Doctor does not report that standard field missing;
+configure leaves the Legacy field unchanged instead of creating a duplicate.
+If neither name exists the field is still missing, and a standard field takes
+precedence when both names exist. In `issue_fields` mode Priority and Size are
+excluded from the schema. `configure --dry-run` lists the effective schema and
+only the item defaults that an explicit config would actually apply.
 
 ```bash
 basectl gh project doctor --project base --owner basefoundry

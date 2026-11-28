@@ -21,7 +21,8 @@ command-specific exceptions.
 `basectl` exposes `-v` as the public command-level debug switch. Direct
 `base_cli` package standard options such as `--debug`, `--quiet`, `--log-file`,
 `--config` and `--environment` are private to Python package execution and are
-rejected by `basectl`. Use `basectl -x <command>` to enable Bash xtrace before
+rejected by `basectl`, except for command-specific Project `--config` options
+documented below. Use `basectl -x <command>` to enable Bash xtrace before
 the command runs. Use `basectl --keep-temp <command>` when temporary run files
 must be preserved for diagnosis; they are removed by default.
 
@@ -246,10 +247,28 @@ daily project loop commands from the local checkout.
 | `basectl gh worktree prune` | Prune stale merged branch-attached worktrees. Pass `--closed-unmerged` to include clean worktrees tied to closed, unmerged pull requests; unmanaged detached worktree metadata remains an explicit `git worktree prune` operation. Use `gh review prune` for Base-owned review worktrees. | `--dry-run`, `--yes`, `--closed-unmerged` |
 | `basectl gh review fetch <number>` | Fetch a pull-request head into a Base-owned namespaced ref and create a detached review worktree outside the repository. It never creates an ordinary local `pr-*` branch; an explicit `--root` inside the repository or one of its descendants is rejected before Git or GitHub mutation. | `--name <slug>`, `--repo <owner/name>`, `--root <path>`, `--refresh` |
 | `basectl gh review prune` | Preview or remove safe Base-owned detached review worktrees and their namespaced refs. The default is dry-run; open, dirty, changed, invalid, missing, and unowned checkouts are retained. | `--dry-run`, `--yes`, `--closed-unmerged`, `--pr <number>`, `--root <path>` |
-| `basectl gh project doctor` | Inspect GitHub Project metadata against the Base Project schema. | `--project <title>`, `--owner <login>`, `--schema base-project` |
+| `basectl gh project doctor` | Inspect GitHub Project metadata against the resolved Base Project schema, including through REST fallback. | `--project <title>`, `--owner <login>`, `--schema base-project`, `--config <path>` |
 | `basectl gh project configure` | Create or repair Base-managed Project metadata. | `--project <title>`, `--owner <login>`, `--repo <owner/name>`, `--schema base-project`, `--config <path>`, `--copy-fields-from <title>`, `--replace-project`, `--initiative-option <name>`, `--dry-run` |
 | `basectl gh project issue set-fields <number>` | Add an issue to the Project if needed and update metadata fields from the configured source. Priority/Effort use issue fields in `issue_fields` mode and standard Project fields in `project_fields` rollback mode, falling back to retired Legacy fields only when a standard field is absent; Risk tier and dates require a configured source. `--no-defaults` suppresses repository defaults while keeping explicitly requested values. | `--project <title>`, `--repo <owner/name>`, `--owner <login>`, `--config <path>`, `--no-defaults`, `--allow-cross-repo`, `--status <name>`, `--priority <name>`, `--area <name>`, `--initiative <name>`, `--size <T\|S\|M\|L>`, `--effort <name>`, `--risk-tier <name>`, `--start-date <date>`, `--target-date <date>`, `--dry-run` |
 | `basectl gh project issue copy-fields` | Dry-run a mapping between legacy Project Priority/Size and issue-field Priority/Effort. `--write` applies only differences and requires `--export <path>`; the before-state export is created without overwriting an existing file, then values are read back and mismatch counts are reported. | `--project <title>`, `--owner <login>`, `--direction <project-to-issue\|issue-to-project>`, `--write`, `--export <path>` |
+
+`project doctor` and `project configure` print the config used, or why they use
+no config. Explicit `--config` wins. Otherwise they discover the checkout root's
+`.github/base-project.yml` only when the effective owner and Project title match
+the checkout's `origin` owner and repository name, and configure's `--repo` is
+absent or matches that repository. A mismatch names the differing coordinates
+and uses the full schema; no remote config is fetched. Discovery selects the
+field source and Area/Initiative options; configure applies item defaults only
+with explicit `--config`. Invalid config stops before any Project API call.
+
+For either command, when Priority or Size belongs to the schema, a matching
+`Legacy priority` or `Legacy size` independently protects an absent standard
+field from being reported missing or recreated. The command names the Legacy
+field and leaves it unchanged. Standard fields take precedence when both names
+exist; fields with neither name are still missing. `issue_fields` excludes
+Priority and Size. Configure's dry-run lists the effective schema and exactly
+the Project item defaults an explicit config would apply. See the
+[GitHub workflow](github-workflow.md) for examples.
 
 ## Release And Context
 

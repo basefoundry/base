@@ -237,7 +237,7 @@ basectl_reject_private_standard_options() {
         esac
     fi
     if [[ "$command" == gh && "$area" == project ]]; then
-        if [[ "$action" == configure ]] ||
+        if [[ "$action" == configure || "$action" == doctor ]] ||
             [[ "$action" == issue && ( "$issue_action" == set-fields || "$issue_action" == defaults ) ]]; then
             allow_project_config=1
         fi
