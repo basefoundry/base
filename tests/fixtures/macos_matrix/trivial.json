@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "name": "trivial",
+  "version": "1",
+  "description": "Minimal scenario used to validate the local matrix runner contract.",
+  "preconditions": [
+    {
+      "id": "identity",
+      "command": ["/usr/bin/id", "-un"],
+      "expected_exit": 0
+    }
+  ],
+  "steps": [
+    {
+      "id": "healthy",
+      "command": ["/usr/bin/printf", "matrix-ok\\n"],
+      "expected_exit": 0,
+      "stdout_contains": ["matrix-ok"]
+    }
+  ]
+}
