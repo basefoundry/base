@@ -207,6 +207,9 @@ def copy_issue_fields_command(args: ProjectArguments) -> int:
 
 
 def rest_issue_set_fields_command(args: ProjectArguments) -> int:
+    from .project_issue_fields_command import validate_issue_field_keys
+
+    validate_issue_field_keys(args.field_values)
     owner = require_owner(args)
     repo = require_repo(args)
     repo_owner, repo_name = split_repo(repo)

@@ -25,6 +25,8 @@ numeric next development line is tracked in `DEVELOPMENT_VERSION`.
 
 ### Fixed
 
+- Make `set-fields --risk-tier`, `--start-date`, and `--target-date` set their
+  issue fields, and reject unrecognized command-line field keys.
 - Resolve `gh project doctor` and `configure` schema config from the checkout
   only when every target coordinate matches its origin repository. Discovered
   config never applies item defaults; explicit `--config` remains required.
