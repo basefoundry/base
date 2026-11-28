@@ -769,7 +769,10 @@ def test_configure_command_dry_run_reports_template_copy_link_and_backfill(
     monkeypatch.setattr(
         engine,
         "find_owner_and_project",
-        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=engine.ProjectInfo("template", title) if title == engine.DEFAULT_TEMPLATE_PROJECT else None),
+        lambda owner, title: engine.OwnerInfo(
+            owner_id="owner-id", login=owner,
+            project=engine.ProjectInfo("template", title) if title == engine.DEFAULT_TEMPLATE_PROJECT else None,
+        ),
     )
 
     monkeypatch.setattr(engine, "fetch_project_fields", lambda _: tuple(
@@ -801,7 +804,10 @@ def test_configure_command_dry_run_reports_field_copy_source(
     monkeypatch.setattr(
         engine,
         "find_owner_and_project",
-        lambda owner, title: engine.OwnerInfo(owner_id="owner-id", login=owner, project=engine.ProjectInfo("template", title) if title == engine.DEFAULT_TEMPLATE_PROJECT else None),
+        lambda owner, title: engine.OwnerInfo(
+            owner_id="owner-id", login=owner,
+            project=engine.ProjectInfo("template", title) if title == engine.DEFAULT_TEMPLATE_PROJECT else None,
+        ),
     )
 
     monkeypatch.setattr(engine, "fetch_project_fields", lambda _: tuple(
