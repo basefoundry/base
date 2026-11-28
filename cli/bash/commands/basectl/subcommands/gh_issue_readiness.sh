@@ -82,7 +82,8 @@ base_gh_issue_readiness_project_row() {
     api_prefix="$(base_gh_issue_readiness_project_api_prefix "$project_owner")" || return $?
     fields_json="$(base_cli_gh_run api --method GET \
         "$api_prefix/projectsV2/$project_number/fields" -f per_page=100)" || return $?
-    if [[ "$field_source" == "project_fields" ]]; then
+    fields_json="$(jq '[.[] | select(has("issue_field_id") | not)]' <<<"$fields_json")" || return $?
+    if [[ "$field_source" != "issue_fields" ]]; then
         jq -e '.[] | select(.name == "Priority")' <<<"$fields_json" >/dev/null ||
             priority_field="Legacy priority"
         jq -e '.[] | select(.name == "Size")' <<<"$fields_json" >/dev/null ||
@@ -101,10 +102,11 @@ base_gh_issue_readiness_project_row() {
     items_json="$(base_cli_gh_run api --method GET --paginate --slurp \
         "$api_prefix/projectsV2/$project_number/items" "${field_args[@]}")" || return $?
     jq -r --argjson issue "$issue" --arg repo "$repo" \
-        --arg priority_field "$priority_field" --arg size_field "$size_field" '
+        --arg priority_field "$priority_field" --arg size_field "$size_field" --argjson fields "$fields_json" '
         def field_value($name):
+            ([$fields[] | select(.name == $name) | .id | tostring][0] // "") as $id |
             [ (.fields // [])[]
-              | select(.name == $name)
+              | select((.id | tostring) == $id)
               | (.value.name.raw // .value.raw // .value // "")
             ][0]
             | if type == "string" then . else "" end;

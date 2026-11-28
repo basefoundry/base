@@ -203,6 +203,8 @@ def test_configure_command_replace_project_dry_run_reports_cutover_plan(
         lambda title: "base-demo-legacy-20260619-120000",
     )
 
+    monkeypatch.setattr(engine, "fetch_project_fields", lambda _: complete_project_fields())
+
     status = engine.configure_command(
         engine.ProjectArguments(
             area="project",

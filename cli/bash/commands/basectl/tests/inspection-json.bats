@@ -65,9 +65,9 @@ if [[ "$1" == "api" ]]; then
     fi
     if [[ "$*" == *projectsV2/*/items* ]]; then
         if [[ "${BASE_GH_TEST_PROJECT_MISSING:-0}" == "1" ]]; then
-            printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":null},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":null}]}]]'
+            printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"id":"status-id","name":"Status","value":{"name":{"raw":"Ready"}}},{"id":"priority-id","name":"Priority","value":{"name":{"raw":"P2"}}},{"id":"size-id","name":"Size","value":null},{"id":"area-id","name":"Area","value":{"name":{"raw":"CLI"}}},{"id":"initiative-id","name":"Initiative","value":null}]}]]'
         else
-            printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Contract Hardening"}}}]}]]'
+            printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"id":"status-id","name":"Status","value":{"name":{"raw":"Ready"}}},{"id":"priority-id","name":"Priority","value":{"name":{"raw":"P2"}}},{"id":"size-id","name":"Size","value":{"name":{"raw":"M"}}},{"id":"area-id","name":"Area","value":{"name":{"raw":"CLI"}}},{"id":"initiative-id","name":"Initiative","value":{"name":{"raw":"Contract Hardening"}}}]}]]'
         fi
         exit 0
     fi

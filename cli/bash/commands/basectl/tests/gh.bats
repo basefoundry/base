@@ -232,6 +232,22 @@ if [[ "$1" == "api" ]]; then
         printf 'Organization\n'
         exit 0
     fi
+    if [[ -n "${BASE_GH_TEST_IDENTITY_CASE:-}" ]]; then
+        if [[ "$*" == *"projectsV2/10/fields"* ]]; then
+            jq --arg case "$BASE_GH_TEST_IDENTITY_CASE" '.[$case].fields' "$BASE_GH_TEST_IDENTITY_FIXTURES"
+            exit 0
+        fi
+        if [[ "$*" == *"projectsV2/10/items"* ]]; then
+            jq --arg case "$BASE_GH_TEST_IDENTITY_CASE" '
+                [[{content:{number:123,repository:{full_name:"basefoundry/base"}},fields:
+                  [.[$case].fields[] | {id,name,value:{name:{raw:
+                    (if .id == 900 then "High" elif .id == 11 then "P2" elif .id == 12 then "S"
+                     elif .id == 111 then "P1" elif .id == 112 then "M" elif .name == "Status" then "Ready"
+                     elif .name == "Area" then "CLI" elif .name == "Initiative" then "Contract Hardening" else "" end)}}}]}]]
+            ' "$BASE_GH_TEST_IDENTITY_FIXTURES"
+            exit 0
+        fi
+    fi
     if [[ "$*" == *"projectsV2/10/fields"* ]]; then
         if [[ "${BASE_GH_TEST_LEGACY_FIELDS:-0}" == "1" ]]; then
             printf '%s\n' '[{"id":"status-id","name":"Status"},{"id":"legacy-priority-id","name":"Legacy priority"},{"id":"legacy-size-id","name":"Legacy size"},{"id":"area-id","name":"Area"},{"id":"initiative-id","name":"Initiative"}]'
@@ -248,15 +264,15 @@ if [[ "$1" == "api" ]]; then
         case "${BASE_GH_TEST_PROJECT_MODE:-complete}" in
             complete)
                 if [[ "${BASE_GH_TEST_LEGACY_FIELDS:-0}" == "1" ]]; then
-                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"name":"Legacy size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"id":"status-id","name":"Status","value":{"name":{"raw":"Ready"}}},{"id":"legacy-priority-id","name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"id":"legacy-size-id","name":"Legacy size","value":{"name":{"raw":"M"}}},{"id":"area-id","name":"Area","value":{"name":{"raw":"CLI"}}},{"id":"initiative-id","name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
                 elif [[ "${BASE_GH_TEST_BOTH_FIELDS:-0}" == "1" ]]; then
-                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":null},{"name":"Size","value":null},{"name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"name":"Legacy size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"id":"status-id","name":"Status","value":{"name":{"raw":"Ready"}}},{"id":"priority-id","name":"Priority","value":null},{"id":"size-id","name":"Size","value":null},{"id":"legacy-priority-id","name":"Legacy priority","value":{"name":{"raw":"P1"}}},{"id":"legacy-size-id","name":"Legacy size","value":{"name":{"raw":"M"}}},{"id":"area-id","name":"Area","value":{"name":{"raw":"CLI"}}},{"id":"initiative-id","name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
                 else
-                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":{"name":{"raw":"M"}}},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
+                    printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"id":"status-id","name":"Status","value":{"name":{"raw":"Ready"}}},{"id":"priority-id","name":"Priority","value":{"name":{"raw":"P2"}}},{"id":"size-id","name":"Size","value":{"name":{"raw":"M"}}},{"id":"area-id","name":"Area","value":{"name":{"raw":"CLI"}}},{"id":"initiative-id","name":"Initiative","value":{"name":{"raw":"Agentic Coding Platform"}}}]}]]'
                 fi
                 ;;
             missing)
-                printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"name":"Status","value":{"name":{"raw":"Ready"}}},{"name":"Priority","value":{"name":{"raw":"P2"}}},{"name":"Size","value":null},{"name":"Area","value":{"name":{"raw":"CLI"}}},{"name":"Initiative","value":null}]}]]'
+                printf '%s\n' '[[{"content":{"number":123,"repository":{"full_name":"basefoundry/base"}},"fields":[{"id":"status-id","name":"Status","value":{"name":{"raw":"Ready"}}},{"id":"priority-id","name":"Priority","value":{"name":{"raw":"P2"}}},{"id":"size-id","name":"Size","value":null},{"id":"area-id","name":"Area","value":{"name":{"raw":"CLI"}}},{"id":"initiative-id","name":"Initiative","value":null}]}]]'
                 ;;
             none)
                 printf '%s\n' '[[]]'
@@ -2377,4 +2393,40 @@ EOF
     [[ "$output" == *"basectl gh pr create"* ]]
     [[ "$output" != *"GitHub CLI authentication is not ready."* ]]
     [[ "$output" != *"unexpected gh args"* ]]
+}
+
+
+@test "basectl gh issue readiness resolves every field-identity fixture in unset and project_fields modes" {
+    local mode case_name repo
+    write_issue_defaults_wrapper
+    write_issue_readiness_gh_mock
+    write_complete_issue_readiness_body
+    for mode in unset project_fields; do
+        repo="$TEST_TMPDIR/identity-$mode"
+        if [[ "$mode" == unset ]]; then
+            write_field_source_repo "$repo" ""
+        else
+            write_field_source_repo "$repo" "$mode"
+        fi
+        git -C "$repo" remote add origin https://github.com/basefoundry/base.git
+        for case_name in A1 A2 A2-synthetic B1 B2 C D1 D2 M; do
+            BASE_GH_TEST_CWD="$repo" BASE_GH_TEST_FIELD_SOURCE="$mode" \
+                BASE_GH_PROJECT_WRAPPER="$TEST_MOCKBIN/project-wrapper" \
+                BASE_GH_TEST_IDENTITY_CASE="$case_name" \
+                BASE_GH_TEST_IDENTITY_FIXTURES="$BASE_REPO_ROOT/tests/fixtures/project-field-identity.json" \
+                BASE_GH_TEST_RISK_FIELD_EXISTS=1 \
+                BASE_GH_TEST_ISSUE_FIELD_VALUES='[{"issue_field_name":"Risk tier","single_select_option":{"name":"Low"}}]' \
+                run_gh_subcommand issue readiness 123 --repo basefoundry/base --project-owner basefoundry --project-number 10 --format json
+            case "$case_name" in
+                C|D1|D2)
+                    [ "$status" -eq 1 ]
+                    jq -e '.data.project.missing_fields | index("Priority") != null' <<<"$output" >/dev/null
+                    ;;
+                *)
+                    [ "$status" -eq 0 ] || { printf '%s/%s: %s\n' "$mode" "$case_name" "$output" >&2; return 1; }
+                    jq -e '.data.project.fields.priority == "P2" and .data.project.fields.size == "S"' <<<"$output" >/dev/null || { printf '%s\n' "$output" >&2; return 1; }
+                    ;;
+            esac
+        done
+    done
 }

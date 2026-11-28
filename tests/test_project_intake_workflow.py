@@ -3,6 +3,9 @@ import inspect
 from pathlib import Path
 
 import yaml
+import pytest
+
+from tests.project_field_identity_support import FIXTURES, run_identity_intake
 
 from tests.github_workflow_test_support import (
     project_intake_run_command,
@@ -214,7 +217,7 @@ def test_project_intake_falls_back_to_rest_for_graphql_quota_exhaustion(
     result = run_project_intake_script(tmp_path, PROJECT_INTAKE_GRAPHQL_FAILURE="quota")
 
     assert result.returncode == 0, result.stderr
-    assert "GraphQL Project transport failed during Project Intake: read Project item by ID" in (
+    assert "GraphQL Project transport failed during Project Intake: list Project fields" in (
         result.stderr
     )
     assert "Falling back to the REST Projects API." in result.stderr
@@ -290,7 +293,7 @@ def test_project_intake_retries_graphql_item_visibility_after_add(tmp_path: Path
     assert (tmp_path / "sleep.log").read_text(encoding="utf-8") == "1\n"
     gh_log = (tmp_path / "gh.log").read_text(encoding="utf-8")
     assert gh_log.count("project item-add") == 1
-    assert gh_log.count("api graphql") == 3
+    assert gh_log.count("api graphql") == 4
     assert "project item-list" not in gh_log
 
 
@@ -333,7 +336,7 @@ def test_project_intake_finds_item_beyond_first_thousand_by_id_and_verifies_grap
     assert (tmp_path / "area").read_text(encoding="utf-8") == "Security\n"
     assert (tmp_path / "initiative").read_text(encoding="utf-8") == "Adoption Polish\n"
     gh_log = (tmp_path / "gh.log").read_text(encoding="utf-8")
-    assert gh_log.count("api graphql") == 2
+    assert gh_log.count("api graphql") == 3
     assert gh_log.count("-F id=PVTI_item") == 2
     assert "project item-list" not in gh_log
     edits = (tmp_path / "edits.log").read_text(encoding="utf-8")
@@ -433,3 +436,56 @@ def test_project_intake_rest_failures_remain_fail_closed(tmp_path: Path) -> None
     )
     assert "REST field update failed" in result.stderr
     assert "Synced issue" not in result.stdout
+
+
+# The full #2713 matrix uses one isolated simulator for both shipped workflow copies.
+
+
+@pytest.mark.parametrize('workflow', ['.github/workflows/project-intake.yml', 'templates/project-intake.yml'])
+@pytest.mark.parametrize('mode,fallback', [('unset', False), ('project_fields', False), ('unset', True)])
+@pytest.mark.parametrize('case', list(FIXTURES))
+@pytest.mark.parametrize('preserve', [False, True])
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+def test_intake_project_field_identity_matrix(tmp_path, workflow, mode, fallback, case, preserve):
+    result, state, calls = run_identity_intake(tmp_path, case=case, mode=mode, fallback=fallback,
+                                              preserve=preserve, workflow=workflow)
+    expected = FIXTURES[case]['expected']
+    if expected is None:
+        assert result.returncode != 0
+        assert 'Project field validation failed' in result.stderr
+        assert not state.get('edits')
+    else:
+        assert result.returncode == 0, result.stderr
+        assert state['values']['11'] == ('P1' if preserve else 'P2')
+        assert state['values']['12'] == ('M' if preserve else 'S')
+        edits = state.get('edits', [])
+        assert not {'900','111','112'} & set(edits)
+        if preserve:
+            assert not {'11','12','13','14'} & set(edits)
+        assert state['issue_values'] == ({'Priority':'High','Effort':'Large'} if preserve else {})
+    if mode == 'project_fields':
+        assert not any(c[:2] == ['api','graphql'] for c in calls)
+    elif fallback:
+        assert any('projectsV2' in ' '.join(c) for c in calls)
+
+
+@pytest.mark.parametrize('workflow', ['.github/workflows/project-intake.yml', 'templates/project-intake.yml'])
+@pytest.mark.parametrize('fallback', [False, True])
+@pytest.mark.parametrize('preserve', [False, True])
+def test_intake_issue_fields_identity_regression(tmp_path, workflow, fallback, preserve):
+    result, state, _ = run_identity_intake(tmp_path, case='B1', mode='issue_fields', fallback=fallback,
+                                          preserve=preserve, workflow=workflow)
+    assert result.returncode == 0, result.stderr
+    expected = {'Priority':'High','Effort':'Large'} if preserve else {'Priority':'Medium','Effort':'Small'}
+    assert state['issue_values'] == expected
+    assert state['values']['10'] == 'Backlog'
+    assert state['values']['13'] == ('CLI' if preserve else 'Product')
+    assert state['values']['14'] == ('Contract Hardening' if preserve else 'Adoption Polish')
+    assert not {'11','12','900'} & set(state.get('edits', []))
+
+
+@pytest.mark.parametrize('workflow', ['.github/workflows/project-intake.yml', 'templates/project-intake.yml'])
+def test_intake_issue_value_cannot_satisfy_legacy_readback(tmp_path, workflow):
+    result, _, _ = run_identity_intake(tmp_path, case='B1', mode='unset', workflow=workflow, bad_readback=True)
+    assert result.returncode != 0
+    assert 'validation failed after the GraphQL update' in result.stderr

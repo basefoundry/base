@@ -9,6 +9,7 @@ from base_projects.command_helpers import ProjectUsageError
 from .project_config import ProjectConfig, ProjectConfigError
 from .project_config import read_project_config as _read_project_config
 from .project_errors import missing_issue_field_option_message
+from .project_field_resolution import clash_message, has_issue_field_clash, resolve_project_field
 from .project_model import BASE_PROJECT_SCHEMA, FIELD_OPTION_TO_PROJECT_FIELD
 from .project_model import ConfigureAction, FieldUpdate, Finding
 from .project_model import ProjectArguments, ProjectField, ProjectSchema
@@ -141,6 +142,9 @@ def compare_schema(fields: tuple[ProjectField, ...], schema: ProjectSchema) -> t
     for spec in schema.fields:
         field = find_schema_field(fields, spec.name)
         if field is None:
+            if has_issue_field_clash(fields, spec.name):
+                findings.append(Finding("conflict", spec.name, clash_message(spec.name)))
+                continue
             findings.append(Finding("missing", spec.name, f"{spec.name} field is missing."))
             continue
         if field.name != spec.name:
@@ -166,6 +170,9 @@ def configuration_plan(
     for spec in schema.fields:
         field = find_schema_field(fields, spec.name)
         if field is None:
+            if has_issue_field_clash(fields, spec.name):
+                actions.append(ConfigureAction("error", spec.name, clash_message(spec.name)))
+                continue
             actions.append(ConfigureAction("create-field", spec.name, f"Create {spec.name} as SINGLE_SELECT."))
             continue
         if field.name != spec.name:
@@ -186,15 +193,10 @@ def configuration_plan(
 def find_schema_field(fields: tuple[ProjectField, ...], name: str) -> ProjectField | None:
     """Resolve schema fields, preserving migrated Priority/Size under their Legacy names.
 
-    Doctor, configure planning and field creation share this precedence. Keep
-    future issue-field marker handling here rather than at individual call sites.
+    Doctor, configure planning and field creation share the same marker-aware
+    precedence as field updates and copies.
     """
-    by_name = {field.name: field for field in fields}
-    standard = by_name.get(name)
-    if standard is not None:
-        return standard
-    legacy_name = {"Priority": "Legacy priority", "Size": "Legacy size"}.get(name)
-    return by_name.get(legacy_name) if legacy_name else None
+    return resolve_project_field(fields, name)
 
 
 def render_legacy_schema_fields(fields: tuple[ProjectField, ...], schema: ProjectSchema) -> None:
@@ -232,19 +234,17 @@ def missing_option_names(field: ProjectField, spec: SelectFieldSpec) -> tuple[st
 def resolve_issue_field_updates(
     fields: tuple[ProjectField, ...], values: dict[str, str], *, project_title: str
 ) -> tuple[FieldUpdate, ...]:
-    by_name = {field.name: field for field in fields}
     updates: list[FieldUpdate] = []
     for value_key, field_name in FIELD_OPTION_TO_PROJECT_FIELD.items():
         option_name = values.get(value_key)
         if not option_name:
             continue
-        if field_name not in by_name and value_key == "priority" and "Legacy priority" in by_name:
-            field_name = "Legacy priority"
-        elif field_name not in by_name and value_key == "size" and "Legacy size" in by_name:
-            field_name = "Legacy size"
-        field = by_name.get(field_name)
+        field = find_schema_field(fields, field_name)
+        if field is None and has_issue_field_clash(fields, field_name):
+            raise ProjectUsageError(clash_message(field_name))
         if field is None:
             raise ProjectUsageError(f"{field_name} field was not found in Project '{project_title}'.")
+        field_name = field.name
         option = find_option(field, option_name)
         if option is None or option.option_id is None:
             raise ProjectUsageError(missing_issue_field_option_message(field_name, option_name, project_title))

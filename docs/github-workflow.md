@@ -102,9 +102,10 @@ mode, it checks Project `Status`, `Area`, and `Initiative`, plus issue-field
 `Priority` and `Effort`. In `project_fields` rollback mode, it checks Project
 `Status`, `Priority`, `Effort`, `Area`, and `Initiative`, preferring standard
 `Priority` and `Size` fields and falling back to `Legacy priority` and
-`Legacy size` only when a standard field is absent. In
-either configured mode, Risk tier is required once the organization has that
-issue field; S2 repositories can use the setting before S3 creates the field.
+`Legacy size` only when a genuine standard Project field is absent. The same
+Legacy fallback applies with the source unset. Issue fields displayed in a
+Project are excluded from Project-field resolution. In either configured mode,
+Risk tier is required once the organization has that issue field; S2 repositories can use the setting before S3 creates the field.
 Omitting Project coordinates reports a partial result so maintainers do not
 mistake body-only validation for full assignment readiness.
 JSON output follows the stable shared v1 envelope in
@@ -132,6 +133,17 @@ Project metadata. Priority and effort locations depend on the repository's
   copied back to standard Project `Priority` and `Size`, falling back to
   `Legacy priority` and `Legacy size` only when the corresponding standard
   field is absent; Risk tier and dates continue to use issue fields.
+
+Project-field lookups always exclude organization issue fields displayed in a
+Project. For Priority and Size, each role resolves independently: a genuine
+standard Project field wins, then its genuine Legacy field. This Legacy fallback
+also applies to readiness and every Intake path in unset mode. A displayed issue
+field with the standard name and no genuine standard or Legacy field is a clash:
+`doctor` reports `conflict`, `set-fields` and `copy-fields` reject it, and
+`configure` fails before any copy, rename, field change, link or default write.
+Readiness reports the role missing and Intake fails closed. With neither a
+Project field nor an issue-field clash, existing missing-field behavior applies.
+In `issue_fields` mode, Priority and Size are outside the Project schema.
 
 Use `Agentic Coding Platform` for work that makes GitHub-centered agentic
 implementation more repeatable: agent-ready repo baselines, agent-readiness
@@ -276,9 +288,10 @@ When the schema includes Priority or Size, each command independently preserves
 `Legacy priority` or `Legacy size` if its standard field is absent, and names
 the Legacy field in use. Doctor does not report that standard field missing;
 configure leaves the Legacy field unchanged instead of creating a duplicate.
-If neither name exists the field is still missing, and a standard field takes
-precedence when both names exist. In `issue_fields` mode Priority and Size are
-excluded from the schema. `configure --dry-run` lists the effective schema and
+If neither genuine Project field exists, a displayed issue field holding the
+standard name is reported as a clash; otherwise the field is missing. A genuine
+standard Project field takes precedence when both Project names exist. In
+`issue_fields` mode Priority and Size are excluded from the schema. `configure --dry-run` lists the effective schema and
 only the item defaults that an explicit config would actually apply.
 
 ```bash

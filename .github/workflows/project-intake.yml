@@ -253,7 +253,7 @@ jobs:
                     nodes {
                       ... on ProjectV2ItemFieldSingleSelectValue {
                         name
-                        field { ... on ProjectV2FieldCommon { name } }
+                        field { ... on ProjectV2FieldCommon { id name isIssueField } }
                       }
                     }
                   }
@@ -271,15 +271,19 @@ jobs:
               return "$command_status"
             fi
 
-            item_json="$(jq -c '
+            item_json="$(jq -c --argjson fields "$fields_json" '
               .data.node as $node |
+              def value_for($role):
+                ([$fields.fields[] | select(.name == $role) | .id][0] // "") as $id |
+                ([$node.fieldValues.nodes[]? |
+                  select(.field.id == $id and (.field.isIssueField != true)) | .name][0] // "");
               if $node == null then empty else {
                 id: $node.id,
-                status: ([$node.fieldValues.nodes[]? | select(.field.name == "Status") | .name][0] // ""),
-                priority: ([$node.fieldValues.nodes[]? | select(.field.name == "Priority") | .name][0] // ""),
-                size: ([$node.fieldValues.nodes[]? | select(.field.name == "Size") | .name][0] // ""),
-                area: ([$node.fieldValues.nodes[]? | select(.field.name == "Area") | .name][0] // ""),
-                initiative: ([$node.fieldValues.nodes[]? | select(.field.name == "Initiative") | .name][0] // "")
+                status: value_for("Status"),
+                priority: value_for("Priority"),
+                size: value_for("Size"),
+                area: value_for("Area"),
+                initiative: value_for("Initiative")
               } end
             ' <<<"$response_json")"
             [[ -z "$item_json" ]] || printf '%s\n' "$item_json"
@@ -544,14 +548,40 @@ jobs:
               command_status=$?
               return "$command_status"
             fi
-            if item_json="$(project_intake_graphql_item_after_add "$item_id")"; then
+            local fields_query
+            fields_query='query($id: ID!) { node(id: $id) { ... on ProjectV2 {
+              fields(first: 100) { nodes {
+                ... on ProjectV2FieldCommon { id name isIssueField }
+                ... on ProjectV2SingleSelectField { options { id name } }
+              } }
+            } } }'
+            if fields_json="$(PROJECT_INTAKE_ALLOW_PROJECT_FALLBACK=1 project_intake_gh \
+              "list Project fields" gh api graphql -F query="$fields_query" -F id="$project_id")"; then
               :
             else
               command_status=$?
               return "$command_status"
             fi
-            if fields_json="$(PROJECT_INTAKE_ALLOW_PROJECT_FALLBACK=1 project_intake_gh \
-              "list Project fields" gh project field-list "$project_number" --owner "$BASE_PROJECT_OWNER" --format json)"; then
+
+            fields_json="$(jq -c '
+              [.data.node.fields.nodes[] | select(.isIssueField != true)] as $project |
+              {fields: [$project[] |
+                select((.name != "Legacy priority" or ([$project[].name] | index("Priority") | not)) and
+                  (.name != "Legacy size" or ([$project[].name] | index("Size") | not))) |
+                if .name == "Legacy priority" then .name = "Priority"
+                elif .name == "Legacy size" then .name = "Size" else . end]}
+            ' <<<"$fields_json")" || return $?
+            local role
+            for role in Status Area Initiative Priority Size; do
+              if [[ "$BASE_PROJECT_FIELD_SOURCE" == "issue_fields" && ( "$role" == "Priority" || "$role" == "Size" ) ]]; then
+                continue
+              fi
+              if ! jq -e --arg role "$role" '.fields[] | select(.name == $role)' <<<"$fields_json" >/dev/null; then
+                echo "::error::Project field validation failed during Project Intake: field '$role' was not found." >&2
+                return 1
+              fi
+            done
+            if item_json="$(project_intake_graphql_item_after_add "$item_id")"; then
               :
             else
               command_status=$?
@@ -723,13 +753,14 @@ jobs:
               command_status=$?
               return "$command_status"
             fi
+            fields_json="$(jq '[.[] | select(has("issue_field_id") | not)]' <<<"$fields_json")" || return $?
             case "$BASE_PROJECT_FIELD_SOURCE" in
               issue_fields)
                 priority_field_name=""
                 size_field_name=""
                 expected_project_field_count=3
                 ;;
-              project_fields)
+              *)
                 if ! jq -e '.[] | select(.name == "Priority")' <<<"$fields_json" >/dev/null &&
                   jq -e '.[] | select(.name == "Legacy priority")' <<<"$fields_json" >/dev/null; then
                   priority_field_name="Legacy priority"
@@ -822,8 +853,8 @@ jobs:
             rest_field_value_for() {
               local field_name="$1"
 
-              jq -r --arg name "$field_name" \
-                '.fields[]? | select(.name == $name) | (.value.name.raw // .value.name // "")' \
+              jq -r --arg id "$(rest_field_id_for "$field_name")" \
+                '.fields[]? | select((.id | tostring) == $id) | (.value.name.raw // .value.name // "")' \
                 <<<"$current_item_json" |
                 head -n 1
             }
@@ -892,10 +923,12 @@ jobs:
               --arg size "$expected_size" \
               --arg priority_field "$priority_field_name" \
               --arg size_field "$size_field_name" \
+              --argjson fields "$fields_json" \
               --arg area "$expected_area" \
               --arg initiative "$expected_initiative" \
               'def value_for($name):
-                 [.fields[]? | select(.name == $name) |
+                 ([$fields[] | select(.name == $name) | .id | tostring][0] // "") as $id |
+                 [.fields[]? | select((.id | tostring) == $id) |
                    (.value.name.raw // .value.name // "")][0] // "";
                value_for("Status") == $status and
                ($priority_field == "" or value_for($priority_field) == $priority) and
