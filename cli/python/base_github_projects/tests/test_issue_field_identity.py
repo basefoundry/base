@@ -15,6 +15,29 @@ from base_github_projects.project_field_resolution import resolve_project_field
 CASES = ("A1", "A2", "A2-synthetic", "B1", "B2", "C", "D1", "D2", "M")
 
 
+def copy_item_for(case, direction):
+    names = {
+        "A1": ("Priority", "Size"),
+        "A2": ("Priority", "Size"),
+        "A2-synthetic": ("Priority", "Size"),
+        "B1": ("Legacy priority", "Legacy size"),
+        "B2": ("Legacy priority", "Legacy size"),
+        "M": ("Priority", "Legacy size"),
+    }
+    project_values = dict(zip(names.get(case, ()), ("P2", "S")))
+    if case.startswith("A2"):
+        project_values.update({"Legacy priority": "P1", "Legacy size": "M"})
+    return engine.ProjectIssueData(
+        "ITEM",
+        "ISSUE",
+        "basefoundry/fixture",
+        1,
+        "fixture",
+        project_values if direction == "project-to-issue" else {},
+        {} if direction == "project-to-issue" else {"Priority": "Medium", "Effort": "Small"},
+    )
+
+
 def fields_for(case):
     fields = []
     for spec in engine.BASE_PROJECT_SCHEMA.fields:
@@ -167,15 +190,15 @@ def test_command_matrix(case, source, tmp_path, monkeypatch):
         assert set(state) == {resolve_project_field(fields, r).field_id for r in ("Priority", "Size")}
     # Both copy directions retain the same selected Project field IDs in every source mode.
     for direction in ("project-to-issue", "issue-to-project"):
-        item = engine.ProjectIssueData(
-            "ITEM", "ISSUE", "basefoundry/fixture", 1, "fixture", {}, {"Priority": "Medium", "Effort": "Small"}
-        )
+        item = copy_item_for(case, direction)
         if case in {"C", "D1", "D2"}:
             with pytest.raises(ValueError, match="conflicts|missing"):
                 project_issue_field_copy_command.make_copy_plan((item,), fields, direction, project_title="fixture")
         else:
             rows = project_issue_field_copy_command.make_copy_plan((item,), fields, direction, project_title="fixture")
-            if direction == "issue-to-project":
+            if direction == "project-to-issue":
+                assert rows[0]["changes"] == {"Priority": "Medium", "Effort": "Small"}
+            else:
                 assert {u.field_id for u in rows[0]["changes"]} == {
                     resolve_project_field(fields, r).field_id for r in ("Priority", "Size")
                 }
@@ -316,15 +339,13 @@ def test_standard_empty_value_is_not_replaced_with_legacy_value():
 @pytest.mark.parametrize("case", CASES)
 @pytest.mark.parametrize("source", [None, "project_fields", "issue_fields"])
 @pytest.mark.parametrize("direction", ["project-to-issue", "issue-to-project"])
-def test_copy_command_is_independent_of_field_source(case, source, direction, tmp_path):
+def test_copy_command_is_independent_of_field_source(case, source, direction, tmp_path, capsys):
     from base_github_projects import project_issue_field_copy_command as command
 
     fields = fields_for(case)
     config = tmp_path / "project.yml"
     config.write_text("project: {}\n" if source is None else f"project:\n  field_source: {source}\n")
-    item = engine.ProjectIssueData(
-        "ITEM", "ISSUE", "basefoundry/fixture", 1, "fixture", {}, {"Priority": "Medium", "Effort": "Small"}
-    )
+    item = copy_item_for(case, direction)
     ops = replace(
         engine.project_operations(),
         require_owner=lambda _: "basefoundry",
@@ -347,6 +368,7 @@ def test_copy_command_is_independent_of_field_source(case, source, direction, tm
             command.copy_issue_fields_command(args, ops)
     else:
         assert command.copy_issue_fields_command(args, ops) == 0
+        assert "Values to change: 2" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("case", ["A2-synthetic", "B1"])
